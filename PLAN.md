@@ -106,7 +106,7 @@ Accept: `dune build` + `dune test` green from clean checkout; commit made.
 `translate/llm_client.ml`: `complete ~model ~system ~user ~max_tokens` against OpenRouter's OpenAI-compatible endpoint (cohttp + TLS), retry (3 attempts, exponential backoff), timeout, cost/token counter appending to `data/usage.jsonl`. Look up the three current slugs (Claude, GPT-5.6, Kimi K-series) at execution time; record in `config.ml` + LOG.
 Accept: smoke test hits all three slugs with "reply OK" and gets responses; usage log written.
 
-*2.3 Literature pass A — LLM+solver pipelines.*
+*2.3 Literature pass A — LLM+solver pipelines.* ✅ DONE (2026-07-29, pulled ahead of Phase 1 — see LOG)
 Web-fetch and skim Logic-LM, LINC, plus any newer prominent LLM→formal-language verification pipeline found while searching. First half of `docs/related-work-notes.md`: 3–6 bullets per paper — what they did, benchmark used, reported numbers, how TFL-Verify differs.
 Accept: notes cover ≥3 papers in this family.
 

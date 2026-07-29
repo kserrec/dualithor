@@ -45,3 +45,8 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   generated props — every constructor shape present — plus 10k-case reflexivity
   properties), GitHub Actions CI (`dune build` + `dune test` on push, OCaml 4.14 to match
   the dev machine). `dune build` + `dune test` green locally.
+- **2.3 done, pulled ahead of Phase 1** — zero-dependency docs work chosen to run alongside
+  the 0.2 oracle (1.2's differential gate wants the CPU the oracle is using). Covered
+  Logic-LM, LINC, SymbCoT (ACL 2024), FoVer (TACL 2025), plus an NL→FOL translation-quality
+  aside (arXiv:2509.22338) in `docs/related-work-notes.md` Part A; Part B (2.4) is the next
+  parallel-friendly chunk. Phase 1 resumes at 1.2 once the oracle finishes.
