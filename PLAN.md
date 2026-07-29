@@ -41,7 +41,7 @@ Accept: doc exists; Kyle confirms it's accurate.
 Every step from 1.4 on ends by running the differential harness (1.3) over the layer just built, plus all prior OCaml tests. No pipeline work starts until 1.14 is done.
 
 *1.1 Project scaffold + AST.*
-Dune project (`lib/tfl/`). Define the AST as variants mirroring the spec: `term` (Atom of name×singular | Neg | Compound of signed list | Rel of head×signed objects | PropTerm), `signed_term` (sign × term × level), `prop` (subject × predicate); signs as a variant (Plus | Minus | Wild). Structural equality. QCheck random generators for terms/props (sized, covering every constructor) — these feed every later property test.
+Dune project (`lib/tfl/`). GitHub Actions CI: one minimal workflow running `dune build` + `dune test` on push (the visible "this builds" signal for a public repo; keep it lean — no matrix, no caching cleverness until slowness hurts). Define the AST as variants mirroring the spec: `term` (Atom of name×singular | Neg | Compound of signed list | Rel of head×signed objects | PropTerm), `signed_term` (sign × term × level), `prop` (subject × predicate); signs as a variant (Plus | Minus | Wild). Structural equality. QCheck random generators for terms/props (sized, covering every constructor) — these feed every later property test.
 Accept: `dune build` + `dune test` green; generators produce all constructor shapes (coverage assertion).
 
 *1.2 Tokenizer, parser, printer.*
@@ -223,8 +223,8 @@ Pip-installable `tflverify` package: thin wrapper spawning the compiled OCaml bi
 Accept: `pip install` from the repo works in a clean venv; README shows a 5-line Python quickstart.
 
 *8.5 Repo release.*
-README: quickstart (opam/dune build, Python client), architecture diagram, example trace; license (MIT unless Kyle says otherwise); scrub keys; pin opam deps.
-Accept: fresh-clone build-and-run works on a clean machine spec.
+README: quickstart (opam/dune build, Python client), architecture diagram, example trace; license already in place (MIT); `CITATION.cff` so academics can cite the repo (title, authors, repo URL; add the paper's preprint reference once it exists); scrub keys; pin opam deps.
+Accept: fresh-clone build-and-run works on a clean machine spec; CITATION.cff validates.
 
 *8.6 Submission targets.*
 Current neurosymbolic venues/workshops with deadlines (web search at time of writing — NeSy, ACL/NeurIPS workshops). Draft the email to Castro-Manzano's group describing the system and inviting collaboration.
