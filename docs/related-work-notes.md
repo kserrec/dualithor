@@ -186,3 +186,83 @@ Castro-Manzano) built exactly such an artifact — an algebra with decision proc
 was never connected to machine translation from free NL at scale. TFL-Verify is the splice:
 LLMs supply the NL→TFL step the term-logic line lacked, and TFL supplies the certifying,
 auditable checker the LLM+FOL line (Part A) lacks a human-readable version of.
+
+---
+
+## Part C — adjacent prior art (extended sweep, 2026-07-29)
+
+Five families beyond the PLAN's six named items, each earning its place in the related-work
+section for a different reason.
+
+### C1. Syllogistic-fragment theory — Moss, Pratt-Hartmann
+
+- Pratt-Hartmann & Moss, "Logics for the Relational Syllogistic" (*Review of Symbolic
+  Logic*, 2009; arXiv:0808.0521): a family of syllogistic fragments parametrized by which
+  constructors are allowed (noun-level negation, relative clauses, relational terms), with
+  **completeness theorems and complexity results for each fragment** — including results
+  on when a rule-based syllogistic proof system exists at all and when *reductio ad
+  absurdum* is indispensable. Kruckman & Moss ("Exploring the Landscape of Relational
+  Syllogistic Logics," 2018) extend the map.
+- Pratt-Hartmann, "On the Computational Complexity of the Numerically Definite
+  Syllogistic" (*BSL*): complexity of syllogistic with numerical quantifiers — the
+  theoretical neighborhood of TFL⁺'s intermediate quantifiers.
+- Why it matters for us: this line is the **theoretical grounding for the router claim** —
+  fragment membership is a real, well-studied boundary with known proof-theoretic and
+  complexity properties, not an ad-hoc engineering cutoff. It also gives principled
+  context for our engine's shape: a complete decision on the categorical fragment, and
+  indirect proof (reductio) becoming necessary exactly where their results say rule-based
+  systems stop sufficing. We do not need their theorems for the system, but the paper
+  should cite them when arguing the fragment boundary is natural.
+
+### C2. Monotonicity NLI systems — MonaLog (Hu, Moss et al., SCiL 2020)
+
+- A deliberately lightweight NLI system: token-level polarity (arrow) tagging plus a small
+  set of monotonicity rules over surface forms; generates entailments/contradictions
+  directly from the input sentence. Competitive with heavier logic-based NLI models on
+  SICK; also used to generate training data for BERT (hybrid MonaLog+BERT improves SICK
+  accuracy).
+- Why it matters: the strongest modern evidence that *surface-level* symbolic methods
+  remain competitive on the fragments they cover — the same bet TFL makes — while still
+  producing no translation artifact or membership signal. A close cousin, one step short
+  of a certifying checker.
+
+### C3. LLM syllogistic-reasoning benchmarks — NeuBAROCO and kin
+
+- NeuBAROCO (Ozeki et al.; arXiv:2306.12567, follow-up 2408.04403): 95 multiple-choice +
+  790 NLI syllogism problems in English and Japanese, annotated for the classic human
+  biases (belief bias, conversion errors, atmosphere effect). Findings: models are far
+  from error-free on syllogisms; GPT-4's failures concentrate in the **reasoning step
+  rather than interpretation** (their Translate-and-Explain analysis), and human-like
+  biases persist.
+- Why it matters: direct evidence that LLMs mis-reason on exactly the fragment our engine
+  decides *completely* — the cleanest possible motivation for offloading that fragment to
+  a symbolic checker. Also a candidate dataset for PLAN 6.3 (syllogism-focused loader)
+  alongside SylloBase/Avicenna, with the bias annotations enabling a nice analysis cut
+  (does the pipeline neutralize belief bias?).
+
+### C4. LLM + Prolog pipelines
+
+- "Reliable Reasoning Beyond Natural Language" (Borazjanizadeh & Piantadosi, 2024;
+  arXiv:2407.11373): LLM translates problem statements into Prolog; SWI-Prolog executes;
+  reasoning becomes "infer the facts, encode as logic code." LoRP (2025, *Knowledge-Based
+  Systems*) is the same architecture hardened with validation and voting. A 2025 study
+  (arXiv:2506.04575) probes whether LLMs are *stable* formal-logic translators under
+  linguistic variation — finding translation consistency, not solving, is the weak link.
+- Why it matters: same translate-then-execute architecture with Horn-clause Prolog as
+  target; the field's own conclusion ("reliability … mainly depends on the translation
+  step") is our fidelity claim's premise stated from the FOL/Prolog side. Also the
+  concrete systems our `router/escalate.ml` stub (PLAN 5.1) names as the future
+  escalation hook — and the contrast to TFLPL (Part B), which programs in terms with no
+  unification at all.
+
+### C5. Autoformalization — Wu et al. (NeurIPS 2022; arXiv:2205.12615)
+
+- Few-shot LLM translation of competition mathematics into Isabelle/HOL: 25.3% of
+  problems translated perfectly; training a neural prover on autoformalized theorems
+  lifted MiniF2F proof rate 29.6% → 35.2%. A now-large successor literature (Lean-targeted
+  ProofBridge, StepFun-Formalizer, etc.).
+- Why it matters: the maximal-ambition end of the same program — LLM as NL→formal
+  translator — where "perfect translation rate" plays the role our parse rate +
+  back-check play. Shows the translation bottleneck is not an artifact of logic
+  benchmarks; it appears at every scale of formality. Our niche is the opposite corner:
+  a deliberately small target language where translation can be *audited by reading*.

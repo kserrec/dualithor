@@ -59,3 +59,10 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   source anchor. Their named future work (relational module, numerical module, Murphree
   1998) is essentially what our vendored engine implements. All six prior-art items from
   the PLAN preamble are now covered across 2.3 + 2.4.
+- **Prior-art sweep extended (Kyle's request)**: added Part C to the notes — syllogistic-
+  fragment theory (Pratt-Hartmann & Moss: completeness/complexity per fragment — the
+  theoretical grounding for the router claim), MonaLog (monotonicity NLI), NeuBAROCO
+  (LLM syllogism benchmark; added as a 6.3 candidate in PLAN — bias annotations enable a
+  "does the pipeline neutralize belief bias?" cut), LLM+Prolog pipelines (Reliable
+  Reasoning Beyond NL, LoRP — the future escalate.ml hook), and autoformalization
+  (Wu et al. 2022).

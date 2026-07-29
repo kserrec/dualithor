@@ -163,7 +163,7 @@ Same contract, same ritual, both datasets.
 Accept: loader tests green; counts logged.
 
 *6.3 Loader — syllogism-focused dataset.*
-Web-search current best (candidates: SylloBase, Avicenna); pick one, justify in LOG, add loader.
+Web-search current best (candidates: SylloBase, Avicenna, NeuBAROCO — the last has human-bias annotations enabling a "does the pipeline neutralize belief bias?" analysis cut; see related-work-notes Part C3); pick one, justify in LOG, add loader.
 Accept: loader test green; choice + counts logged.
 
 *6.4 Fragment filtering.*
