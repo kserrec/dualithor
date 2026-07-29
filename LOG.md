@@ -66,6 +66,18 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   "does the pipeline neutralize belief bias?" cut), LLM+Prolog pipelines (Reliable
   Reasoning Beyond NL, LoRP — the future escalate.ml hook), and autoformalization
   (Wu et al. 2022).
+- **§12 double-check (Kyle's request):** re-verified port-spec §12 line-by-line against
+  `engine/tfl.js` (checkArgument decision order, verdict/method vocabulary, the three
+  numerical conditions — all accurate as written), then verified the engine mechanically
+  against the primary source now in hand: enumerated all 4,000 two-premise syllogistic
+  patterns (10 moods × 10 × 10 × 4 figures) through `checkArgument` and compared against
+  Castro-Manzano et al. 2018 Table 9 plus the 15 classical no-import moods — **exact
+  agreement, zero mismatches**; the paper's four worked examples (Tables 10–13) all
+  reproduce; att-1 valid / att-3 invalid confirms the term-matched condition (iii) is
+  what makes the engine agree with the paper's own tables where the loose phrasing would
+  not. Script: scratchpad `check-cm2018.js` (not committed — the frozen engine is only
+  consulted); §12 updated with the worked discriminator and verification note. These
+  cases are earmarked for the 1.13 paper-cases suite.
 - **Final prior-art pass (agreed cap):** SatLM (completes the pipeline taxonomy —
   declarative constraints + SAT solver), grammar-constrained decoding (design-relevant:
   the paper must answer "why not force parseable output?" — GCD would silently destroy

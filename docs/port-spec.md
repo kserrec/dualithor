@@ -429,6 +429,24 @@ particularPremises, particularConclusions}` with `valid = sum && particular && l
   deviation** from the loose reading of the paper's condition (iii). The port must
   implement the term-matched version exactly.
 
+  Worked discriminator (why term-matched, not "≤ max premise level"):
+  - **att-1**: All M are P; **Most S** are M ⊢ Most S are P. The "most" rides S — the
+    conclusion's own subject — so the conclusion's level 2 is licensed. Valid (and listed
+    in the paper's Table 9, figure 1).
+  - **att-3**: All M are P; **Most M** are S ⊢ Most S are P. Same letters, but the "most"
+    rides the middle term M; nothing quantifies S beyond bare "some". The loose reading
+    (conclusion level 2 ≤ max premise level 2) would wrongly pass it; term-matched gives
+    carriedLevel 0 and rejects. Invalid (and absent from Table 9, figure 3).
+
+  **Source verification (2026-07-29).** The engine was checked mechanically against the
+  primary source (Castro-Manzano, Lozano-Cobos & Reyes-Cárdenas 2018, *BRAIN* 9(3)): all
+  4,000 two-premise patterns (10 moods³ × 4 figures) agree exactly with the paper's
+  Table 9 valid-pattern lists plus the 15 classically valid moods without existential
+  import — zero mismatches; the four worked examples (Tables 10–13: kaa-1 invalid, akt-4
+  invalid, bao-3 valid, ekg-2 valid) all reproduce; and the att-1/att-3 pair confirms the
+  term-matched condition is what produces the agreement. See LOG.md; these cases feed the
+  1.13 paper-cases suite.
+
 ## 13. Programs, queries, equivalence
 
 ### `parseProgram src`
