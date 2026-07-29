@@ -31,6 +31,10 @@ Transcribed from the `tfl.js` header, verified against the tokenizer/parser code
 ASCII aliases exist so plain-keyboard input works: `-` for `−`, `+-` for `±`, `^n` for
 superscript levels, `'`/`''` for `′`/`″`.
 
+> **Port note (decided 2026-07-29):** the JS reference accepts any Unicode letter in bare
+> names; the OCaml engine narrows bare-name letters to ASCII (quoted terms still carry
+> arbitrary text). See hazard §16.4 for the full decision and its consequences.
+
 ### Tokenizer details a port must reproduce
 
 Token kinds: `plus` `minus` `wild` `lparen` `rparen` `lbracket` `rbracket`
@@ -565,9 +569,12 @@ are deferred with it.
    order**. OCaml's byte-wise UTF-8 `String.compare` agrees with it on all BMP characters
    (both equal code-point order there) but diverges for astral-plane characters (UTF-16
    surrogates sort astral chars below U+E000..U+FFFF). Term names admit any `\p{L}` letter,
-   astral included. Decision for 1.2: either compare by UTF-16 code units, or restrict
-   QCheck name generators to BMP and let the differential corpus prove the difference never
-   bites. Flag whichever we choose in LOG.md.
+   astral included. **Decided (Kyle, 2026-07-29): the OCaml engine uses plain byte-wise
+   UTF-8 comparison (code-point order) — no UTF-16 emulation.** Sort order never affects
+   verdicts, only which equivalent canonical spelling wins. QCheck name generators stay
+   inside the BMP so the differential corpus never straddles the divergence; the 1.12
+   report documents the deliberate ordering difference. JS-isms live in the harness, never
+   the engine.
 2. **Iteration order is semantics.** JS `Map`/`Set` iterate in insertion order, and
    `Array.prototype.sort` is stable. Proof line order, It-line seeding order
    (`mentionedTerms`), point construction, and `queryTerm`'s answer order all inherit from
@@ -578,10 +585,15 @@ are deferred with it.
    round-trip fidelity in JS. Validation caps meaningful levels at 3; treat huge levels as
    out-of-contract (generators cap them; differential harness doesn't probe them).
 4. **Unicode classes and case.** `isNameStart`/`isNameChar` use `\p{L}` and the
-   lowercase-initial check uses `\p{Ll}`; `readTerm` uses full `toLowerCase()`. Exact
-   parity needs real Unicode tables (a dependency decision for 1.2 — candidate `uucp`/
-   `uutf`, needing a LOG.md justification) or a corpus restricted to ASCII names for the
-   random NL-rendering differential (names from real datasets are ASCII in practice).
+   lowercase-initial check uses `\p{Ll}`; `readTerm` uses full `toLowerCase()`. **Decided
+   (Kyle, 2026-07-29): bare-name letters are ASCII-only in the OCaml engine — no Unicode
+   tables dependency.** The notation's fixed non-ASCII symbols (−, ±, sub/superscripts,
+   primes) are unaffected, and quoted terms still accept arbitrary text, so no expressive
+   power is lost; the translation prompt (4.2) teaches quoting for non-ASCII names. A
+   non-ASCII letter in bare-name position raises a `Lexical`-class error advising quoting
+   (1.14 taxonomy). Renderer lowercasing and the `statementModel` lowercase-initial check
+   are ASCII-only; differential corpora keep names ASCII; the residual divergences from
+   the JS reference are documented in the differential report.
 5. **Deep nesting.** The JS engine recurses freely; pathologically deep input dies with a
    stack-overflow `RangeError`, not a ParseError. The port's 1.14 `Safe` API must instead
    return a structured error (depth cap); before 1.14, differential fuzzing should cap
