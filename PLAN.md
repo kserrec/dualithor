@@ -28,11 +28,11 @@
 *0.1 Vendor the reference engine.* ✅ DONE (2026-07-29)
 `tfl.js`, `tfl.test.js`, `oracle.js` copied verbatim from `guides`; 201/201 tests pass in place; quick oracle run (1,000 iterations/suite) clean across all six suites.
 
-*0.2 Long-run reference verification.*
+*0.2 Long-run reference verification.* ⏳ IN PROGRESS (run started 2026-07-29)
 Run `node engine/oracle.js -n 100000` in the background (expect hours). Record per-suite iteration counts, failures (expect zero), and wall time in LOG.md. Any failure: stop and report to Kyle — do not fix.
 Accept: clean at 100k; results logged.
 
-*0.3 Port specification document.*
+*0.3 Port specification document.* ✅ Drafted (2026-07-29) — awaiting Kyle's accuracy confirmation
 Read `engine/tfl.js` fully. Write `docs/port-spec.md`: every exported function grouped by layer (parse/print, inference, relational, programs/queries, NL rendering, numerical); the exact accepted notation (transcribe the header table, including ASCII aliases); the verdict vocabulary (`valid | invalid | contradicted | unknown`, methods `PZ | derivation | indirect | numerical`) and the meaning of `unknown` (derivation search is incomplete outside the categorical fragment); error behavior (ParseError with position); the documented Murphree condition-(iii) correction (term-matched numerical condition — see guides ROADMAP note); and an explicit **not-ported list** (courseware-only: `checkExpression` grading, `printHtml*`; Aristotelian extras `answer`/`strongerAnswer`/`possibility`/`suggestMissingPremise` deferred unless a later phase needs them).
 Accept: doc exists; Kyle confirms it's accurate.
 
