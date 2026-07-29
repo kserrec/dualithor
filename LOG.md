@@ -66,3 +66,10 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   "does the pipeline neutralize belief bias?" cut), LLM+Prolog pipelines (Reliable
   Reasoning Beyond NL, LoRP — the future escalate.ml hook), and autoformalization
   (Wu et al. 2022).
+- **Final prior-art pass (agreed cap):** SatLM (completes the pipeline taxonomy —
+  declarative constraints + SAT solver), grammar-constrained decoding (design-relevant:
+  the paper must answer "why not force parseable output?" — GCD would silently destroy
+  the router signal and the fidelity audit; flagged as a possible ablation arm), and the
+  abstention/selective-prediction surveys (the vocabulary for positioning
+  `Outside_fragment`: a deterministic abstention signal outside the model vs confidence
+  estimates inside it). Prior-art collection now closed until the Phase 8 write-up pass.

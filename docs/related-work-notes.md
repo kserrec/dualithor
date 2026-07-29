@@ -266,3 +266,48 @@ section for a different reason.
   back-check play. Shows the translation bottleneck is not an artifact of logic
   benchmarks; it appears at every scale of formality. Our niche is the opposite corner:
   a deliberately small target language where translation can be *audited by reading*.
+
+### C6. SatLM (Ye, Chen, Dillig & Durrett, NeurIPS 2023; arXiv:2305.09656)
+
+- Declarative prompting: the LLM parses the NL problem into a **set of logical
+  constraints** (not an imperative program), and an off-the-shelf SAT solver derives the
+  answer. Fixes the planning-error failure mode of program-aided LMs (which manipulate
+  equations imperatively and err mid-derivation). New state of the art on LSAT,
+  BoardgameQA, and StructuredRegex at publication.
+- Why it matters: completes Part A's pipeline taxonomy — imperative programs (PAL),
+  FOL provers (LINC), mixed solvers (Logic-LM), SAT constraints (SatLM). The
+  declarative-specification framing is the closest of the four to ours (a TFL translation
+  is also a declarative artifact, not a procedure); the difference remains auditability
+  of the artifact and the membership signal.
+
+### C7. Grammar-constrained decoding (Geng et al., EMNLP 2023, arXiv:2305.13971;
+Synchromesh, Poesia et al. 2022; XGrammar and successors)
+
+- Constrains generation token-by-token with a per-token validity mask so the output is
+  **guaranteed to conform to a grammar** — no fine-tuning, works for JSON, code, formal
+  languages. Mature tooling exists (Synchromesh → XGrammar and the JSON-schema
+  ecosystem).
+- Why it matters — **design-relevant, not just citation-relevant**: GCD could force every
+  translation to parse, trivially zeroing our `Lexical`/`Syntactic` failure classes. The
+  paper must address "why not just constrain decoding?" head-on: forcing well-formed TFL
+  does not make translation *faithful* — it would transmute out-of-fragment content into
+  syntactically valid but wrong TFL, silently destroying both the router signal (parse
+  failure is the abstention mechanism) and the honesty of the fidelity audit. Deliberate
+  unconstrained generation is a feature: we *want* the model able to fail loudly.
+  Possible future ablation arm: GCD-constrained translation vs free translation,
+  measuring what happens to back-check fidelity when parse failure is impossible.
+
+### C8. Abstention / selective prediction
+
+- "Know Your Limits: A Survey of Abstention in Large Language Models" (TACL 2025) and
+  "The Art of Refusal" (arXiv:2407.18418) survey the field: abstention framed from the
+  query/model/values perspectives; selective-prediction methods rely on **uncertainty
+  estimates** (confidence thresholds, calibration) to decide when to withhold an answer.
+  Cascade work (e.g., early-abstention routing to cheaper/stronger models) is the
+  systems-side cousin.
+- Why it matters: the router *is* an abstention mechanism, but with a mechanically
+  checkable trigger — fragment membership — rather than a confidence estimate. That's the
+  vocabulary the paper should use to position `Outside_fragment`: abstention literature
+  keeps searching for reliable abstention signals inside the model; TFL provides one
+  *outside* the model, deterministic and inspectable. One or two of these citations
+  situate the claim.
