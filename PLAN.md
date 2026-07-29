@@ -40,7 +40,7 @@ Accept: doc exists; Kyle confirms it's accurate.
 
 Every step from 1.4 on ends by running the differential harness (1.3) over the layer just built, plus all prior OCaml tests. No pipeline work starts until 1.14 is done.
 
-*1.1 Project scaffold + AST.*
+*1.1 Project scaffold + AST.* ✅ DONE (2026-07-29)
 Dune project (`lib/tfl/`). GitHub Actions CI: one minimal workflow running `dune build` + `dune test` on push (the visible "this builds" signal for a public repo; keep it lean — no matrix, no caching cleverness until slowness hurts). Define the AST as variants mirroring the spec: `term` (Atom of name×singular | Neg | Compound of signed list | Rel of head×signed objects | PropTerm), `signed_term` (sign × term × level), `prop` (subject × predicate); signs as a variant (Plus | Minus | Wild). Structural equality. QCheck random generators for terms/props (sized, covering every constructor) — these feed every later property test.
 Accept: `dune build` + `dune test` green; generators produce all constructor shapes (coverage assertion).
 

@@ -32,3 +32,16 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   Renderer lowercasing and the statement-variable lowercase-initial check are ASCII-only;
   differential corpora keep names ASCII; the residual divergences from the JS reference
   are documented in the differential report.
+- **1.1 done.** Toolchain: no opam/dune existed on the machine; installed the opam 2.5.2
+  binary user-level (`~/.local/bin`, no sudo, `--no-setup` so no shell-config edits) and
+  created the `default` switch on the **system OCaml 4.14.1** (`ocaml-system`) rather than
+  building a compiler — instant, and kept CPU free while the 0.2 oracle run occupies a
+  core. Installed dune 3.24.1 and qcheck-core 0.91. Note: the PLAN's approved `qcheck`
+  dependency lands as `qcheck-core` (the core library plus its runner; the `qcheck`
+  metapackage adds OUnit integration we don't use). Scaffold: `lib/tfl/ast.ml` (variants
+  mirroring port-spec §2; typed wrappers over structural equality), `test/gen.ml` (sized
+  QCheck generators, parser-producible shapes only, ASCII names per the port-language
+  decisions), `test/test_tfl.ml` (deterministic-seed coverage assertion over 1,000
+  generated props — every constructor shape present — plus 10k-case reflexivity
+  properties), GitHub Actions CI (`dune build` + `dune test` on push, OCaml 4.14 to match
+  the dev machine). `dune build` + `dune test` green locally.
