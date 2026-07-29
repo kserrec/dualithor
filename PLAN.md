@@ -110,7 +110,7 @@ Accept: smoke test hits all three slugs with "reply OK" and gets responses; usag
 Web-fetch and skim Logic-LM, LINC, plus any newer prominent LLM→formal-language verification pipeline found while searching. First half of `docs/related-work-notes.md`: 3–6 bullets per paper — what they did, benchmark used, reported numbers, how TFL-Verify differs.
 Accept: notes cover ≥3 papers in this family.
 
-*2.4 Literature pass B — natural logic and TFL lineage.*
+*2.4 Literature pass B — natural logic and TFL lineage.* ✅ DONE (2026-07-29, pulled ahead of Phase 1 — see LOG)
 Same treatment: NatLog, NaturalLI, Sommers & Englebretsen (book-level), Castro-Manzano's TFL programming / Aristotelian databases. Append to the notes file.
 Accept: all six prior-art items covered across 2.3 + 2.4.
 

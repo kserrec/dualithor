@@ -93,6 +93,96 @@ claims TFL-Verify exists to test.
 
 ## Part B — natural logic and the TFL lineage (PLAN 2.4)
 
-*(to be written in step 2.4: NatLog — MacCartney & Manning; NaturalLI — Angeli & Manning;
-Sommers & Englebretsen's term logic; Castro-Manzano's TFL programming / Aristotelian
-databases.)*
+### NatLog (MacCartney & Manning, 2007–2009)
+
+- Natural logic for textual inference: entailment as a semantic *containment* relation
+  (set-theoretic, over expressions of every type — words, phrases, sentences), refined in
+  the extended model to seven basic entailment relations.
+- Mechanism: decompose premise→hypothesis into a sequence of atomic edits; predict a
+  lexical entailment relation per edit; project the relations upward through the semantic
+  composition tree (monotonicity/projectivity); join the relations across the edit
+  sequence. Implementation uses the Stanford parser, WordNet, and learned classifiers.
+- Reported: ~70% accuracy / 89% precision on the FraCaS test suite.
+- How TFL-Verify differs: NatLog *never leaves* natural language — inference is edits over
+  surface forms, with no symbolic artifact anyone can re-check. TFL-Verify shares the
+  conviction that inference should track NL surface structure (common Sommers ancestry),
+  but produces a formal object (the plus-minus translation) with a decision procedure and
+  an auditable proof trace. NatLog's monotonicity machinery also has no analogue of our
+  mechanical fragment/router signal — it always produces *some* relation.
+
+### NaturalLI (Angeli & Manning, EMNLP 2014)
+
+- Natural logic inference for **common-sense fact recall**: infer "cats have tails"-style
+  facts from a very large database of known facts, treating inference as search over
+  lexical mutations with natural-logic semantics; the database is smoothed so any
+  candidate fact has membership with some confidence.
+- Reported: 74.2% accuracy predicting held-out facts, beating multiple baselines.
+- How TFL-Verify differs: NaturalLI trades soundness for recall by design (soft
+  membership, "likely true"); our engine certifies validity and treats everything short of
+  proof as `Unknown`/`Invalid` — the opposite operating point. Useful contrast for the
+  paper: natural-logic machinery scales to soft common sense, term-logic machinery
+  certifies; the router is what lets a system be honest about which regime an input is in.
+
+### Sommers & Englebretsen — the source system
+
+- *An Invitation to Formal Reasoning: The Logic of Terms* (Ashgate, 2000) is the canonical
+  book-level presentation of TFL (with Englebretsen 1996, *Something to Reckon With*, and
+  Sommers 1982, *The Logic of Natural Language*, behind it). Propositions parse as two
+  terms joined by plus-minus functors — a "logibra" (Sommers) with no individual
+  variables or quantifiers; the syntax deliberately mirrors NL surface form, drawing on
+  Aristotle, the Scholastics, Leibniz, and the 19th-century British algebraists.
+- The algebra gives a sound, complete, simple decision method for syllogistic: a
+  conclusion follows iff (i) the premises sum algebraically to the conclusion and (ii) the
+  number of particular conclusions equals the number of particular premises
+  (Englebretsen 1996, p. 167). Singulars, relationals, and compound (propositional) terms
+  are all represented in the same two-term shape — the wild-quantity treatment of
+  singulars is what lets "Socrates" reason like a term.
+- This is the system our vendored engine implements (with the no-existential-import
+  discipline and the P/Z test as the categorical decision); the book is the ground truth
+  for the 1.13 paper-cases audit.
+- For the paper's fidelity claim: the book's own selling point — the notation tracks how
+  people actually phrase arguments — is exactly the property we are testing empirically
+  via LLM translation fidelity vs FOL.
+
+### Castro-Manzano et al. — TFL⁺, TFL programming, Aristotelian databases
+
+Primary: Castro-Manzano, Lozano-Cobos & Reyes-Cárdenas, "Programming with Term Logic,"
+*BRAIN* 9(3), 2018 (read in full — the paper our engine's comments cite).
+
+- **TFL⁺**: TFL extended with Peterson (1979) / Thompson (1982) intermediate quantifiers —
+  "many" (k/g), "most" (t/d), "few/predominant" (p/b) — carried as superscript quantity
+  levels 0–3 on terms (their Table 8). The modified decision method adds condition
+  (iii): the conclusion's quantification level must not exceed the premises' (their
+  wording: "lesser or equal than the maximum level of quantification of the premises").
+  Their Proposition 1 (reliability): an inference is SYLL⁺-valid iff TFL⁺-valid.
+  **Engine note:** our vendored engine implements the *term-matched* strengthening of
+  (iii) — the conclusion's level must be licensed by a premise quantifying the same
+  subject term — which agrees with their validity tables (10–13) while closing the
+  loophole the loose phrasing leaves open (a level riding the middle term); documented in
+  port-spec §12. Numerical term logic traces further to Murphree (1998).
+- **Aristotelian databases** (Mozes 1989): a database is Aristotelian when it (1) explains
+  deductions in natural language, (2) volunteers a stronger/weaker answer than asked, (3)
+  points out unproven but likely possibilities, (4) suggests "missing rules" that would
+  make a query provable, and (5) suggests openings for analogy/induction. Mozes built this
+  over Prolog-style syntax; deduction is syllogistic; negation-as-failure included.
+- **TFLPL**: their logic-programming language after TFL⁺ (implemented in C): a program is
+  a sequence of two-term propositions; the fact/rule distinction disappears (as the
+  singular/universal distinction does in TFL); no variables, no unification — inference is
+  DON-driven. Named future work at time of writing: a relational module, a numerical
+  reasoning module, a probabilistic interpretation (Thompson 1986).
+- How TFL-Verify relates: our engine is, in effect, a realization of that named future
+  work — full relational layer (passives with scope guards, proterms, indirect proof),
+  the TFL⁺ numerical decision, and the Mozes features (NL explanations, stronger answers,
+  possibility, missing-premise suggestion) — and then points the whole apparatus at a new
+  job neither line anticipated: verifying LLM outputs, with translation fidelity and
+  fragment routing as the research questions. Their group is the natural collaboration
+  contact (PLAN 8.6).
+
+### Cross-cutting contrast for the paper (Part B)
+
+The natural-logic line (NatLog, NaturalLI) validates surface-faithful inference but never
+produces a checkable symbolic artifact; the term-logic line (Sommers & Englebretsen,
+Castro-Manzano) built exactly such an artifact — an algebra with decision procedures — but
+was never connected to machine translation from free NL at scale. TFL-Verify is the splice:
+LLMs supply the NL→TFL step the term-logic line lacked, and TFL supplies the certifying,
+auditable checker the LLM+FOL line (Part A) lacks a human-readable version of.

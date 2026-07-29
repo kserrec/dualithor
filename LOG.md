@@ -50,3 +50,12 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   Logic-LM, LINC, SymbCoT (ACL 2024), FoVer (TACL 2025), plus an NL→FOL translation-quality
   aside (arXiv:2509.22338) in `docs/related-work-notes.md` Part A; Part B (2.4) is the next
   parallel-friendly chunk. Phase 1 resumes at 1.2 once the oracle finishes.
+- **2.4 done, same rationale.** Part B covers NatLog (FraCaS 70%/89%), NaturalLI (74.2%
+  held-out facts), Sommers & Englebretsen 2000 (book-level; the two validity conditions,
+  Englebretsen 1996 p. 167), and Castro-Manzano et al. 2018 (*BRAIN* 9(3)) — read in full
+  from the PDF, not just the abstract. Confirmed from the source: their condition (iii) is
+  phrased loosely ("≤ the maximum level of the premises"); our engine's term-matched
+  strengthening agrees with their Tables 10–13 — the port-spec §12 note now has a primary-
+  source anchor. Their named future work (relational module, numerical module, Murphree
+  1998) is essentially what our vendored engine implements. All six prior-art items from
+  the PLAN preamble are now covered across 2.3 + 2.4.
