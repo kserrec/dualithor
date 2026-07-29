@@ -4,7 +4,7 @@ Guidance for Claude Code when working in this repository.
 
 ## What this is
 
-TFL-Verify: an OCaml system that verifies LLM outputs using Term Functor Logic — translate
+TFL-Verify: an OCaml system that verifies LLM outputs using term logic (TFL) — translate
 natural language into TFL's plus-minus notation, check it symbolically, route on fragment
 membership. Deliverables: an open-source system and an arXiv/workshop paper. The goal is
 adding to knowledge and making things work better; there is no commercial angle.
@@ -13,10 +13,12 @@ Everything here is public (MIT). `PLAN.md` is the canonical plan — read the cu
 before doing nontrivial work. `LOG.md` records decisions and surprises; deviations from the
 plan get a one-line rationale there.
 
-**Terminology trap:** in this repo "functor" means Sommers' *term functor* (the plus/minus
-operators of the logic), never OCaml's module functor. Avoid OCaml module functors in the
-code unless there is a compelling concrete need — both to keep the codebase simple and to
-keep the word unambiguous.
+**Naming convention:** the logic is called "term logic" or just "TFL" everywhere — code,
+comments, docs, commits. The spelled-out name "Term Functor Logic" appears only where the
+literature name matters: the README's first line, the paper, CITATION.cff, and outreach.
+The word "functor" is otherwise banned from this repo, because in OCaml it means a module
+functor — a construct we also avoid in the code unless there is a compelling concrete
+need, both for simplicity and to keep the word from ever being ambiguous here.
 
 ## Commands
 

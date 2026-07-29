@@ -1,6 +1,6 @@
 # TFL-Verify: Project Plan
 
-*Goal:* Build and evaluate a pipeline that verifies LLM outputs using Term Functor Logic (TFL), producing (a) an open-source system and (b) an arXiv/workshop paper.
+*Goal:* Build and evaluate a pipeline that verifies LLM outputs using term logic (TFL), producing (a) an open-source system and (b) an arXiv/workshop paper.
 
 *Core claims to test:*
 1. *Fidelity claim:* NL→TFL translation is more faithful and more human-auditable than NL→FOL translation, because TFL's variable-free plus-minus syntax mirrors natural-language surface form.
