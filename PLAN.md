@@ -44,7 +44,7 @@ Every step from 1.4 on ends by running the differential harness (1.3) over the l
 Dune project (`lib/tfl/`). GitHub Actions CI: one minimal workflow running `dune build` + `dune test` on push (the visible "this builds" signal for a public repo; keep it lean — no matrix, no caching cleverness until slowness hurts). Define the AST as variants mirroring the spec: `term` (Atom of name×singular | Neg | Compound of signed list | Rel of head×signed objects | PropTerm), `signed_term` (sign × term × level), `prop` (subject × predicate); signs as a variant (Plus | Minus | Wild). Structural equality. QCheck random generators for terms/props (sized, covering every constructor) — these feed every later property test.
 Accept: `dune build` + `dune test` green; generators produce all constructor shapes (coverage assertion).
 
-*1.2 Tokenizer, parser, printer.*
+*1.2 Tokenizer, parser, printer.* ✅ DONE (2026-07-30)
 Full notation from the spec: typographic and ASCII signs, quoted terms, singulars (`*`), proterm primes, subscripts/superscripts, nested relational complexes, propositional terms `[…]`, quantity levels. Printer emits the same canonical style as the JS printer (typographic −/±, compact spacing, quoting rule). Port the parser/printer unit tests from `tfl.test.js`. Property: `parse (print p)` structurally equals `p` for all generated `p`.
 Accept: ported tests + round-trip property green (≥10k QCheck cases).
 

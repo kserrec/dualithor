@@ -1,3 +1,17 @@
+; Gen (the QCheck generators) is shared by every test executable, so it lives
+; in its own unwrapped library — dune forbids one module in two stanzas.
+(library
+ (name test_gen)
+ (wrapped false)
+ (modules gen)
+ (libraries tfl qcheck-core))
+
 (test
  (name test_tfl)
- (libraries tfl qcheck-core qcheck-core.runner))
+ (modules test_tfl)
+ (libraries tfl test_gen qcheck-core qcheck-core.runner))
+
+(test
+ (name test_notation)
+ (modules test_notation)
+ (libraries tfl test_gen qcheck-core qcheck-core.runner))

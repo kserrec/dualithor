@@ -99,3 +99,30 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   abstention/selective-prediction surveys (the vocabulary for positioning
   `Outside_fragment`: a deterministic abstention signal outside the model vs confidence
   estimates inside it). Prior-art collection now closed until the Phase 8 write-up pass.
+
+## 2026-07-30
+
+- **1.2 done — tokenizer, parser, printer** (`lib/tfl/notation.ml`). All 62 parser/printer
+  unit tests ported from `tfl.test.js` (HTML-printer tests excluded — courseware-only,
+  spec §13; the JS file's seeded random-AST round-trip is subsumed by the QCheck
+  property), plus round-trip `parse (print x) = x` at 10k QCheck cases each for
+  propositions and terms. All green, and the pre-existing 1.1 suite stays green.
+  Port decisions made here, all downstream of the recorded §16 language decisions:
+  - **Error positions count Unicode code points** (the tokenizer decodes UTF-8 up front
+    and works over a code-point array). Equal to the JS reference's UTF-16 indices on all
+    BMP input — which is all the differential corpus generates — so positions compare
+    exactly in 1.3.
+  - **Whitespace is the JS `\s` set transcribed** (ASCII whitespace + NBSP, U+1680,
+    U+2000–200A, U+2028/29, U+202F, U+205F, U+3000, U+FEFF): the reference's own test
+    corpus exercises NBSP and thin space, so ASCII-only skipping would fail the ported
+    suite. Fixed small set — no Unicode-tables dependency.
+  - **Quantity levels saturate at 10⁹** instead of overflowing OCaml's int on absurd
+    digit runs (JS accumulates into doubles; huge levels are out-of-contract per
+    spec §16.3 and validation caps at 3 anyway).
+  - **Unrecognized non-ASCII characters error with a quoting hint** ("quote the term to
+    use non-ASCII names") — the §16.4 ASCII narrowing means a non-ASCII letter that the
+    JS engine would accept as a bare name is a lexical error here; the message points at
+    the supported escape hatch. Full taxonomy lands in 1.14.
+  - Test layout: the shared QCheck generators (`test/gen.ml`) moved into a tiny unwrapped
+    `test_gen` library so `test_tfl` and `test_notation` can both link them (dune forbids
+    one module in two stanzas).
