@@ -126,3 +126,25 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   - Test layout: the shared QCheck generators (`test/gen.ml`) moved into a tiny unwrapped
     `test_gen` library so `test_tfl` and `test_notation` can both link them (dune forbids
     one module in two stanzas).
+- **1.3 done — differential harness, parser/printer gated clean.** `engine/shim.js` (a new
+  harness endpoint per PLAN — `tfl.js` itself untouched) answers JSON-lines `{fn, args}`
+  requests with the reference engine's results for the port-spec §17 function set. OCaml
+  side: `test/ast_json.ml` (ASTs in the JS engine's exact JSON shape, ASCII signs),
+  `test/shim_client.ml` (one long-lived Node process per run, strict request/response
+  lines), `test/test_differential.ml`. Three gates, all clean in ~16s wall:
+  - **Corpus**: all 604 distinct string literals mechanically extracted from
+    `tfl.test.js` (comments/templates skipped, escapes decoded) × 3 parse entry points =
+    1,812 checks, 0 disagreements. Non-formula strings count too — both engines must fail
+    with the same error position and message. Successful parses additionally push the
+    OCaml AST through the JS printer and require byte-equal output.
+  - **10k random ASTs**: JS printer reproduces the OCaml printed string; JS parser
+    recovers the exact AST.
+  - **10k random token strings** (mostly ill-formed): outcomes agree on all three entry
+    points.
+  Harness details: the §16.4 quoting-hint suffix is stripped in the harness (never the
+  engine) before message comparison; a **negative control** runs first — the harness must
+  detect the documented `+É+P` divergence (JS parses É as a name, OCaml raises) or the
+  run fails, guarding against a vacuously-clean harness. `yojson` installed and added to
+  opam depends (`:with-test` for now; becomes a runtime dep at 2.2). Test library
+  `test_gen` renamed `test_support` (now: gen, ast_json, shim_client). Differential tests
+  run under `dune test` (CI included — GitHub runners ship Node).

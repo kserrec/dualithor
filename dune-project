@@ -11,4 +11,5 @@
   (ocaml
    (>= 4.14))
   dune
-  (qcheck-core :with-test)))
+  (qcheck-core :with-test)
+  (yojson :with-test)))
