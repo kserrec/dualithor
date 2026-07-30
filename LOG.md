@@ -6,9 +6,23 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
 
 - **0.1 done** (prior session): engine vendored verbatim from `guides`; 201/201 tests, quick
   oracle (1k/suite) clean.
-- **0.2 started**: `node engine/oracle.js -n 100000` launched in the background
-  (~expect hours). Per-suite counts, failures (expect zero), and wall time to be recorded
-  here when it completes.
+- **0.2 done — 100k oracle run clean across all six suites, zero failures.**
+  `node engine/oracle.js -n 100000`, single core, wall time **9h 46m 47s**
+  (09:46:00–19:32:47):
+  | suite | result | detail | time |
+  |---|---|---|---|
+  | categorical exactness | 0 failures | 24,686/100,000 valid | 276.6s |
+  | rule-step soundness | 0 failures | 422,714 steps checked | 11,599.7s |
+  | relational derivation soundness | 0 failures | 7,260 proofs found in 100,000 tries | 9,796.7s |
+  | passive equivalence | 0 failures | 103,568 equivalences; 44,250 guarded off | 2,980.5s |
+  | indirect-proof soundness | 0 failures | 17,439 refutations found in 100,000 tries | 10,551.4s |
+  | statement-model agreement | 0 failures | 426,866 evals; 100,000 equivalences | 1.7s |
+
+  The three proof-search suites dominate the cost (rule-step, relational derivation,
+  indirect proof: ~9 of the 9.8 hours). Combined with the same-day external check against
+  Castro-Manzano 2018's validity tables (see the §12 entry below), the reference engine
+  enters the port phase verified against both its own finite-model semantics at 100k depth
+  and a published external source.
 - **0.3 drafted**: read `engine/tfl.js` in full (2,034 lines); wrote `docs/port-spec.md` —
   notation table, AST, parser/printer contracts, validation rules, canonical form, rule
   inventory, proof search, the P/Z closure decision, the TFL⁺ term-matched condition-(iii)

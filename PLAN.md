@@ -28,7 +28,7 @@
 *0.1 Vendor the reference engine.* ✅ DONE (2026-07-29)
 `tfl.js`, `tfl.test.js`, `oracle.js` copied verbatim from `guides`; 201/201 tests pass in place; quick oracle run (1,000 iterations/suite) clean across all six suites.
 
-*0.2 Long-run reference verification.* ⏳ IN PROGRESS (run started 2026-07-29)
+*0.2 Long-run reference verification.* ✅ DONE (2026-07-29 — clean at 100k, all six suites, 9h47m; table in LOG)
 Run `node engine/oracle.js -n 100000` in the background (expect hours). Record per-suite iteration counts, failures (expect zero), and wall time in LOG.md. Any failure: stop and report to Kyle — do not fix.
 Accept: clean at 100k; results logged.
 
