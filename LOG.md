@@ -148,3 +148,24 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   opam depends (`:with-test` for now; becomes a runtime dep at 2.2). Test library
   `test_gen` renamed `test_support` (now: gen, ast_json, shim_client). Differential tests
   run under `dune test` (CI included — GitHub runners ship Node).
+- **1.4 done — inference core A** (`lib/tfl/infer.ml`): `validate_prop`/`validate_term`
+  (Engine_error with the JS messages verbatim, checks in the JS order — order determines
+  which message fires first, and the differential gate compares messages), fixed
+  reference (`is_proterm_name`/`is_fixed_ref`), `head_roles`/`make_head_name` (pulled
+  ahead of 1.6 because canonTerm strips identity pairing subscripts), canonical form
+  (`canon_term`/`canon_prop`), keys, `node_count`/`prop_nodes`, EN/IN/Contrap/It, and
+  net-sign `occurrences` + `can_be_plus`. Two findings recorded while porting:
+  - **Canonical form is level-less.** The JS engine rebuilds every signed term through
+    2-arg `ST(sign, term)`, whose level defaults to 0 — so `canonProp` silently drops
+    quantity levels (`propKey('+V²+C')` = `'+V+C'`, confirmed by probe). Levels live only
+    on raw propositions and are consumed by the numerical decision (1.8). The port
+    reproduces this exactly; port-spec §6 should mention it (pending Kyle's 0.3 pass).
+  - `headRoles`' lazy-prefix regex means the base keeps ≥1 character even for an
+    all-subscript name; ported as a trailing-run scan clamped at 1.
+  Tests: 17 unit tests ported from the D2 canonical/EN-IN-Contrap/guard sections of
+  `tfl.test.js` (incl. pairing-subscript canonical noise, pulled ahead with head_roles).
+  Differential: shim gained `tautology`/`validateProp`/`occurrences`; the gate now runs
+  all 7 core functions (canonProp, contradictory, obverse, contrapositive, tautology,
+  occurrences, validateProp incl. exact EngineError messages) over every corpus string
+  that parses as a proposition (240 of 604; corpus total 2,052 checks) plus 10k generated
+  props — zero disagreements, ~51s wall for the whole differential suite.

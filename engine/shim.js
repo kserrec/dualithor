@@ -30,6 +30,12 @@ const FNS = {
   contradictory: (p) => tfl.contradictory(p),
   obverse: (p) => tfl.obverse(p),
   contrapositive: (p) => tfl.contrapositive(p),
+  tautology: (t) => tfl.tautology(t),
+  validateProp: (p) => {
+    tfl.validateProp(p);
+    return null;
+  },
+  occurrences: (p) => tfl.occurrences(p),
   // 1.5 — core B
   checkArgument: (premises, conclusion, opts) =>
     tfl.checkArgument(premises, conclusion, opts || {}),

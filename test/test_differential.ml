@@ -109,6 +109,85 @@ let compare_on fn src : string option =
 
 let entry_points = [ "parseProposition"; "parseTerm"; "parseSignedTerm" ]
 
+(* ── 1.4 gate: inference core A ─────────────────────────────────────────── *)
+
+let occ_to_json (o : Tfl.Infer.occurrence) : Yojson.Safe.t =
+  let open Tfl.Infer in
+  `Assoc
+    [
+      ("term", Ast_json.term_to_json o.occ_term);
+      ( "path",
+        `List
+          (`String
+             (match o.side with
+             | On_subject -> "subject"
+             | On_predicate -> "predicate")
+          :: List.map
+               (function Occ_neg -> `String "neg" | Occ_at i -> `Int i)
+               o.steps) );
+      ("sign", `Int o.occ_sign);
+      ("ownWild", `Bool o.own_wild);
+    ]
+
+(* Lazy chaining: report the first disagreement, skip the rest. *)
+let ( ||> ) (a : string option) (b : unit -> string option) =
+  match a with Some _ -> a | None -> b ()
+
+let expect_json fn args expected : string option =
+  match Shim_client.call shim fn args with
+  | Ok js when Ast_json.json_equal expected js -> None
+  | Ok js ->
+      Some
+        (Printf.sprintf "%s mismatch: ocaml %s vs js %s" fn
+           (Yojson.Safe.to_string expected)
+           (Yojson.Safe.to_string js))
+  | Error e ->
+      Some (Printf.sprintf "%s: js errored %s (%s)" fn e.name e.message)
+
+let core_disagreement (p : Tfl.Ast.prop) : string option =
+  let open Tfl.Infer in
+  let pj = Ast_json.prop_to_json p in
+  expect_json "canonProp" [ pj ] (Ast_json.prop_to_json (canon_prop p))
+  ||> (fun () ->
+        expect_json "contradictory" [ pj ]
+          (Ast_json.prop_to_json (contradictory p)))
+  ||> (fun () ->
+        expect_json "obverse" [ pj ] (Ast_json.prop_to_json (obverse p)))
+  ||> (fun () ->
+        expect_json "contrapositive" [ pj ]
+          (match contrapositive p with
+          | Some q -> Ast_json.prop_to_json q
+          | None -> `Null))
+  ||> (fun () ->
+        expect_json "tautology"
+          [ Ast_json.term_to_json p.subject.term ]
+          (Ast_json.prop_to_json (tautology p.subject.term)))
+  ||> (fun () ->
+        expect_json "occurrences" [ pj ]
+          (`List (List.map occ_to_json (occurrences p))))
+  ||> fun () ->
+  let ocaml = try Ok (validate_prop p) with Engine_error m -> Error m in
+  match (ocaml, Shim_client.call shim "validateProp" [ pj ]) with
+  | Ok (), Ok `Null -> None
+  | Error m, Error { name = "EngineError"; message; _ } when m = message ->
+      None
+  | Ok (), Error e ->
+      Some
+        (Printf.sprintf "validateProp: ocaml accepted, js rejected (%s: %s)"
+           e.name e.message)
+  | Error m, Ok _ ->
+      Some
+        (Printf.sprintf "validateProp: js accepted, ocaml rejected (%s)" m)
+  | Error m, Error e ->
+      Some
+        (Printf.sprintf
+           "validateProp message mismatch: ocaml %S vs js %s %S" m e.name
+           e.message)
+  | Ok (), Ok other ->
+      Some
+        (Printf.sprintf "validateProp: js returned unexpected %s"
+           (Yojson.Safe.to_string other))
+
 (* ── Corpus: every string literal in tfl.test.js ────────────────────────── *)
 
 (* A small scanner for the frozen JS test file: skips // and slash-star
@@ -185,7 +264,18 @@ let corpus_gate () =
           | Some d ->
               incr failures;
               Printf.eprintf "✗ corpus: %s\n" d)
-        entry_points)
+        entry_points;
+      (* 1.4: every corpus string that parses as a proposition also goes
+         through the inference-core comparisons. *)
+      match parse_proposition s with
+      | exception _ -> ()
+      | prop -> (
+          incr checks;
+          match core_disagreement prop with
+          | None -> ()
+          | Some d ->
+              incr failures;
+              Printf.eprintf "✗ corpus core: %s\n" d))
     strings;
   Printf.printf "corpus gate: %d distinct strings, %d checks, %d disagreements\n"
     (List.length strings) !checks !failures;
@@ -239,11 +329,22 @@ let negative_control () =
         "✗ negative control: harness failed to detect the §16.4 divergence";
       false
 
+let diff_core =
+  QCheck2.Test.make ~count:10_000
+    ~name:"differential: inference core A agrees on generated props"
+    ~print:print_proposition Gen.prop_gen (fun p ->
+      match core_disagreement p with
+      | None -> true
+      | Some d ->
+          Printf.eprintf "✗ core: %s\n" d;
+          false)
+
 let () =
   let control_ok = negative_control () in
   let corpus_ok = corpus_gate () in
   let qcheck_failures =
-    QCheck_base_runner.run_tests ~verbose:true [ diff_ast; diff_strings ]
+    QCheck_base_runner.run_tests ~verbose:true
+      [ diff_ast; diff_strings; diff_core ]
   in
   Shim_client.stop shim;
   exit

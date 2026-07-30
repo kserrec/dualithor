@@ -52,7 +52,7 @@ Accept: ported tests + round-trip property green (≥10k QCheck cases).
 `engine/shim.js`: Node script reading JSON lines `{fn, args}` and answering with the reference engine's result for: parse (→ normalized AST as JSON or error), print, canonProp, contradictory/obverse/contrapositive, checkArgument, checkInconsistent, queryProp, decideEquivalence, readProp. OCaml side: a test runner spawning the shim, serializing OCaml ASTs to the same JSON shape, and asserting equality on (a) corpus inputs (every formula string appearing in `tfl.test.js`) and (b) QCheck-generated random inputs. Start by gating 1.2's parser/printer.
 Accept: parser/printer differential agreement on full corpus + ≥10k random strings/ASTs.
 
-*1.4 Inference core A — normal forms and immediate inferences.*
+*1.4 Inference core A — normal forms and immediate inferences.* ✅ DONE (2026-07-30)
 Validation rules, canonicalization (`canonTerm`/`canonProp`), term/prop keys, `contradictory`, `obverse`, `contrapositive`, `tautology`.
 Accept: ported unit tests green; differential agreement on corpus + ≥10k random props.
 
