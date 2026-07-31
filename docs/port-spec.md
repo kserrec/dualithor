@@ -146,6 +146,12 @@ Levels 0–3 mean: 0 some/every (classical), 1 many, 2 most, 3 few/predominant
 quantity. All inference-facing functions push everything through canonical form; **the
 canonical printed string is the identity key everywhere** (`propKey`, `termKey`).
 
+**Canonical form is level-less** (verified 2026-07-30): every signed term is rebuilt
+through the 2-arg `ST(sign, term)`, whose level defaults to 0 — so canonicalization
+silently drops quantity levels (`propKey('+V²+C')` = `'+V+C'`). This is safe only because
+`checkArgument` routes any nonzero level to `numericalDecision` *before* canonical form
+matters; the port reproduces the drop exactly.
+
 `canonTerm`:
 - `Neg(Neg t)` strips (DN); recursion first, so any even stack vanishes.
 - Compounds: recursively canonicalize elements; a `+`-signed element that is itself a
@@ -538,8 +544,9 @@ First re-orient so a fixed-reference term is the subject if any orientation allo
 - Universal subject (−): quality + → `every <S> <relTail pred false>`; quality − →
   `no <S> is <reading>` (or `no <S> <rel reading>` for a relational predicate).
 - Particular subject with nonzero level (non-relational predicate): quantifier word
-  `many`/`most`/`few`; **`few` inverts the English polarity** (`+S³+P` reads "few S are
-  not P", `+S³−P` reads "few S are P" — few = predominant complement).
+  `many`/`most`/`few`; **`few` inverts the English polarity** — few = predominant
+  complement. Exact strings (corrected 2026-07-30; `relTail` says "is", never "are"):
+  `+S³+P` → `few s is not p`, `+S³−P` → `few s is p`.
 - Otherwise: `some <S> <relTail pred (quality = '-')>`.
 - `relTail pred neg`: relational → `[does not ]<rel reading>`; else `is[ not] <reading>`.
   (Note: no article in general-subject readings — "every man is mortal thing"-style

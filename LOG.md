@@ -191,3 +191,17 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   plus 3k whole-proof `derive` comparisons (line-for-line: n/prop/text/rule/parents)
   at maxLines 60 to keep the searches affordable. Zero disagreements; differential
   suite ~40s wall. All suites green from scratch.
+- **0.3 closed — spec accuracy check delegated to Claude (Kyle, 2026-07-30).** Kyle
+  reviewed §6 in depth (canonical form; confirmed after discussion of why obversion/
+  contraposition stay out of the identity key) and delegated the rest. Verification
+  performed: §§1–8, 10–11, 16–17 are pinned by the 1.2–1.5 differential gates (the port
+  was written from the spec and agrees with the code on ~2M comparisons); §12's numerical
+  tables were machine-verified against Castro-Manzano 2018 on 2026-07-29; the remaining
+  sections (§9 relational, §12 checkArgument order, §13 programs/queries/equivalence,
+  §14 NL rendering, §15 inventory) were re-read line-against-code today. Two corrections
+  applied, per the doc's own "code wins — fix the document" rule:
+  - §6: canonical form drops quantity levels (the 1.4 finding, now in the spec).
+  - §14: the "few" gloss quoted "few S are not P" in a section promising byte-exact
+    strings; the engine emits "is" and lowercases — corrected to the literal outputs
+    (`few s is not p` / `few s is p`, probe-verified).
+  No other discrepancies found.

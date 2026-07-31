@@ -32,7 +32,7 @@
 Run `node engine/oracle.js -n 100000` in the background (expect hours). Record per-suite iteration counts, failures (expect zero), and wall time in LOG.md. Any failure: stop and report to Kyle — do not fix.
 Accept: clean at 100k; results logged.
 
-*0.3 Port specification document.* ✅ Drafted (2026-07-29) — awaiting Kyle's accuracy confirmation
+*0.3 Port specification document.* ✅ DONE (2026-07-30 — accuracy check delegated to Claude by Kyle; full re-verification against the code, two corrections applied, §6/§12 independently machine-verified)
 Read `engine/tfl.js` fully. Write `docs/port-spec.md`: every exported function grouped by layer (parse/print, inference, relational, programs/queries, NL rendering, numerical); the exact accepted notation (transcribe the header table, including ASCII aliases); the verdict vocabulary (`valid | invalid | contradicted | unknown`, methods `PZ | derivation | indirect | numerical`) and the meaning of `unknown` (derivation search is incomplete outside the categorical fragment); error behavior (ParseError with position); the documented Murphree condition-(iii) correction (term-matched numerical condition — see guides ROADMAP note); and an explicit **not-ported list** (courseware-only: `checkExpression` grading, `printHtml*`; Aristotelian extras `answer`/`strongerAnswer`/`possibility`/`suggestMissingPremise` deferred unless a later phase needs them).
 Accept: doc exists; Kyle confirms it's accurate.
 
