@@ -2,6 +2,11 @@ name: CI
 
 on: push
 
+# The workflow only reads the repo (build + test); never grant the default
+# token more than that (2026-07-30 audit).
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest

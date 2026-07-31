@@ -281,3 +281,22 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   proof. Zero disagreements; 15 differential tests, ~1m35s wall. **The functional port
   is complete** — every exported surface in port-spec §15's "ported" table now has an
   OCaml implementation gated against the reference. Next: the oracle port (1.10).
+- **Security audit of the session's work (findings, decisions).** One real ship-time
+  finding, demonstrated on the reference engine: `findCancellation`'s universal-re-use
+  DFS is uncapped (4^u nodes; only the wild-readings walk has the 256 cap). Probe: an
+  inconsistent set whose clash can never cancel (`+A+B`, `−B−B`) plus u disjoint junk
+  universals — 26ms/105ms/1.9s/6.5s at 7/9/11/12 universals, exact ×4 growth; ~7min at
+  15, ~days at 20. Verdicts are decided before the search runs, so capping it is
+  verdict-safe display-only work. Deferred to **1.14(d)** (PLAN updated) as a documented
+  deviation from the frozen JS reference; the JS engine keeps the behavior (dev-only,
+  never exposed). Accepted/no-action items so future audits don't re-litigate: the
+  `sat` 2-SAT split search has an exponential worst case on paper but no slow instance
+  could be constructed (unproven, left as-is); opam deps stay unpinned until 8.5
+  (planned); actions stay tag-pinned until release hygiene at 8.5. Fixed now:
+  `permissions: contents: read` added to ci.yml (the workflow only builds and tests;
+  the default token never needed more). Hygiene sweep was clean: no secrets in tree or
+  history, `.env` gitignored ahead of existence, shim dispatch prototype-safe, no
+  injection paths, zero npm deps. Also from the same-day bughunt: zero confirmed bugs;
+  deep-nesting Stack_overflow vs RangeError divergence is §16.5/1.14 (planned); the
+  `side_coeff` non-atomic edge is unreachable from parsed input (OCaml raises a clean
+  EngineError where JS TypeErrors — the saner behavior, kept).

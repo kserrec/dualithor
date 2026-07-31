@@ -93,8 +93,8 @@ Independent of the port: hand-verify ~40 textbook arguments against Sommers & En
 Accept: suite green; disagreements (if any) resolved with Kyle and logged.
 
 *1.14 Robustness — error taxonomy and adversarial input.*
-LLM output will hit this parser. (a) Structured failure taxonomy: `Lexical` | `Syntactic` | `Outside_fragment`. (b) Total top-level API (`Tfl.Safe`): never raises, always returns a result type. (c) Fuzz with ≥100k garbage strings (random bytes, truncations, deep nesting, pathological lengths): no crash, no >1s hang, always a structured error.
-Accept: fuzz test committed and green; taxonomy documented in `docs/engine-surface.md`.
+LLM output will hit this parser. (a) Structured failure taxonomy: `Lexical` | `Syntactic` | `Outside_fragment`. (b) Total top-level API (`Tfl.Safe`): never raises, always returns a result type. (c) Fuzz with ≥100k garbage strings (random bytes, truncations, deep nesting, pathological lengths): no crash, no >1s hang, always a structured error. (d) **Cap `find_cancellation`'s work** (2026-07-30 audit): the P/Z certificate decoration explores 4^(universals) re-use combinations uncapped — a 14-line valid input hangs it for minutes-to-days (measured ×4 growth per premise; verdicts decide *before* the search, so a node budget returning `cancellation: null` on exhaustion is verdict-safe by construction). Documented deviation from the frozen JS reference, §16-style; land with the audit's adversarial probe as a pinned test.
+Accept: fuzz test committed and green; taxonomy documented in `docs/engine-surface.md`; the cancellation-cap adversarial test green in <1s.
 
 ## Phase 2 — Pipeline Scaffolding & Inputs
 
