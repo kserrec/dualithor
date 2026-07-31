@@ -366,6 +366,24 @@ let certificate_to_json (c : Tfl.Decide.certificate) : Yojson.Safe.t =
         | None -> `Null );
     ]
 
+let decision_record_to_json (d : Tfl.Decide.numerical_decision) :
+    Yojson.Safe.t =
+  `Assoc
+    [
+      ("valid", `Bool d.n_valid);
+      ( "conditions",
+        `Assoc
+          [
+            ("sum", `Bool d.sum);
+            ("particular", `Bool d.n_particular);
+            ("level", `Bool d.level_ok);
+          ] );
+      ("carriedLevel", `Int d.carried_level);
+      ("conclusionLevel", `Int d.conclusion_level);
+      ("particularPremises", `Int d.particular_premises);
+      ("particularConclusions", `Int d.particular_conclusions);
+    ]
+
 let result_to_json (r : Tfl.Decide.result) : Yojson.Safe.t =
   `Assoc
     ([
@@ -384,6 +402,9 @@ let result_to_json (r : Tfl.Decide.result) : Yojson.Safe.t =
            | Indirect -> "indirect"
            | Numerical -> "numerical") );
      ]
+    @ (match r.decision with
+      | Some d -> [ ("decision", decision_record_to_json d) ]
+      | None -> [])
     @ (match r.certificate with
       | Some c -> [ ("certificate", certificate_to_json c) ]
       | None -> [])
@@ -890,6 +911,65 @@ let diff_equivalence =
           Printf.eprintf "✗ equivalence: %s\n" d;
           false)
 
+(* ── 1.8 gate: numerical quantifiers (TFL⁺) ─────────────────────────────── *)
+
+(* Leveled atomic-categorical arguments: subjects are + or − (± has no
+   quantity-level reading and is rejected — error-path agreement is the 1.4
+   validateProp gate's job), levels 0–3 ride only + subjects, and at least
+   the conclusion or one premise usually carries a nonzero level so the
+   numerical route dominates; level-0 draws re-cover the P/Z route. *)
+let leveled_argument_gen : (Tfl.Ast.prop list * Tfl.Ast.prop) QCheck2.Gen.t =
+  let open QCheck2.Gen in
+  let open Tfl.Ast in
+  let atom =
+    let* name = oneof_list [ "A"; "B"; "C"; "g"; "s" ] in
+    let* singular = oneof_weighted [ (5, return false); (1, return true) ] in
+    return (Atom { name; singular })
+  in
+  let side =
+    let* a = atom in
+    let* negs = int_bound 2 in
+    let rec wrap n t = if n = 0 then t else wrap (n - 1) (Neg t) in
+    return (wrap negs a)
+  in
+  let prop =
+    let* s_sign = oneof_list [ Plus; Minus ] in
+    let* s_term = side in
+    let* level =
+      if s_sign = Plus then
+        oneof_weighted [ (2, return 0); (3, int_range 1 3) ]
+      else return 0
+    in
+    let* q_sign = oneof_list [ Plus; Minus ] in
+    let* q_term = side in
+    return
+      {
+        subject = { sign = s_sign; term = s_term; level };
+        predicate = { sign = q_sign; term = q_term; level = 0 };
+      }
+  in
+  let* n = int_range 1 3 in
+  let* premises = list_size (return n) prop in
+  let* conclusion = prop in
+  return (premises, conclusion)
+
+let diff_numerical =
+  QCheck2.Test.make ~count:10_000
+    ~name:"differential: the numerical decision agrees (full decision records)"
+    ~print:print_argument leveled_argument_gen (fun (premises, conclusion) ->
+      match
+        expect_json "checkArgument"
+          [
+            `List (List.map Ast_json.prop_to_json premises);
+            Ast_json.prop_to_json conclusion;
+          ]
+          (result_to_json (Tfl.Decide.check_argument premises conclusion))
+      with
+      | None -> true
+      | Some d ->
+          Printf.eprintf "✗ numerical: %s\n" d;
+          false)
+
 (* Harness self-test: a real divergence must be DETECTED, or a clean run means
    nothing. "+É+P" is the documented §16.4 case — the JS reference parses É as
    a bare name, the OCaml engine raises a lexical error. *)
@@ -919,7 +999,7 @@ let () =
       [
         diff_ast; diff_strings; diff_core; diff_args; diff_derive;
         diff_passives; diff_rel_args; diff_parse_program; diff_query_term;
-        diff_query_prop; diff_consistency; diff_equivalence;
+        diff_query_prop; diff_consistency; diff_equivalence; diff_numerical;
       ]
   in
   Shim_client.stop shim;

@@ -45,3 +45,8 @@
  (modules test_differential)
  (libraries tfl test_support qcheck-core qcheck-core.runner yojson)
  (deps ../engine/tfl.js ../engine/tfl.test.js ../engine/shim.js))
+
+(test
+ (name test_numerical)
+ (modules test_numerical)
+ (libraries tfl test_support qcheck-core qcheck-core.runner))

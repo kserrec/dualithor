@@ -1,11 +1,9 @@
-(* The categorical decision (PLAN 1.5), ported from engine/tfl.js: the P/Z
-   inconsistency closure for the atomic-categorical fragment (complete there —
-   fuzz-verified in the reference against its finite-model oracle), the
-   classic cancellation display, and the argument checker (port-spec §§11–12).
-
-   One checkArgument branch is a stub until its layer lands: any nonzero
-   quantity level raises until the numerical decision (PLAN 1.8). The
-   differential gate stays off those inputs. *)
+(* The categorical decision (PLAN 1.5) and the TFL⁺ numerical decision
+   (PLAN 1.8), ported from engine/tfl.js: the P/Z inconsistency closure for
+   the atomic-categorical fragment (complete there — fuzz-verified in the
+   reference against its finite-model oracle), the classic cancellation
+   display, numericalDecision with the term-matched condition (iii), and the
+   argument checker (port-spec §§11–12). *)
 
 open Ast
 
@@ -299,6 +297,97 @@ let check_inconsistent (props : prop list) : certificate option =
       Some
         { point = point.lits; clash; cancellation = find_cancellation canon }
 
+(* ── The numerical decision (TFL⁺, PLAN 1.8) ────────────────────────────── *)
+
+let has_level (p : prop) = p.subject.level > 0 || p.predicate.level > 0
+
+type numerical_decision = {
+  n_valid : bool;
+  sum : bool; (* condition (i): premises sum algebraically to the conclusion *)
+  n_particular : bool; (* condition (ii): particular counts match *)
+  level_ok : bool; (* condition (iii): term-matched level licensing *)
+  carried_level : int;
+  conclusion_level : int;
+  particular_premises : int;
+  particular_conclusions : int;
+}
+
+(* A categorical side's algebraic coefficient: the occurrence sign times the
+   term's own negation parity (so +(−P) counts as −P). Atomic by contract. *)
+let side_coeff (st : signed_term) : string * int =
+  match core_lit st.term with
+  | Some lit ->
+      let occ = if st.sign = Minus then -1 else 1 in
+      ( lit.l_name ^ (if lit.l_singular then "*" else ""),
+        occ * if lit.pol then 1 else -1 )
+  | None -> Infer.engine_error "numerical sides must be atomic"
+
+(* Castro-Manzano et al. 2018 §5, with the term-matched condition (iii): a
+   conclusion's nonzero level must be licensed by a premise whose own subject
+   IS the conclusion's subject term — an intermediate quantity is carried by
+   the term it quantifies, so a level riding the middle term licenses
+   nothing (port-spec §12; verified against the paper's Tables 9–13). *)
+let numerical_decision (premises : prop list) (conclusion : prop) :
+    numerical_decision =
+  let all = premises @ [ conclusion ] in
+  List.iter Infer.validate_prop all;
+  if not (is_atomic_categorical all) then
+    Infer.engine_error
+      "quantity levels are supported only in categorical (atomic) syllogisms";
+  List.iter
+    (fun p ->
+      if p.subject.sign = Wild then
+        Infer.engine_error
+          "a wild ± subject has no quantity-level reading; use + (particular) \
+           or − (universal)")
+    all;
+  (* (i) the algebraic sum of the premises equals the conclusion. *)
+  let coeff : (string, int) Hashtbl.t = Hashtbl.create 16 in
+  let bump st factor =
+    let key, c = side_coeff st in
+    Hashtbl.replace coeff key
+      ((match Hashtbl.find_opt coeff key with Some v -> v | None -> 0)
+      + (factor * c))
+  in
+  List.iter
+    (fun p ->
+      bump p.subject 1;
+      bump p.predicate 1)
+    premises;
+  bump conclusion.subject (-1);
+  bump conclusion.predicate (-1);
+  let sum = Hashtbl.fold (fun _ v acc -> acc && v = 0) coeff true in
+  (* (ii) the particular counts match. *)
+  let particular_premises =
+    List.length (List.filter (fun p -> p.subject.sign = Plus) premises)
+  in
+  let particular_conclusions = if conclusion.subject.sign = Plus then 1 else 0 in
+  let n_particular = particular_premises = particular_conclusions in
+  (* (iii) the term-matched level condition. *)
+  let c_sub_key = Infer.term_key conclusion.subject.term in
+  let carried_level =
+    List.fold_left
+      (fun acc p ->
+        if
+          p.subject.sign = Plus
+          && Infer.term_key p.subject.term = c_sub_key
+        then max acc p.subject.level
+        else acc)
+      0 premises
+  in
+  let conclusion_level = conclusion.subject.level in
+  let level_ok = conclusion_level <= carried_level in
+  {
+    n_valid = sum && n_particular && level_ok;
+    sum;
+    n_particular;
+    level_ok;
+    carried_level;
+    conclusion_level;
+    particular_premises;
+    particular_conclusions;
+  }
+
 (* ── The argument checker ───────────────────────────────────────────────── *)
 
 type verdict = Valid | Invalid | Contradicted | Unknown
@@ -309,31 +398,38 @@ type result = {
   meth : meth;
   certificate : certificate option;
   proof : Derive.proof option;
+  decision : numerical_decision option;
 }
-
-let has_level (p : prop) = p.subject.level > 0 || p.predicate.level > 0
 
 let check_argument ?max_lines ?slack (premises : prop list) (conclusion : prop)
     : result =
   List.iter Infer.validate_prop premises;
   Infer.validate_prop conclusion;
-  if List.exists has_level (premises @ [ conclusion ]) then
-    (* JS routes here to numericalDecision; ported at PLAN 1.8. *)
-    Infer.engine_error "the numerical decision (TFL+) is ported at PLAN 1.8";
+  if List.exists has_level (premises @ [ conclusion ]) then (
+    (* Numerical fragment: any nonzero level routes to the decision method. *)
+    let d = numerical_decision premises conclusion in
+    {
+      verdict = (if d.n_valid then Valid else Invalid);
+      meth = Numerical;
+      certificate = None;
+      proof = None;
+      decision = Some d;
+    })
+  else
   let counterclaim = premises @ [ Infer.contradictory conclusion ] in
   if is_atomic_categorical counterclaim then (
     match check_inconsistent counterclaim with
     | Some certificate ->
-        { verdict = Valid; meth = PZ; certificate = Some certificate; proof = None }
-    | None -> { verdict = Invalid; meth = PZ; certificate = None; proof = None })
+        { verdict = Valid; meth = PZ; certificate = Some certificate; proof = None; decision = None }
+    | None -> { verdict = Invalid; meth = PZ; certificate = None; proof = None; decision = None })
   else (
     let proof = Derive.derive ?max_lines ?slack premises conclusion in
     if proof.found then
-      { verdict = Valid; meth = Derivation; certificate = None; proof = Some proof }
+      { verdict = Valid; meth = Derivation; certificate = None; proof = Some proof; decision = None }
     else
       let indirect = Derive.indirect_proof ?max_lines ?slack premises conclusion in
       if indirect.found then
-        { verdict = Valid; meth = Indirect; certificate = None; proof = Some indirect }
+        { verdict = Valid; meth = Indirect; certificate = None; proof = Some indirect; decision = None }
       else
         let refutation =
           Derive.derive ?max_lines ?slack premises (Infer.contradictory conclusion)
@@ -344,6 +440,7 @@ let check_argument ?max_lines ?slack (premises : prop list) (conclusion : prop)
             meth = Derivation;
             certificate = None;
             proof = Some refutation;
+            decision = None;
           }
         else
           let indirect_ref =
@@ -356,6 +453,13 @@ let check_argument ?max_lines ?slack (premises : prop list) (conclusion : prop)
               meth = Indirect;
               certificate = None;
               proof = Some indirect_ref;
+              decision = None;
             }
           else
-            { verdict = Unknown; meth = Derivation; certificate = None; proof = None })
+            {
+              verdict = Unknown;
+              meth = Derivation;
+              certificate = None;
+              proof = None;
+              decision = None;
+            })

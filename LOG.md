@@ -248,3 +248,20 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   checkProgramConsistency on mixed programs at maxLines 60, 3k equivalents +
   decideEquivalence pairs (half derived by obversion/contraposition so genuine
   equivalences appear) — zero disagreements. Differential suite now 12 tests, ~85s wall.
+- **1.8 done — numerical quantifiers (TFL⁺)** (`lib/tfl/decide.ml`): side_coeff and
+  numerical_decision with the three conditions — algebraic sum, particular counts, and
+  the **term-matched** condition (iii) exactly as the JS engine implements it
+  (carriedLevel = max level over +-subject premises whose subject IS the conclusion's
+  subject term). check_argument's last stub is gone: any nonzero level now routes to the
+  decision method with the full decision record attached (result type gained a
+  `decision` field — the compiler's record exhaustiveness flushed out every
+  construction site). Tests: 12 unit tests ported from the D9 section — the paper's
+  Tables 10–13 (kaa-1, akt-4, bao-3, ekg-2), the att-1/att-3 term-matched
+  discriminator, routing (level 0 stays P/Z), level validation placement, and the level
+  guards on the 1.7 queries. The readProp many/most/few glosses move to 1.9 with the
+  renderer. Differential: 10k leveled atomic-categorical arguments through
+  checkArgument comparing the full decision record (valid, three conditions,
+  carriedLevel, conclusionLevel, particular counts) — zero disagreements; level-0 draws
+  re-cover the P/Z route in passing. Differential suite now 13 tests, ~2m36s wall.
+  With 1.8 the whole inference surface is ported; 1.9 (NL rendering) is the last
+  functional layer before the oracle port.

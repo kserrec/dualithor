@@ -68,7 +68,7 @@ Accept: ported tests green; differential agreement on corpus + random relational
 `parseProgram`, `queryTerm`/`queryProp`, `checkProgramConsistency`, `equivalents`/`decideEquivalence` (DNF), `statementModel`.
 Accept: ported tests green; differential agreement on corpus + random programs/queries.
 
-*1.8 Numerical quantifiers (TFL⁺).*
+*1.8 Numerical quantifiers (TFL⁺).* ✅ DONE (2026-07-30)
 Quantity levels through parse/print/canon (already in 1.1–1.2 syntax) and `numericalDecision`, implementing the **term-matched** condition (iii) exactly as the JS engine does.
 Accept: ported tests green; differential agreement on corpus + random leveled arguments.
 
