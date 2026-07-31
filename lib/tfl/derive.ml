@@ -30,10 +30,9 @@ type proof = { found : bool; lines : line list }
    returns a non-None hit to stop. Everything pushed must already be
    canonical; the dedup key is the printed proposition.
 
-   Rules applied: IN, Contrap, Simp (unary); DON both directions, Add
-   (binary). The Pass rule (guarded passives) joins the unary set with the
-   relational layer, PLAN 1.6. [rules], when given, restricts to those rule
-   names. *)
+   Rules applied: IN, Contrap, Simp, Pass — guarded passives — (unary);
+   DON both directions, Add (binary). [rules], when given, restricts to
+   those rule names. *)
 let saturate ?(max_lines = 400) ?rules ~size_cap
     (setup : (prop -> string -> int list -> int option) -> unit)
     (on_new_line : int -> sat_line -> (string -> int option) -> 'hit option) :
@@ -77,7 +76,13 @@ let saturate ?(max_lines = 400) ?rules ~size_cap
       @ (if allow "Simp" then
            List.map (fun p -> (p, "Simp")) (Rules.apply_simp li.s_prop)
          else [])
-      (* Pass (equivalent passives) arrives with PLAN 1.6. *)
+      @ (if allow "Pass" then
+           List.filter_map
+             (fun (r : Relational.passive) ->
+               if r.equivalent then Some (Infer.canon_prop r.p_prop, "Pass")
+               else None)
+             (Relational.passives li.s_prop)
+         else [])
     in
     List.iter
       (fun (p, rule) -> if !hit = None then ignore (push p rule [ !i ]))
@@ -207,3 +212,64 @@ let derive ?max_lines ?(slack = 8) (premises : prop list) (goal : prop) : proof
   match hit with
   | Some roots -> extract lines roots None
   | None -> { found = false; lines = [] }
+
+(* ── Refutation and indirect proof (PLAN 1.6) ───────────────────────────── *)
+
+type entry = { e_prop : prop; e_rule : string }
+
+(* Refute a set outright: pronominalize its particular statements (fresh
+   proterms + anchors, parented on their entries) and saturate until some
+   line's contradictory is already on the board — a fixed witness asserted
+   and denied the same thing. Sound by Skolemization. *)
+let refute_set ?max_lines ?(slack = 8) (entries : entry list) : proof =
+  List.iter (fun e -> Infer.validate_prop e.e_prop) entries;
+  let size_cap =
+    List.fold_left
+      (fun acc e -> max acc (Infer.prop_nodes e.e_prop))
+      min_int entries
+    + slack
+  in
+  let used : (string, unit) Hashtbl.t = Hashtbl.create 16 in
+  List.iter (fun e -> Relational.collect_names e.e_prop used) entries;
+  let lines, hit =
+    saturate ?max_lines ~size_cap
+      (fun push ->
+        let idxs =
+          List.map
+            (fun e -> push (Infer.canon_prop e.e_prop) e.e_rule [])
+            entries
+        in
+        List.iter2
+          (fun e idx ->
+            match Relational.pronominalize e.e_prop used with
+            | None -> ()
+            | Some { pr_prop; anchors } ->
+                let parents = match idx with Some i -> [ i ] | None -> [] in
+                ignore (push (Infer.canon_prop pr_prop) "Pron" parents);
+                List.iter
+                  (fun a ->
+                    ignore (push (Infer.canon_prop a) "Anchor" parents))
+                  anchors)
+          entries idxs;
+        List.iter
+          (fun t -> ignore (push (Infer.tautology t) "It" []))
+          (mentioned_terms (List.map (fun e -> e.e_prop) entries)))
+      (fun idx l seen ->
+        let ck = Notation.print_proposition (Infer.contradictory l.s_prop) in
+        match seen ck with
+        | Some other when other <> idx -> Some [ other; idx ]
+        | _ -> None)
+  in
+  match hit with
+  | Some roots -> extract lines roots (Some ("⊥", "contradiction", roots))
+  | None -> { found = false; lines = [] }
+
+(* Assume the counterclaim — the premises plus the contradictory of the
+   conclusion — and refute it; by PV the argument is then valid. *)
+let indirect_proof ?max_lines ?slack (premises : prop list) (conclusion : prop)
+    : proof =
+  List.iter Infer.validate_prop premises;
+  Infer.validate_prop conclusion;
+  refute_set ?max_lines ?slack
+    (List.map (fun prop -> { e_prop = prop; e_rule = "premise" }) premises
+    @ [ { e_prop = Infer.contradictory conclusion; e_rule = "counterclaim" } ])

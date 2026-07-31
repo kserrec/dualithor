@@ -3,10 +3,9 @@
    fuzz-verified in the reference against its finite-model oracle), the
    classic cancellation display, and the argument checker (port-spec §§11–12).
 
-   Two checkArgument branches are stubs until their layers land: indirect
-   proof (PLAN 1.6) reports not-found — which can only widen 'unknown', never
-   flip a verdict — and any nonzero quantity level raises until the numerical
-   decision (PLAN 1.8). The differential gate stays off those inputs. *)
+   One checkArgument branch is a stub until its layer lands: any nonzero
+   quantity level raises until the numerical decision (PLAN 1.8). The
+   differential gate stays off those inputs. *)
 
 open Ast
 
@@ -332,17 +331,31 @@ let check_argument ?max_lines ?slack (premises : prop list) (conclusion : prop)
     if proof.found then
       { verdict = Valid; meth = Derivation; certificate = None; proof = Some proof }
     else
-      (* Indirect proof (PLAN 1.6) would be tried here. *)
-      let refutation =
-        Derive.derive ?max_lines ?slack premises (Infer.contradictory conclusion)
-      in
-      if refutation.found then
-        {
-          verdict = Contradicted;
-          meth = Derivation;
-          certificate = None;
-          proof = Some refutation;
-        }
+      let indirect = Derive.indirect_proof ?max_lines ?slack premises conclusion in
+      if indirect.found then
+        { verdict = Valid; meth = Indirect; certificate = None; proof = Some indirect }
       else
-        (* The indirect refutation (PLAN 1.6) would be tried here. *)
-        { verdict = Unknown; meth = Derivation; certificate = None; proof = None })
+        let refutation =
+          Derive.derive ?max_lines ?slack premises (Infer.contradictory conclusion)
+        in
+        if refutation.found then
+          {
+            verdict = Contradicted;
+            meth = Derivation;
+            certificate = None;
+            proof = Some refutation;
+          }
+        else
+          let indirect_ref =
+            Derive.indirect_proof ?max_lines ?slack premises
+              (Infer.contradictory conclusion)
+          in
+          if indirect_ref.found then
+            {
+              verdict = Contradicted;
+              meth = Indirect;
+              certificate = None;
+              proof = Some indirect_ref;
+            }
+          else
+            { verdict = Unknown; meth = Derivation; certificate = None; proof = None })

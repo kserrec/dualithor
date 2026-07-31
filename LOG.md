@@ -205,3 +205,26 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
     strings; the engine emits "is" and lowercases — corrected to the literal outputs
     (`few s is not p` / `few s is p`, probe-verified).
   No other discrepancies found.
+- **1.6 done — relational layer** (`lib/tfl/relational.ml`): orientations, the passive
+  transformation with the symmetry guard (dedup by prop key across orientations, raw
+  props stored as in JS), pronominalization (witness marking in JS order — subject
+  before predicate, objects left-to-right, depth-first; fresh-prime allocation against
+  the used-set; most-witnesses-wins with first-orientation ties) and collect_names.
+  `derive.ml` gained the Pass rule (guarded passives, canonicalized at push) and
+  refute_set/indirect_proof (Pron/Anchor seeding parented on entries, contradictory-hit
+  detection via the seen table, synthetic ⊥ closing line); `decide.ml`'s checkArgument
+  lost its 1.6 stub — the full JS decision order now runs. Tests: 26 unit tests ported
+  (the 1.5-deferred relational-derivation section plus D3: passive mechanics, scope
+  traps, n-ary guard, the ∃∀→∀∃ one-way entailment at maxLines 1600, the verbatim
+  course pronominalization, indirect proofs incl. the whole-D3-stack case, and
+  no-overclaim checks). Differential: shim gained passives/indirectProof; new gates —
+  10k relational props through `passives` (prop, guard verdict, swap index) and 600
+  mixed relational arguments through `checkArgument` at maxLines 60 comparing **full
+  records including whole proofs** (Pron/Anchor fresh-name sequences included) — zero
+  disagreements. PLAN 1.6 allowed verdict-level agreement with LOG-documented proof-path
+  variance; none was needed — proofs match line-for-line. Two harness lessons logged:
+  the relational-argument generator must emit only fragment-valid props (a ±-signed
+  predicate raises on the OCaml side instead of comparing; invalid-input agreement is
+  the 1.4 gate's job), and full-fuel (maxLines 150) relational checkArgument at 1,500
+  cases blew a 10-minute budget — an `unknown` costs four bounded searches on both
+  engines; maxLines 60 × 600 keeps the whole differential suite at ~75s.

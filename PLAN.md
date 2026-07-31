@@ -60,7 +60,7 @@ Accept: ported unit tests green; differential agreement on corpus + ≥10k rando
 Occurrence counting, rewrite rules (DON, Simp, Add), `derive`, `checkInconsistent`, and `checkArgument` with the P/Z categorical decision. Verdict record mirrors the JS shape (verdict, method, proof lines).
 Accept: ported tests green; differential agreement of `checkArgument` verdicts on corpus + ≥10k random categorical arguments.
 
-*1.6 Relational layer.*
+*1.6 Relational layer.* ✅ DONE (2026-07-30)
 `headRoles` (pairing subscripts), passive transformation with its guards, pronominalization, indirect proof, `refuteSet`.
 Accept: ported tests green; differential agreement on corpus + random relational arguments (verdict-level for derivation search; document any acceptable proof-path differences in LOG.md — verdicts must still match).
 

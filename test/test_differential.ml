@@ -490,6 +490,122 @@ let diff_derive =
           Printf.eprintf "✗ derive: %s\n" d;
           false)
 
+(* ── 1.6 gate: relational layer ─────────────────────────────────────────── *)
+
+let passive_to_json (r : Tfl.Relational.passive) : Yojson.Safe.t =
+  `Assoc
+    [
+      ("prop", Ast_json.prop_to_json r.p_prop);
+      ("equivalent", `Bool r.equivalent);
+      ("swapped", `Int r.swapped);
+    ]
+
+(* Random relational propositions over a small shared pool: subject a signed
+   atom (± only on fixed references), predicate usually a relational complex
+   (heads occasionally carrying pairing subscripts, objects occasionally
+   nested), sometimes a plain atom to hit the no-passive paths. *)
+let relational_prop_gen : Tfl.Ast.prop QCheck2.Gen.t =
+  let open QCheck2.Gen in
+  let open Tfl.Ast in
+  let general =
+    map (fun n -> Atom { name = n; singular = false })
+      (oneof_list [ "A"; "B"; "C" ])
+  in
+  let fixed =
+    oneof_list
+      [ Atom { name = "s"; singular = true }; Atom { name = "x'"; singular = false } ]
+  in
+  let signed_atom =
+    oneof_weighted
+      [
+        ( 4,
+          let* sign = oneof_list [ Plus; Minus ] in
+          let* term = oneof_weighted [ (3, general); (1, fixed) ] in
+          return { sign; term; level = 0 } );
+        (1, map (fun t -> { sign = Wild; term = t; level = 0 }) fixed);
+      ]
+  in
+  let head = oneof_list [ "R"; "Lov"; "R₂₁"; "Lov₂₁₃" ] in
+  let rel_term =
+    let* h = head in
+    let* n_objs = int_range 1 2 in
+    let* objects = list_size (return n_objs) signed_atom in
+    let* nest = oneof_weighted [ (4, return false); (1, return true) ] in
+    let base = Rel { head = Atom { name = h; singular = false }; objects } in
+    if nest then
+      let* outer_sign = oneof_list [ Plus; Minus ] in
+      return
+        (Rel
+           {
+             head = Atom { name = "R"; singular = false };
+             objects = [ { sign = outer_sign; term = base; level = 0 } ];
+           })
+    else return base
+  in
+  let* subject = signed_atom in
+  let* predicate =
+    (* predicates are + or − only (a ± predicate is outside the fragment;
+       invalid-input agreement is the 1.4 validateProp gate's job) *)
+    let* sign = oneof_list [ Plus; Minus ] in
+    let* term =
+      oneof_weighted
+        [ (4, rel_term); (1, oneof_weighted [ (3, general); (1, fixed) ]) ]
+    in
+    return { sign; term; level = 0 }
+  in
+  return { subject; predicate }
+
+let print_prop = print_proposition
+
+let diff_passives =
+  QCheck2.Test.make ~count:10_000
+    ~name:"differential: passives agree (prop, guard verdict, swap index)"
+    ~print:print_prop relational_prop_gen (fun p ->
+      match
+        expect_json "passives"
+          [ Ast_json.prop_to_json p ]
+          (`List (List.map passive_to_json (Tfl.Relational.passives p)))
+      with
+      | None -> true
+      | Some d ->
+          Printf.eprintf "✗ passives: %s\n" d;
+          false)
+
+(* Full checkArgument on mixed relational/categorical arguments, comparing
+   the whole result record — verdict, method, and proof lines (Pron/Anchor
+   fresh-name sequences included). maxLines 150 on both sides bounds the four
+   searches of an 'unknown'; identical fuel keeps verdicts comparable. *)
+let relational_argument_gen :
+    (Tfl.Ast.prop list * Tfl.Ast.prop) QCheck2.Gen.t =
+  let open QCheck2.Gen in
+  let* n = int_range 1 2 in
+  let* premises = list_size (return n) relational_prop_gen in
+  let* conclusion = relational_prop_gen in
+  return (premises, conclusion)
+
+let diff_rel_args =
+  QCheck2.Test.make ~count:600
+    ~name:"differential: checkArgument agrees on relational arguments \
+           (full records, maxLines 60)"
+    ~print:print_argument relational_argument_gen (fun (premises, conclusion) ->
+      let expected =
+        result_to_json
+          (Tfl.Decide.check_argument ~max_lines:60 premises conclusion)
+      in
+      match
+        expect_json "checkArgument"
+          [
+            `List (List.map Ast_json.prop_to_json premises);
+            Ast_json.prop_to_json conclusion;
+            `Assoc [ ("maxLines", `Int 60) ];
+          ]
+          expected
+      with
+      | None -> true
+      | Some d ->
+          Printf.eprintf "✗ rel args: %s\n" d;
+          false)
+
 (* Harness self-test: a real divergence must be DETECTED, or a clean run means
    nothing. "+É+P" is the documented §16.4 case — the JS reference parses É as
    a bare name, the OCaml engine raises a lexical error. *)
@@ -516,7 +632,10 @@ let () =
   let corpus_ok = corpus_gate () in
   let qcheck_failures =
     QCheck_base_runner.run_tests ~verbose:true
-      [ diff_ast; diff_strings; diff_core; diff_args; diff_derive ]
+      [
+        diff_ast; diff_strings; diff_core; diff_args; diff_derive;
+        diff_passives; diff_rel_args;
+      ]
   in
   Shim_client.stop shim;
   exit
