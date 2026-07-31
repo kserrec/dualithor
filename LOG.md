@@ -169,3 +169,25 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   occurrences, validateProp incl. exact EngineError messages) over every corpus string
   that parses as a proposition (240 of 604; corpus total 2,052 checks) plus 10k generated
   props — zero disagreements, ~51s wall for the whole differential suite.
+- **1.5 done — inference core B**: `lib/tfl/rules.ml` (replace_at with the wild-slot
+  fix-sign resolution, DON donor readings, apply_don/apply_simp/apply_add),
+  `lib/tfl/derive.ml` (saturate with the JS iteration order reproduced exactly —
+  unary IN/Contrap/Simp then binary DON both directions + Add against earlier lines,
+  dedup by printed key, fuel semantics incl. the unguarded-overshoot corners; It
+  seeding via mentioned_terms; derive; ancestry extract), `lib/tfl/decide.ml` (coreLit
+  literals, the P/Z closure — implications, points as insertion-ordered literal sets,
+  unit propagation with genuine case splits, fixed-reference forcing + point merging to
+  fixpoint — plus find_cancellation with the wild-readings walk and 256-combo cap, and
+  check_argument). Two deliberate stubs, each replaced by its own PLAN step: indirect
+  proof (1.6) reports not-found — it can only widen `unknown`, never flip a verdict —
+  and nonzero levels raise until the numerical decision (1.8); the differential gate
+  generates only level-0 atomic-categorical arguments, where neither stub is reachable
+  on the JS side either. Tests: 26 unit tests ported (P/Z, REGAL verdicts, statement
+  arguments, singulars/identity incl. a traced DON derivation, Simp/Add, trace shape);
+  relational-derivation and oracle-spot-check sections deferred to 1.6/1.10 with the
+  layers they exercise. Differential: shim gained `derive`; new gates — 10k random
+  atomic-categorical arguments through checkArgument (full result records: verdict,
+  method, certificate incl. point order, clash, cancellation) and checkInconsistent,
+  plus 3k whole-proof `derive` comparisons (line-for-line: n/prop/text/rule/parents)
+  at maxLines 60 to keep the searches affordable. Zero disagreements; differential
+  suite ~40s wall. All suites green from scratch.

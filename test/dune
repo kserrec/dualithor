@@ -22,6 +22,11 @@
  (modules test_infer)
  (libraries tfl test_support qcheck-core qcheck-core.runner))
 
+(test
+ (name test_decide)
+ (modules test_decide)
+ (libraries tfl test_support qcheck-core qcheck-core.runner))
+
 ; The differential gate needs Node ≥18 (a dev-time requirement per PLAN) and
 ; the frozen JS reference; the deps are copied into _build so the test can
 ; spawn ../engine/shim.js from its own directory.

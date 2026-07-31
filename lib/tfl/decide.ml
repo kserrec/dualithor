@@ -1,0 +1,348 @@
+(* The categorical decision (PLAN 1.5), ported from engine/tfl.js: the P/Z
+   inconsistency closure for the atomic-categorical fragment (complete there —
+   fuzz-verified in the reference against its finite-model oracle), the
+   classic cancellation display, and the argument checker (port-spec §§11–12).
+
+   Two checkArgument branches are stubs until their layers land: indirect
+   proof (PLAN 1.6) reports not-found — which can only widen 'unknown', never
+   flip a verdict — and any nonzero quantity level raises until the numerical
+   decision (PLAN 1.8). The differential gate stays off those inputs. *)
+
+open Ast
+
+(* ── Literals ───────────────────────────────────────────────────────────── *)
+
+type lit = { l_name : string; l_singular : bool; pol : bool }
+
+(* Reduce a term to its literal core: an atom under negations, polarity from
+   the negation parity; None outside the atomic fragment. *)
+let rec core_lit ?(negations = 0) (t : term) : lit option =
+  match t with
+  | Neg inner -> core_lit ~negations:(negations + 1) inner
+  | Atom { name; singular } ->
+      Some { l_name = name; l_singular = singular; pol = negations mod 2 = 0 }
+  | _ -> None
+
+let lit_key l =
+  (if l.pol then "+" else "-") ^ l.l_name ^ if l.l_singular then "*" else ""
+
+let neg_key k =
+  (if k.[0] = '+' then "-" else "+") ^ String.sub k 1 (String.length k - 1)
+
+let is_atomic_prop (p : prop) =
+  core_lit (Infer.canon_term p.subject.term) <> None
+  && core_lit (Infer.canon_term p.predicate.term) <> None
+
+let is_atomic_categorical props = List.for_all is_atomic_prop props
+
+(* ── The P/Z cancellation display ───────────────────────────────────────── *)
+
+type cancellation = { particular : prop; universals : (prop * int) list }
+
+(* Flatten a proposition's two sides through negations with sign
+   multiplication: each core term with its algebraic sign. *)
+let z_occurrences (p : prop) : (string * int) list =
+  let out = ref [] in
+  let rec flat t sign =
+    match t with
+    | Neg inner -> flat inner (-sign)
+    | t -> out := (Notation.print_term t, sign) :: !out
+  in
+  flat p.subject.term (if p.subject.sign = Minus then -1 else 1);
+  flat p.predicate.term (if p.predicate.sign = Minus then -1 else 1);
+  List.rev !out
+
+(* Best-effort certificate decoration: one particular plus re-used universals
+   (each 0–3 times) summing to zero per term key. Wild subjects try both
+   readings, + first; over 256 combinations, fall back to the all-+ reading.
+   The closure verdict stands whether or not a cancellation exists. *)
+let find_cancellation (canon_props : prop list) : cancellation option =
+  let try_resolved (resolved : prop list) : cancellation option =
+    let particulars = List.filter (fun p -> p.subject.sign = Plus) resolved in
+    let universals = List.filter (fun p -> p.subject.sign = Minus) resolved in
+    let u_occs = Array.of_list (List.map z_occurrences universals) in
+    let n_u = Array.length u_occs in
+    let rec try_particular = function
+      | [] -> None
+      | particular :: rest -> (
+          let total : (string, int) Hashtbl.t = Hashtbl.create 16 in
+          let bump occs k =
+            List.iter
+              (fun (key, sign) ->
+                Hashtbl.replace total key
+                  ((match Hashtbl.find_opt total key with
+                   | Some v -> v
+                   | None -> 0)
+                  + (sign * k)))
+              occs
+          in
+          bump (z_occurrences particular) 1;
+          let used = Array.make n_u 0 in
+          let rec dfs i =
+            if i = n_u then
+              Hashtbl.fold (fun _ v acc -> acc && v = 0) total true
+            else (
+              let found = ref false in
+              (try
+                 for k = 0 to 3 do
+                   if k > 0 then bump u_occs.(i) 1;
+                   used.(i) <- k;
+                   if dfs (i + 1) then (
+                     found := true;
+                     raise Exit)
+                 done
+               with Exit -> ());
+              if !found then true
+              else (
+                bump u_occs.(i) (-3);
+                used.(i) <- 0;
+                false))
+          in
+          match dfs 0 with
+          | true ->
+              Some
+                {
+                  particular;
+                  universals =
+                    List.mapi (fun i u -> (u, used.(i))) universals
+                    |> List.filter (fun (_, times) -> times > 0);
+                }
+          | false -> try_particular rest)
+    in
+    try_particular particulars
+  in
+  let readings =
+    List.map
+      (fun p ->
+        if p.subject.sign = Wild then
+          [
+            { p with subject = Infer.st Plus p.subject.term };
+            { p with subject = Infer.st Minus p.subject.term };
+          ]
+        else [ p ])
+      canon_props
+  in
+  let combos = List.fold_left (fun n r -> n * List.length r) 1 readings in
+  if combos > 256 then try_resolved (List.map List.hd readings)
+  else (
+    let rec walk rs acc =
+      match rs with
+      | [] -> try_resolved (List.rev acc)
+      | r :: rest ->
+          List.fold_left
+            (fun found reading ->
+              match found with
+              | Some _ -> found
+              | None -> walk rest (reading :: acc))
+            None r
+    in
+    walk readings [])
+
+(* ── The inconsistency closure ──────────────────────────────────────────── *)
+
+type certificate = {
+  point : string list;
+  clash : (string * string) option;
+  cancellation : cancellation option;
+}
+
+(* An individual with known literals; insertion order is preserved because
+   the certificate reports the point as the JS Set would iterate it. *)
+type pt = { mutable lits : string list }
+
+let pt_mem pt k = List.mem k pt.lits
+let pt_add pt k = if not (pt_mem pt k) then pt.lits <- pt.lits @ [ k ]
+
+let check_inconsistent (props : prop list) : certificate option =
+  List.iter Infer.validate_prop props;
+  if not (is_atomic_categorical props) then
+    Infer.engine_error
+      "the inconsistency check requires an atomic-categorical set";
+  let canon = List.map Infer.canon_prop props in
+
+  let implications = ref [] (* (from, to) over literal keys, in push order *) in
+  let points = ref [] (* in push order *) in
+  let singulars = { lits = [] } (* insertion-ordered set of literal keys *) in
+  List.iter
+    (fun p ->
+      let s =
+        match core_lit (Infer.canon_term p.subject.term) with
+        | Some l -> l
+        | None -> assert false (* atomic by the check above *)
+      in
+      let q =
+        match core_lit (Infer.canon_term p.predicate.term) with
+        | Some l -> if p.predicate.sign = Minus then { l with pol = not l.pol } else l
+        | None -> assert false
+      in
+      let s_k = lit_key s and q_k = lit_key q in
+      let wild = p.subject.sign = Wild in
+      if p.subject.sign = Minus || wild then
+        implications :=
+          !implications @ [ (s_k, q_k); (neg_key q_k, neg_key s_k) ];
+      if p.subject.sign = Plus || wild then (
+        let point = { lits = [] } in
+        pt_add point s_k;
+        pt_add point q_k;
+        points := !points @ [ point ]);
+      List.iter
+        (fun (occ : Infer.occurrence) ->
+          match occ.occ_term with
+          | Atom { name; singular } when Infer.is_fixed_ref occ.occ_term ->
+              pt_add singulars
+                (lit_key { l_name = name; l_singular = singular; pol = true })
+          | _ -> ())
+        (Infer.occurrences p))
+    canon;
+  List.iter
+    (fun key -> points := !points @ [ { lits = [ key ] } ])
+    singulars.lits;
+  let implications = !implications in
+
+  (* Is [units] + the implications satisfiable? Unit propagation plus genuine
+     case splits — completeness needs the splits: closure alone misses forced
+     literals like B in {B→¬B, ¬B→¬A, ¬A→B}. Boolean result only, so
+     propagation order is free. *)
+  let var_of k = String.sub k 1 (String.length k - 1) in
+  let rec sat units =
+    let assign : (string, bool) Hashtbl.t = Hashtbl.create 16 in
+    let stack = ref units in
+    let ok = ref true in
+    while !ok && !stack <> [] do
+      match !stack with
+      | [] -> ()
+      | k :: rest -> (
+          stack := rest;
+          let v = var_of k and pol = k.[0] = '+' in
+          match Hashtbl.find_opt assign v with
+          | Some p -> if p <> pol then ok := false
+          | None ->
+              Hashtbl.add assign v pol;
+              List.iter
+                (fun (from_, to_) ->
+                  if from_ = k then stack := to_ :: !stack;
+                  if to_ = neg_key k then stack := neg_key from_ :: !stack)
+                implications)
+    done;
+    if not !ok then false
+    else
+      match
+        List.find_opt
+          (fun (from_, _) -> not (Hashtbl.mem assign (var_of from_)))
+          implications
+      with
+      | None -> true
+      | Some (from_, _) ->
+          let units' =
+            Hashtbl.fold
+              (fun v pol acc -> ((if pol then "+" else "-") ^ v) :: acc)
+              assign []
+          in
+          sat (from_ :: units') || sat (neg_key from_ :: units')
+  in
+
+  (* Fixpoint: a point forced (2-SAT backbone) to carry a positive
+     fixed-reference literal gains it explicitly; points sharing one merge
+     (that named individual is one individual). *)
+  let is_fixed_key k =
+    k.[0] = '+'
+    && (String.ends_with ~suffix:"*" k || Infer.is_proterm_name k)
+  in
+  let merge_pass () =
+    let arr = Array.of_list !points in
+    let n = Array.length arr in
+    let merged = ref false in
+    (try
+       for i = 0 to n - 1 do
+         for j = i + 1 to n - 1 do
+           if
+             List.exists
+               (fun k -> is_fixed_key k && pt_mem arr.(j) k)
+               arr.(i).lits
+           then (
+             List.iter (pt_add arr.(i)) arr.(j).lits;
+             points := List.filteri (fun idx _ -> idx <> j) !points;
+             merged := true;
+             raise Exit)
+         done
+       done
+     with Exit -> ());
+    !merged
+  in
+  let changed = ref true in
+  while !changed do
+    changed := false;
+    List.iter
+      (fun point ->
+        List.iter
+          (fun l ->
+            if (not (pt_mem point l)) && not (sat (point.lits @ [ neg_key l ]))
+            then (
+              pt_add point l;
+              changed := true))
+          singulars.lits)
+      !points;
+    if merge_pass () then changed := true
+  done;
+
+  let rec first_unsat = function
+    | [] -> None
+    | point :: rest ->
+        if not (sat point.lits) then Some point else first_unsat rest
+  in
+  match first_unsat !points with
+  | None -> None
+  | Some point ->
+      let clash =
+        List.find_opt (fun k -> pt_mem point (neg_key k)) point.lits
+        |> Option.map (fun k -> (k, neg_key k))
+      in
+      Some
+        { point = point.lits; clash; cancellation = find_cancellation canon }
+
+(* ── The argument checker ───────────────────────────────────────────────── *)
+
+type verdict = Valid | Invalid | Contradicted | Unknown
+type meth = PZ | Derivation | Indirect | Numerical
+
+type result = {
+  verdict : verdict;
+  meth : meth;
+  certificate : certificate option;
+  proof : Derive.proof option;
+}
+
+let has_level (p : prop) = p.subject.level > 0 || p.predicate.level > 0
+
+let check_argument ?max_lines ?slack (premises : prop list) (conclusion : prop)
+    : result =
+  List.iter Infer.validate_prop premises;
+  Infer.validate_prop conclusion;
+  if List.exists has_level (premises @ [ conclusion ]) then
+    (* JS routes here to numericalDecision; ported at PLAN 1.8. *)
+    Infer.engine_error "the numerical decision (TFL+) is ported at PLAN 1.8";
+  let counterclaim = premises @ [ Infer.contradictory conclusion ] in
+  if is_atomic_categorical counterclaim then (
+    match check_inconsistent counterclaim with
+    | Some certificate ->
+        { verdict = Valid; meth = PZ; certificate = Some certificate; proof = None }
+    | None -> { verdict = Invalid; meth = PZ; certificate = None; proof = None })
+  else (
+    let proof = Derive.derive ?max_lines ?slack premises conclusion in
+    if proof.found then
+      { verdict = Valid; meth = Derivation; certificate = None; proof = Some proof }
+    else
+      (* Indirect proof (PLAN 1.6) would be tried here. *)
+      let refutation =
+        Derive.derive ?max_lines ?slack premises (Infer.contradictory conclusion)
+      in
+      if refutation.found then
+        {
+          verdict = Contradicted;
+          meth = Derivation;
+          certificate = None;
+          proof = Some refutation;
+        }
+      else
+        (* The indirect refutation (PLAN 1.6) would be tried here. *)
+        { verdict = Unknown; meth = Derivation; certificate = None; proof = None })

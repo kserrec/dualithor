@@ -40,6 +40,7 @@ const FNS = {
   checkArgument: (premises, conclusion, opts) =>
     tfl.checkArgument(premises, conclusion, opts || {}),
   checkInconsistent: (props) => tfl.checkInconsistent(props),
+  derive: (premises, goal, opts) => tfl.derive(premises, goal, opts || {}),
   // 1.7 — programs, queries, equivalence
   queryProp: (programSrc, querySrc, opts) => {
     const program = tfl.parseProgram(programSrc).propositions.map((e) => e.prop);

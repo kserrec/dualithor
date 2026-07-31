@@ -56,7 +56,7 @@ Accept: parser/printer differential agreement on full corpus + ≥10k random str
 Validation rules, canonicalization (`canonTerm`/`canonProp`), term/prop keys, `contradictory`, `obverse`, `contrapositive`, `tautology`.
 Accept: ported unit tests green; differential agreement on corpus + ≥10k random props.
 
-*1.5 Inference core B — rules, derivation, categorical validity.*
+*1.5 Inference core B — rules, derivation, categorical validity.* ✅ DONE (2026-07-30)
 Occurrence counting, rewrite rules (DON, Simp, Add), `derive`, `checkInconsistent`, and `checkArgument` with the P/Z categorical decision. Verdict record mirrors the JS shape (verdict, method, proof lines).
 Accept: ported tests green; differential agreement of `checkArgument` verdicts on corpus + ≥10k random categorical arguments.
 

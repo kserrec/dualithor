@@ -318,6 +318,178 @@ let diff_strings =
     ~print:String.escaped token_string_gen (fun s ->
       List.for_all (fun fn -> compare_on fn s = None) entry_points)
 
+(* ── 1.5 gate: inference core B ─────────────────────────────────────────── *)
+
+let line_to_json (l : Tfl.Derive.line) : Yojson.Safe.t =
+  `Assoc
+    [
+      ("n", `Int l.n);
+      ( "prop",
+        match l.l_prop with Some p -> Ast_json.prop_to_json p | None -> `Null
+      );
+      ("text", `String l.text);
+      ("rule", `String l.rule);
+      ("parents", `List (List.map (fun i -> `Int i) l.parents));
+    ]
+
+let proof_to_json (pr : Tfl.Derive.proof) : Yojson.Safe.t =
+  `Assoc
+    [
+      ("found", `Bool pr.found);
+      ("lines", `List (List.map line_to_json pr.lines));
+    ]
+
+let cancellation_to_json (c : Tfl.Decide.cancellation) : Yojson.Safe.t =
+  `Assoc
+    [
+      ("particular", Ast_json.prop_to_json c.particular);
+      ( "universals",
+        `List
+          (List.map
+             (fun (p, times) ->
+               `Assoc
+                 [ ("prop", Ast_json.prop_to_json p); ("times", `Int times) ])
+             c.universals) );
+    ]
+
+let certificate_to_json (c : Tfl.Decide.certificate) : Yojson.Safe.t =
+  `Assoc
+    [
+      ("point", `List (List.map (fun k -> `String k) c.point));
+      ( "clash",
+        match c.clash with
+        | Some (a, b) -> `List [ `String a; `String b ]
+        | None -> `Null );
+      ( "cancellation",
+        match c.cancellation with
+        | Some x -> cancellation_to_json x
+        | None -> `Null );
+    ]
+
+let result_to_json (r : Tfl.Decide.result) : Yojson.Safe.t =
+  `Assoc
+    ([
+       ( "verdict",
+         `String
+           (match r.verdict with
+           | Valid -> "valid"
+           | Invalid -> "invalid"
+           | Contradicted -> "contradicted"
+           | Unknown -> "unknown") );
+       ( "method",
+         `String
+           (match r.meth with
+           | PZ -> "PZ"
+           | Derivation -> "derivation"
+           | Indirect -> "indirect"
+           | Numerical -> "numerical") );
+     ]
+    @ (match r.certificate with
+      | Some c -> [ ("certificate", certificate_to_json c) ]
+      | None -> [])
+    @
+    match r.proof with
+    | Some pr -> [ ("proof", proof_to_json pr) ]
+    | None -> [])
+
+(* Random atomic-categorical arguments: sides are atoms under 0–2 negations
+   over a small name pool (so terms actually interact), ± only on bare fixed
+   references, all levels 0 — the fragment where the JS engine decides by P/Z
+   without the 1.6/1.8 layers. *)
+let atomic_argument_gen : (Tfl.Ast.prop list * Tfl.Ast.prop) QCheck2.Gen.t =
+  let open QCheck2.Gen in
+  let open Tfl.Ast in
+  let general =
+    map (fun n -> Atom { name = n; singular = false })
+      (oneof_list [ "A"; "B"; "C"; "D" ])
+  in
+  let fixed =
+    oneof_list
+      [
+        Atom { name = "s"; singular = true };
+        Atom { name = "t"; singular = true };
+        Atom { name = "x'"; singular = false };
+      ]
+  in
+  let rec wrap n t = if n = 0 then t else wrap (n - 1) (Neg t) in
+  let side =
+    let* atom = oneof_weighted [ (3, general); (1, fixed) ] in
+    let* negs = int_bound 2 in
+    return (wrap negs atom)
+  in
+  let signed_side =
+    let* sign = oneof_list [ Plus; Minus ] in
+    let* term = side in
+    return { sign; term; level = 0 }
+  in
+  let subject =
+    oneof_weighted
+      [
+        (3, signed_side);
+        (1, map (fun t -> { sign = Wild; term = t; level = 0 }) fixed);
+      ]
+  in
+  let prop =
+    let* subject = subject in
+    let* predicate = signed_side in
+    return { subject; predicate }
+  in
+  let* n = int_range 1 4 in
+  let* premises = list_size (return n) prop in
+  let* conclusion = prop in
+  return (premises, conclusion)
+
+let print_argument (premises, conclusion) =
+  String.concat "; " (List.map print_proposition premises)
+  ^ " ⊢ " ^ print_proposition conclusion
+
+let argument_disagreement (premises, conclusion) : string option =
+  let pj = `List (List.map Ast_json.prop_to_json premises) in
+  let cj = Ast_json.prop_to_json conclusion in
+  expect_json "checkArgument" [ pj; cj ]
+    (result_to_json (Tfl.Decide.check_argument premises conclusion))
+  ||> fun () ->
+  expect_json "checkInconsistent"
+    [ `List (List.map Ast_json.prop_to_json (premises @ [ conclusion ])) ]
+    (match Tfl.Decide.check_inconsistent (premises @ [ conclusion ]) with
+    | Some c -> certificate_to_json c
+    | None -> `Null)
+
+let diff_args =
+  QCheck2.Test.make ~count:10_000
+    ~name:"differential: checkArgument/checkInconsistent agree on categorical \
+           arguments"
+    ~print:print_argument atomic_argument_gen (fun a ->
+      match argument_disagreement a with
+      | None -> true
+      | Some d ->
+          Printf.eprintf "✗ args: %s\n" d;
+          false)
+
+(* Whole-proof agreement for derive — line-for-line, testing that the OCaml
+   saturation reproduces the JS iteration order exactly. maxLines 60 keeps
+   10k+ searches affordable; order bugs surface early in the sequence. *)
+let diff_derive =
+  QCheck2.Test.make ~count:3_000
+    ~name:"differential: derive proofs agree line-for-line"
+    ~print:print_argument atomic_argument_gen (fun (premises, conclusion) ->
+      let expected =
+        proof_to_json (Tfl.Derive.derive ~max_lines:60 premises conclusion)
+      in
+      match
+        expect_json "derive"
+          [
+            `List (List.map Ast_json.prop_to_json premises);
+            Ast_json.prop_to_json conclusion;
+            `Assoc [ ("maxLines", `Int 60) ];
+          ]
+          expected
+      with
+      | None -> true
+      | Some d ->
+          Printf.eprintf "✗ derive: %s\n" d;
+          false)
+
 (* Harness self-test: a real divergence must be DETECTED, or a clean run means
    nothing. "+É+P" is the documented §16.4 case — the JS reference parses É as
    a bare name, the OCaml engine raises a lexical error. *)
@@ -344,7 +516,7 @@ let () =
   let corpus_ok = corpus_gate () in
   let qcheck_failures =
     QCheck_base_runner.run_tests ~verbose:true
-      [ diff_ast; diff_strings; diff_core ]
+      [ diff_ast; diff_strings; diff_core; diff_args; diff_derive ]
   in
   Shim_client.stop shim;
   exit
