@@ -64,7 +64,7 @@ Accept: ported tests green; differential agreement of `checkArgument` verdicts o
 `headRoles` (pairing subscripts), passive transformation with its guards, pronominalization, indirect proof, `refuteSet`.
 Accept: ported tests green; differential agreement on corpus + random relational arguments (verdict-level for derivation search; document any acceptable proof-path differences in LOG.md — verdicts must still match).
 
-*1.7 Programs, queries, equivalence.*
+*1.7 Programs, queries, equivalence.* ✅ DONE (2026-07-30)
 `parseProgram`, `queryTerm`/`queryProp`, `checkProgramConsistency`, `equivalents`/`decideEquivalence` (DNF), `statementModel`.
 Accept: ported tests green; differential agreement on corpus + random programs/queries.
 

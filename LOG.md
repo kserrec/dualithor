@@ -228,3 +228,23 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   the 1.4 gate's job), and full-fuel (maxLines 150) relational checkArgument at 1,500
   cases blew a 10-minute budget — an `unknown` costs four bounded searches on both
   engines; maxLines 60 × 600 keeps the whole differential suite at ~75s.
+- **1.7 done — programs, queries, equivalence** (`lib/tfl/program.ml`): parse_program
+  (code-point comment stripping — `--` in any ASCII/typographic mix — and the JS trim
+  whitespace set; per-line ParseErrors collected, never thrown; no validation, per
+  spec), query_term (restricted-rule saturation {IN,Contrap,Simp,DON} at 300 lines,
+  orientation-based collection, tautology/obverse-tautology dropping, strongest-only
+  retention via the 60-line `implies` mini-saturation, propNodes-desc sort), query_prop
+  (three-way verdict with the PZ-invalid contradictory retry), check_program_consistency
+  (numerical early-return, complete/incomplete split, refuteSet proofs), equivalents
+  (BFS closure under obverse/contrapositive, 64-node cap, exact reading strings),
+  statement_model (one-world semantics; ASCII lowercase-initial per §16.4) and
+  decide_equivalence (sorted-atom truth-table DNF path with typographic-minus rows, else
+  the rewrite closure). Tests: 18 unit tests ported from the D4 section (Fido/Socrates
+  program included; checkExpression tests are courseware-only, not ported). Differential:
+  shim's queryProp switched to AST arguments (it took program source before) and gained
+  parseProgram/queryTerm/checkProgramConsistency/equivalents; five new gates — 2k random
+  program sources through parseProgram (garbage lines and comments included), 1k
+  queryTerm (answer content AND order), 2k queryProp (support records included), 1.2k
+  checkProgramConsistency on mixed programs at maxLines 60, 3k equivalents +
+  decideEquivalence pairs (half derived by obversion/contraposition so genuine
+  equivalences appear) — zero disagreements. Differential suite now 12 tests, ~85s wall.

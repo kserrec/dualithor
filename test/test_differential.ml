@@ -606,6 +606,290 @@ let diff_rel_args =
           Printf.eprintf "✗ rel args: %s\n" d;
           false)
 
+(* ── 1.7 gate: programs, queries, equivalence ───────────────────────────── *)
+
+let program_to_json (r : Tfl.Program.parsed_program) : Yojson.Safe.t =
+  `Assoc
+    [
+      ( "propositions",
+        `List
+          (List.map
+             (fun (e : Tfl.Program.program_entry) ->
+               `Assoc
+                 [
+                   ("prop", Ast_json.prop_to_json e.prop);
+                   ("text", `String e.text);
+                   ("line", `Int e.line);
+                 ])
+             r.propositions) );
+      ( "errors",
+        `List
+          (List.map
+             (fun (e : Tfl.Program.program_error) ->
+               `Assoc
+                 [
+                   ("line", `Int e.err_line);
+                   ("message", `String (strip_advisory e.err_message));
+                   ("pos", `Int e.err_pos);
+                 ])
+             r.errors) );
+    ]
+
+let query_answers_to_json (answers : (Tfl.Ast.prop * string) list) :
+    Yojson.Safe.t =
+  `List
+    (List.map
+       (fun (p, text) ->
+         `Assoc [ ("prop", Ast_json.prop_to_json p); ("text", `String text) ])
+       answers)
+
+let prop_query_to_json (r : Tfl.Program.prop_query) : Yojson.Safe.t =
+  `Assoc
+    (( "verdict",
+       `String
+         (match r.q_verdict with
+         | Q_yes -> "yes"
+         | Q_no -> "no"
+         | Q_unknown -> "unknown") )
+    ::
+    (match r.support with
+    | Some s -> [ ("support", result_to_json s) ]
+    | None -> []))
+
+let consistency_to_json (r : Tfl.Program.consistency) : Yojson.Safe.t =
+  `Assoc
+    ([ ("consistent", `Bool r.consistent); ("complete", `Bool r.complete) ]
+    @ (if r.numerical then [ ("numerical", `Bool true) ] else [])
+    @ (match r.certificate with
+      | Some c ->
+          [
+            ("certificate", certificate_to_json c);
+            ( "proof",
+              match r.c_proof with Some p -> proof_to_json p | None -> `Null
+            );
+          ]
+      | None -> (
+          match r.c_proof with
+          | Some p -> [ ("proof", proof_to_json p) ]
+          | None -> [])))
+
+let equivalents_to_json (es : Tfl.Program.equivalent_entry list) :
+    Yojson.Safe.t =
+  `List
+    (List.map
+       (fun (e : Tfl.Program.equivalent_entry) ->
+         `Assoc
+           [
+             ("prop", Ast_json.prop_to_json e.eq_prop);
+             ("text", `String e.eq_text);
+             ("rule", `String e.eq_rule);
+             ("reading", `String e.reading);
+             ("path", `List (List.map (fun s -> `String s) e.path));
+           ])
+       es)
+
+let decision_to_json (r : Tfl.Program.equivalence_decision) : Yojson.Safe.t =
+  `Assoc
+    ([
+       ("equivalent", `Bool r.equivalent); ("method", `String r.e_method);
+     ]
+    @ (match r.atoms with
+      | Some atoms ->
+          [ ("atoms", `List (List.map (fun s -> `String s) atoms)) ]
+      | None -> [])
+    @ (match r.dnf with
+      | Some rows -> [ ("dnf", `List (List.map (fun s -> `String s) rows)) ]
+      | None -> [])
+    @
+    if r.e_method = "rewrite" then
+      [
+        ( "path",
+          match r.e_path with
+          | Some path -> `List (List.map (fun s -> `String s) path)
+          | None -> `Null );
+      ]
+    else [])
+
+(* Random program sources: printed props, comment tails, garbage lines. *)
+let program_src_gen : string QCheck2.Gen.t =
+  let open QCheck2.Gen in
+  let prop_line =
+    map print_proposition (oneof [ relational_prop_gen; Gen.prop_gen ])
+  in
+  let line =
+    oneof_weighted
+      [
+        (5, prop_line);
+        (2, map (fun p -> p ^ " -- a comment") prop_line);
+        (1, token_string_gen);
+        (1, return "");
+        (1, return "-- whole-line comment");
+      ]
+  in
+  let* n = int_range 1 4 in
+  let* lines = list_size (return n) line in
+  return (String.concat "\n" lines)
+
+let diff_parse_program =
+  QCheck2.Test.make ~count:2_000
+    ~name:"differential: parseProgram agrees on random program sources"
+    ~print:String.escaped program_src_gen (fun src ->
+      match
+        expect_json "parseProgram" [ `String src ]
+          (program_to_json (Tfl.Program.parse_program src))
+      with
+      | None -> true
+      | Some d ->
+          Printf.eprintf "✗ parseProgram: %s\n" d;
+          false)
+
+(* Term queries over small atomic programs (the categorical fragment the
+   query saturation serves). *)
+let query_term_gen :
+    (Tfl.Ast.prop list * Tfl.Ast.term) QCheck2.Gen.t =
+  let open QCheck2.Gen in
+  let open Tfl.Ast in
+  let* premises, conclusion = atomic_argument_gen in
+  let* term =
+    oneof_list
+      [
+        Atom { name = "A"; singular = false };
+        Atom { name = "B"; singular = false };
+        Atom { name = "s"; singular = true };
+        Atom { name = "x'"; singular = false };
+      ]
+  in
+  return (premises @ [ conclusion ], term)
+
+let diff_query_term =
+  QCheck2.Test.make ~count:1_000
+    ~name:"differential: queryTerm answers agree (content and order)"
+    ~print:(fun (program, t) ->
+      String.concat "; " (List.map print_proposition program)
+      ^ " ? " ^ print_term t)
+    query_term_gen (fun (program, term) ->
+      match
+        expect_json "queryTerm"
+          [
+            `List (List.map Ast_json.prop_to_json program);
+            Ast_json.term_to_json term;
+          ]
+          (query_answers_to_json (Tfl.Program.query_term program term))
+      with
+      | None -> true
+      | Some d ->
+          Printf.eprintf "✗ queryTerm: %s\n" d;
+          false)
+
+let diff_query_prop =
+  QCheck2.Test.make ~count:2_000
+    ~name:"differential: queryProp three-way verdicts agree (with support)"
+    ~print:print_argument atomic_argument_gen (fun (program, query) ->
+      match
+        expect_json "queryProp"
+          [
+            `List (List.map Ast_json.prop_to_json program);
+            Ast_json.prop_to_json query;
+          ]
+          (prop_query_to_json (Tfl.Program.query_prop program query))
+      with
+      | None -> true
+      | Some d ->
+          Printf.eprintf "✗ queryProp: %s\n" d;
+          false)
+
+let diff_consistency =
+  QCheck2.Test.make ~count:1_200
+    ~name:"differential: checkProgramConsistency agrees (atomic + relational)"
+    ~print:print_argument relational_argument_gen
+    (fun (premises, conclusion) ->
+      let program = premises @ [ conclusion ] in
+      match
+        expect_json "checkProgramConsistency"
+          [
+            `List (List.map Ast_json.prop_to_json program);
+            `Assoc [ ("maxLines", `Int 60) ];
+          ]
+          (consistency_to_json
+             (Tfl.Program.check_program_consistency ~max_lines:60 program))
+      with
+      | None -> true
+      | Some d ->
+          Printf.eprintf "✗ consistency: %s\n" d;
+          false)
+
+(* Statement propositions (lowercase atoms, negs/compounds/propterms) for the
+   DNF path; the relational/categorical generators cover the rewrite path. *)
+let statement_prop_gen : Tfl.Ast.prop QCheck2.Gen.t =
+  let open QCheck2.Gen in
+  let open Tfl.Ast in
+  let atom = map (fun n -> Atom { name = n; singular = false }) (oneof_list [ "p"; "q"; "r" ]) in
+  let rec term_sized n =
+    if n = 0 then atom
+    else
+      oneof_weighted
+        [
+          (3, atom);
+          (1, map (fun t -> Neg t) (term_sized (n - 1)));
+          ( 1,
+            let* s1 = oneof_list [ Plus; Minus ] in
+            let* t1 = term_sized (n - 1) in
+            let* s2 = oneof_list [ Plus; Minus ] in
+            let* t2 = term_sized (n - 1) in
+            return
+              (Compound
+                 [
+                   { sign = s1; term = t1; level = 0 };
+                   { sign = s2; term = t2; level = 0 };
+                 ]) );
+        ]
+  in
+  let* s_sign = oneof_list [ Plus; Minus ] in
+  let* s_term = term_sized 2 in
+  let* q_sign = oneof_list [ Plus; Minus ] in
+  let* q_term = term_sized 2 in
+  return
+    {
+      subject = { sign = s_sign; term = s_term; level = 0 };
+      predicate = { sign = q_sign; term = q_term; level = 0 };
+    }
+
+let equivalence_pair_gen : (Tfl.Ast.prop * Tfl.Ast.prop) QCheck2.Gen.t =
+  let open QCheck2.Gen in
+  let side = oneof_weighted [ (1, statement_prop_gen); (1, relational_prop_gen) ] in
+  let* a = side in
+  let* b =
+    (* half the time, derive b from a so genuine equivalences appear *)
+    oneof_weighted
+      [
+        (1, side);
+        (1, return (Tfl.Infer.obverse a));
+        ( 1,
+          return
+            (match Tfl.Infer.contrapositive a with Some c -> c | None -> a) );
+      ]
+  in
+  return (a, b)
+
+let diff_equivalence =
+  QCheck2.Test.make ~count:3_000
+    ~name:"differential: equivalents + decideEquivalence agree"
+    ~print:(fun (a, b) -> print_proposition a ^ " ?= " ^ print_proposition b)
+    equivalence_pair_gen (fun (a, b) ->
+      match
+        expect_json "equivalents"
+          [ Ast_json.prop_to_json a ]
+          (equivalents_to_json (Tfl.Program.equivalents a))
+        ||> fun () ->
+        expect_json "decideEquivalence"
+          [ Ast_json.prop_to_json a; Ast_json.prop_to_json b ]
+          (decision_to_json (Tfl.Program.decide_equivalence a b))
+      with
+      | None -> true
+      | Some d ->
+          Printf.eprintf "✗ equivalence: %s\n" d;
+          false)
+
 (* Harness self-test: a real divergence must be DETECTED, or a clean run means
    nothing. "+É+P" is the documented §16.4 case — the JS reference parses É as
    a bare name, the OCaml engine raises a lexical error. *)
@@ -634,7 +918,8 @@ let () =
     QCheck_base_runner.run_tests ~verbose:true
       [
         diff_ast; diff_strings; diff_core; diff_args; diff_derive;
-        diff_passives; diff_rel_args;
+        diff_passives; diff_rel_args; diff_parse_program; diff_query_term;
+        diff_query_prop; diff_consistency; diff_equivalence;
       ]
   in
   Shim_client.stop shim;

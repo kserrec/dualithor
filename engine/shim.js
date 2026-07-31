@@ -46,10 +46,13 @@ const FNS = {
   indirectProof: (premises, conclusion, opts) =>
     tfl.indirectProof(premises, conclusion, opts || {}),
   // 1.7 — programs, queries, equivalence
-  queryProp: (programSrc, querySrc, opts) => {
-    const program = tfl.parseProgram(programSrc).propositions.map((e) => e.prop);
-    return tfl.queryProp(program, tfl.parseProposition(querySrc), opts || {});
-  },
+  parseProgram: (src) => tfl.parseProgram(src),
+  queryTerm: (program, term, opts) => tfl.queryTerm(program, term, opts || {}),
+  queryProp: (program, query, opts) =>
+    tfl.queryProp(program, query, opts || {}),
+  checkProgramConsistency: (program, opts) =>
+    tfl.checkProgramConsistency(program, opts || {}),
+  equivalents: (p, opts) => tfl.equivalents(p, opts || {}),
   decideEquivalence: (a, b, opts) => tfl.decideEquivalence(a, b, opts || {}),
   // 1.9 — NL rendering
   readProp: (p) => tfl.readProp(p),
