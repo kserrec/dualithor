@@ -7,44 +7,16 @@
 open Tfl.Notation
 open Tfl.Relational
 
-let passed = ref 0
-let failed = ref 0
+open Harness
 
-let test name f =
-  try
-    f ();
-    incr passed
-  with e ->
-    incr failed;
-    Printf.eprintf "✗ %s\n  %s\n" name (Printexc.to_string e)
-
-let check cond msg = if not cond then failwith msg
 let p = parse_proposition
-let arg premises conclusion = Tfl.Decide.check_argument (List.map p premises) (p conclusion)
-
-let verdict_of (r : Tfl.Decide.result) =
-  match r.verdict with
-  | Valid -> "valid"
-  | Invalid -> "invalid"
-  | Contradicted -> "contradicted"
-  | Unknown -> "unknown"
-
-let expect_verdict premises conclusion expected msg =
-  let r = arg premises conclusion in
-  check (verdict_of r = expected)
-    (Printf.sprintf "%s: expected %s, got %s" msg expected (verdict_of r))
-
-let proof_rules (r : Tfl.Decide.result) =
-  match r.proof with
-  | Some pr -> List.map (fun (l : Tfl.Derive.line) -> l.rule) pr.lines
-  | None -> []
 
 let () =
   (* Relational derivations (deferred from 1.5) *)
   test "the horse's head: tautology premise + cancellation in-complex"
     (fun () ->
       let r = arg [ "−Horse+Animal" ] "−(Head+Horse)+(Head+Animal)" in
-      check (verdict_of r = "valid") ("verdict " ^ verdict_of r);
+      check (verdict_name r = "valid") ("verdict " ^ verdict_name r);
       check (List.mem "It" (proof_rules r)) "expected the tautology move";
       check (List.mem "DON" (proof_rules r)) "expected a DON step");
   test "donating a whole complex" (fun () ->
@@ -128,7 +100,7 @@ let () =
       check (passives (p "−S+P") = []) "no relation");
   test "derive uses the guarded passive (Pass) and refuses the trap" (fun () ->
       let ok = arg [ "−Dog+(Sees−Cat)" ] "−Cat+(Sees₂₁−Dog)" in
-      check (verdict_of ok = "valid") ("verdict " ^ verdict_of ok);
+      check (verdict_name ok = "valid") ("verdict " ^ verdict_name ok);
       check (List.mem "Pass" (proof_rules ok)) "expected a Pass step";
       expect_verdict
         [ "−Philosopher+(Teaches+Student)" ]
@@ -207,7 +179,7 @@ let () =
   (* Indirect proof *)
   test "the worked proof's argument: boys, girls, cowards" (fun () ->
       let res = arg [ "+Boy+(Lov+Girl)"; "−Boy−(Lov+Coward)" ] "+Girl−Coward" in
-      check (verdict_of res = "valid") ("verdict " ^ verdict_of res);
+      check (verdict_name res = "valid") ("verdict " ^ verdict_name res);
       check (res.meth = Indirect) "method should be indirect";
       let rules = proof_rules res in
       check (List.mem "counterclaim" rules) "assumes the counterclaim";
@@ -223,7 +195,7 @@ let () =
       let res =
         arg [ "+Boy+(Lov−Girl)"; "+Girl+Rebel" ] "+Boy+(Lov+Rebel)"
       in
-      check (verdict_of res = "valid") ("verdict " ^ verdict_of res);
+      check (verdict_name res = "valid") ("verdict " ^ verdict_name res);
       check (res.meth = Indirect) "method should be indirect";
       let rules = proof_rules res in
       List.iter
@@ -249,5 +221,4 @@ let () =
              .found)
         "no false refutation");
 
-  Printf.printf "relational unit tests: %d passed, %d failed\n" !passed !failed;
-  exit (if !failed > 0 then 1 else 0)
+  finish "relational unit tests"

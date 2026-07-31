@@ -22,17 +22,6 @@ type counts = {
   mutable quoted_names : int;
 }
 
-let is_bare_name (name : string) =
-  let bare_char c =
-    (c >= 'a' && c <= 'z')
-    || (c >= 'A' && c <= 'Z')
-    || (c >= '0' && c <= '9')
-    || c = '_' || c = '\''
-  in
-  String.length name > 0
-  && (match name.[0] with 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false)
-  && String.for_all bare_char name
-
 let count_prop (c : counts) (p : prop) =
   let sign s =
     match s with
@@ -47,7 +36,7 @@ let count_prop (c : counts) (p : prop) =
         if singular then c.singulars <- c.singulars + 1;
         if String.length name > 0 && name.[String.length name - 1] = '\'' then
           c.primed_names <- c.primed_names + 1;
-        if not (is_bare_name name) then c.quoted_names <- c.quoted_names + 1
+        if not (Tfl.Notation.is_bare_name name) then c.quoted_names <- c.quoted_names + 1
     | Neg t ->
         c.negs <- c.negs + 1;
         term t

@@ -7,20 +7,7 @@
 open Tfl.Notation
 open Tfl.Render
 
-let passed = ref 0
-let failed = ref 0
-
-let test name f =
-  try
-    f ();
-    incr passed
-  with e ->
-    incr failed;
-    Printf.eprintf "✗ %s\n  %s\n" name (Printexc.to_string e)
-
-let check_eq got expected =
-  if got <> expected then
-    failwith (Printf.sprintf "got %S, expected %S" got expected)
+open Harness
 
 let p = parse_proposition
 let t = parse_term
@@ -86,5 +73,4 @@ let () =
       | None -> ()
       | Some s -> failwith ("unexpected explanation: " ^ s));
 
-  Printf.printf "render unit tests: %d passed, %d failed\n" !passed !failed;
-  exit (if !failed > 0 then 1 else 0)
+  finish "render unit tests"

@@ -9,18 +9,7 @@ open Tfl.Notation
 
 (* ── Tiny test harness, mirroring the JS file's ─────────────────────────── *)
 
-let passed = ref 0
-let failed = ref 0
-
-let test name f =
-  try
-    f ();
-    incr passed
-  with e ->
-    incr failed;
-    Printf.eprintf "✗ %s\n  %s\n" name (Printexc.to_string e)
-
-let check cond msg = if not cond then failwith msg
+open Harness
 
 (* AST shorthands mirroring the JS constructors. *)
 let atom ?(singular = false) name = Atom { name; singular }
@@ -339,9 +328,9 @@ let round_trip_term =
 
 let () =
   run_unit_tests ();
-  Printf.printf "notation unit tests: %d passed, %d failed\n" !passed !failed;
+  summarize "notation unit tests";
   let qcheck_failures =
     QCheck_base_runner.run_tests ~verbose:true
       [ round_trip_prop; round_trip_term ]
   in
-  exit (if !failed > 0 || qcheck_failures <> 0 then 1 else 0)
+  exit (if exit_code () <> 0 || qcheck_failures <> 0 then 1 else 0)

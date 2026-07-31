@@ -153,4 +153,6 @@ let explain_proof (proof : Derive.proof) : string option =
     else
       match last.l_prop with
       | Some p -> Some ("Because " ^ because ^ ", " ^ read_prop p ^ ".")
+      (* unreachable: only the synthetic ⊥ line lacks a prop, and the closing
+         branch above already handled it *)
       | None -> Some ("Because " ^ because ^ ", ."))

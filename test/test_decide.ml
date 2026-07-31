@@ -8,32 +8,11 @@
 open Tfl.Notation
 open Tfl.Decide
 
-let passed = ref 0
-let failed = ref 0
+open Harness
 
-let test name f =
-  try
-    f ();
-    incr passed
-  with e ->
-    incr failed;
-    Printf.eprintf "✗ %s\n  %s\n" name (Printexc.to_string e)
-
-let check cond msg = if not cond then failwith msg
 let p = parse_proposition
-let arg premises conclusion = check_argument (List.map p premises) (p conclusion)
-
-let verdict_is expected r msg =
-  check (r.verdict = expected)
-    (Printf.sprintf "%s: got %s" msg
-       (match r.verdict with
-       | Valid -> "valid"
-       | Invalid -> "invalid"
-       | Contradicted -> "contradicted"
-       | Unknown -> "unknown"))
-
-let valid premises conclusion msg = verdict_is Valid (arg premises conclusion) msg
-let invalid premises conclusion msg = verdict_is Invalid (arg premises conclusion) msg
+let valid premises conclusion msg = expect_verdict premises conclusion "valid" msg
+let invalid premises conclusion msg = expect_verdict premises conclusion "invalid" msg
 
 let () =
   (* P/Z inconsistency *)
@@ -140,5 +119,4 @@ let () =
         <= 2)
         "at most 2 premise lines");
 
-  Printf.printf "decide unit tests: %d passed, %d failed\n" !passed !failed;
-  exit (if !failed > 0 then 1 else 0)
+  finish "decide unit tests"

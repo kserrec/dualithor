@@ -93,3 +93,255 @@ and prop_sized (n : int) : prop G.t =
 
 let term_gen : term G.t = G.sized (fun n -> term_sized (min n 8))
 let prop_gen : prop G.t = G.sized (fun n -> prop_sized (min n 8))
+
+(* ── Differential-gate generators ───────────────────────────────────────────
+   Fragment-shaped inputs for the engine-level comparisons (PLAN 1.5–1.9):
+   small shared name pools so terms actually interact, ± only on fixed
+   references, and fragment-valid propositions only — invalid-input agreement
+   is the validateProp gate's job. *)
+
+(* Random concatenations of notation tokens: mostly ill-formed, some valid,
+   exercising every tokenizer/parser error path on both engines at once. *)
+let token_pool =
+  [
+    "+"; "-"; "−"; "±"; "+-"; "("; ")"; "["; "]"; "*"; "^"; "\""; "'"; "′";
+    "″"; " "; "\n"; "S"; "P"; "Dog"; "Boy'"; "p"; "q"; "x1"; "_"; "2"; "²";
+    "⁰"; "₁"; "7"; "head of a horse";
+  ]
+
+let token_string_gen : string G.t =
+  let open G in
+  let* n = int_bound 25 in
+  let* parts = list_size (return n) (oneof_list token_pool) in
+  return (String.concat "" parts)
+
+(* Atomic-categorical arguments: sides are atoms under 0–2 negations, the
+   fragment the P/Z closure decides completely. *)
+let atomic_argument_gen : (prop list * prop) G.t =
+  let open G in
+  let general =
+    map (fun n -> Atom { name = n; singular = false })
+      (oneof_list [ "A"; "B"; "C"; "D" ])
+  in
+  let fixed =
+    oneof_list
+      [
+        Atom { name = "s"; singular = true };
+        Atom { name = "t"; singular = true };
+        Atom { name = "x'"; singular = false };
+      ]
+  in
+  let rec wrap n t = if n = 0 then t else wrap (n - 1) (Neg t) in
+  let side =
+    let* atom = oneof_weighted [ (3, general); (1, fixed) ] in
+    let* negs = int_bound 2 in
+    return (wrap negs atom)
+  in
+  let signed_side =
+    let* sign = oneof_list [ Plus; Minus ] in
+    let* term = side in
+    return { sign; term; level = 0 }
+  in
+  let subject =
+    oneof_weighted
+      [
+        (3, signed_side);
+        (1, map (fun t -> { sign = Wild; term = t; level = 0 }) fixed);
+      ]
+  in
+  let prop =
+    let* subject = subject in
+    let* predicate = signed_side in
+    return { subject; predicate }
+  in
+  let* n = int_range 1 4 in
+  let* premises = list_size (return n) prop in
+  let* conclusion = prop in
+  return (premises, conclusion)
+
+(* Relational propositions: predicate usually a relational complex (heads
+   occasionally carrying pairing subscripts, objects occasionally nested),
+   sometimes a plain atom to hit the no-passive paths. *)
+let relational_prop_gen : prop G.t =
+  let open G in
+  let general =
+    map (fun n -> Atom { name = n; singular = false })
+      (oneof_list [ "A"; "B"; "C" ])
+  in
+  let fixed =
+    oneof_list
+      [ Atom { name = "s"; singular = true }; Atom { name = "x'"; singular = false } ]
+  in
+  let signed_atom =
+    oneof_weighted
+      [
+        ( 4,
+          let* sign = oneof_list [ Plus; Minus ] in
+          let* term = oneof_weighted [ (3, general); (1, fixed) ] in
+          return { sign; term; level = 0 } );
+        (1, map (fun t -> { sign = Wild; term = t; level = 0 }) fixed);
+      ]
+  in
+  let head = oneof_list [ "R"; "Lov"; "R₂₁"; "Lov₂₁₃" ] in
+  let rel_term =
+    let* h = head in
+    let* n_objs = int_range 1 2 in
+    let* objects = list_size (return n_objs) signed_atom in
+    let* nest = oneof_weighted [ (4, return false); (1, return true) ] in
+    let base = Rel { head = Atom { name = h; singular = false }; objects } in
+    if nest then
+      let* outer_sign = oneof_list [ Plus; Minus ] in
+      return
+        (Rel
+           {
+             head = Atom { name = "R"; singular = false };
+             objects = [ { sign = outer_sign; term = base; level = 0 } ];
+           })
+    else return base
+  in
+  let* subject = signed_atom in
+  let* predicate =
+    let* sign = oneof_list [ Plus; Minus ] in
+    let* term =
+      oneof_weighted
+        [ (4, rel_term); (1, oneof_weighted [ (3, general); (1, fixed) ]) ]
+    in
+    return { sign; term; level = 0 }
+  in
+  return { subject; predicate }
+
+let relational_argument_gen : (prop list * prop) G.t =
+  let open G in
+  let* n = int_range 1 2 in
+  let* premises = list_size (return n) relational_prop_gen in
+  let* conclusion = relational_prop_gen in
+  return (premises, conclusion)
+
+(* Leveled atomic-categorical arguments (TFL⁺): levels 0–3 ride only +
+   subjects; level-0 draws re-cover the P/Z route. *)
+let leveled_argument_gen : (prop list * prop) G.t =
+  let open G in
+  let atom =
+    let* name = oneof_list [ "A"; "B"; "C"; "g"; "s" ] in
+    let* singular = oneof_weighted [ (5, return false); (1, return true) ] in
+    return (Atom { name; singular })
+  in
+  let side =
+    let* a = atom in
+    let* negs = int_bound 2 in
+    let rec wrap n t = if n = 0 then t else wrap (n - 1) (Neg t) in
+    return (wrap negs a)
+  in
+  let prop =
+    let* s_sign = oneof_list [ Plus; Minus ] in
+    let* s_term = side in
+    let* level =
+      if s_sign = Plus then
+        oneof_weighted [ (2, return 0); (3, int_range 1 3) ]
+      else return 0
+    in
+    let* q_sign = oneof_list [ Plus; Minus ] in
+    let* q_term = side in
+    return
+      {
+        subject = { sign = s_sign; term = s_term; level };
+        predicate = { sign = q_sign; term = q_term; level = 0 };
+      }
+  in
+  let* n = int_range 1 3 in
+  let* premises = list_size (return n) prop in
+  let* conclusion = prop in
+  return (premises, conclusion)
+
+(* Statement propositions (lowercase atoms, negs/compounds) for the DNF
+   equivalence path. *)
+let statement_prop_gen : prop G.t =
+  let open G in
+  let atom =
+    map (fun n -> Atom { name = n; singular = false }) (oneof_list [ "p"; "q"; "r" ])
+  in
+  let rec term_sized n =
+    if n = 0 then atom
+    else
+      oneof_weighted
+        [
+          (3, atom);
+          (1, map (fun t -> Neg t) (term_sized (n - 1)));
+          ( 1,
+            let* s1 = oneof_list [ Plus; Minus ] in
+            let* t1 = term_sized (n - 1) in
+            let* s2 = oneof_list [ Plus; Minus ] in
+            let* t2 = term_sized (n - 1) in
+            return
+              (Compound
+                 [
+                   { sign = s1; term = t1; level = 0 };
+                   { sign = s2; term = t2; level = 0 };
+                 ]) );
+        ]
+  in
+  let* s_sign = oneof_list [ Plus; Minus ] in
+  let* s_term = term_sized 2 in
+  let* q_sign = oneof_list [ Plus; Minus ] in
+  let* q_term = term_sized 2 in
+  return
+    {
+      subject = { sign = s_sign; term = s_term; level = 0 };
+      predicate = { sign = q_sign; term = q_term; level = 0 };
+    }
+
+let equivalence_pair_gen : (prop * prop) G.t =
+  let open G in
+  let side = oneof_weighted [ (1, statement_prop_gen); (1, relational_prop_gen) ] in
+  let* a = side in
+  let* b =
+    (* half the time, derive b from a so genuine equivalences appear *)
+    oneof_weighted
+      [
+        (1, side);
+        (1, return (Tfl.Infer.obverse a));
+        ( 1,
+          return
+            (match Tfl.Infer.contrapositive a with Some c -> c | None -> a) );
+      ]
+  in
+  return (a, b)
+
+let query_term_gen : (prop list * term) G.t =
+  let open G in
+  let* premises, conclusion = atomic_argument_gen in
+  let* term =
+    oneof_list
+      [
+        Atom { name = "A"; singular = false };
+        Atom { name = "B"; singular = false };
+        Atom { name = "s"; singular = true };
+        Atom { name = "x'"; singular = false };
+      ]
+  in
+  return (premises @ [ conclusion ], term)
+
+(* Random program sources: printed props, comment tails, garbage lines. *)
+let program_src_gen : string G.t =
+  let open G in
+  let prop_line =
+    map Tfl.Notation.print_proposition (oneof [ relational_prop_gen; prop_gen ])
+  in
+  let line =
+    oneof_weighted
+      [
+        (5, prop_line);
+        (2, map (fun p -> p ^ " -- a comment") prop_line);
+        (1, token_string_gen);
+        (1, return "");
+        (1, return "-- whole-line comment");
+      ]
+  in
+  let* n = int_range 1 4 in
+  let* lines = list_size (return n) line in
+  return (String.concat "\n" lines)
+
+let print_argument (premises, conclusion) =
+  String.concat "; " (List.map Tfl.Notation.print_proposition premises)
+  ^ " ⊢ "
+  ^ Tfl.Notation.print_proposition conclusion

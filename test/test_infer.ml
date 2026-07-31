@@ -7,18 +7,8 @@
 open Tfl.Notation
 open Tfl.Infer
 
-let passed = ref 0
-let failed = ref 0
+open Harness
 
-let test name f =
-  try
-    f ();
-    incr passed
-  with e ->
-    incr failed;
-    Printf.eprintf "✗ %s\n  %s\n" name (Printexc.to_string e)
-
-let check cond msg = if not cond then failwith msg
 let p = parse_proposition
 let eq_up_to a b = prop_eq_up_to (p a) (p b)
 
@@ -107,5 +97,4 @@ let () =
       | () -> failwith "should have raised Engine_error"
       | exception Engine_error _ -> ());
 
-  Printf.printf "infer unit tests: %d passed, %d failed\n" !passed !failed;
-  exit (if !failed > 0 then 1 else 0)
+  finish "infer unit tests"

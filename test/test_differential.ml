@@ -1,11 +1,10 @@
-(* 1.3 acceptance: differential agreement between the OCaml parser/printer and
-   the frozen JS reference engine, on
-   (a) every string literal in engine/tfl.test.js, fed to all three parse
-       entry points — non-formula strings must fail identically on both sides;
-   (b) 10k QCheck-generated ASTs: the JS printer must reproduce the OCaml
-       printed form and the JS parser must recover the exact AST;
-   (c) 10k random token strings: parse outcomes (AST or error position+text)
-       must agree on all three entry points.
+(* The differential harness (PLAN 1.3, extended by every port step since):
+   agreement between the OCaml engine and the frozen JS reference on
+   (a) every string literal in engine/tfl.test.js — non-formula strings must
+       fail identically on both sides — through the parsers, printers,
+       inference core, and renderer;
+   (b) QCheck-generated inputs per layer (generators in Gen, result
+       serialization in Result_json).
 
    Documented divergences are normalized here, in the harness — never in the
    engine: the OCaml quoting hint appended to unrecognized non-ASCII
@@ -20,7 +19,7 @@ let engine_dir =
 
 let shim = Shim_client.start ~shim_path:(engine_dir ^ "/shim.js")
 
-(* ── Outcome comparison ─────────────────────────────────────────────────── *)
+(* ── Parse/print comparison (1.2) ───────────────────────────────────────── *)
 
 type ocaml_outcome =
   | Parsed of Yojson.Safe.t * string (* AST as JS-shaped JSON, printed form *)
@@ -45,20 +44,6 @@ let print_fn_of = function
   | "parseProposition" -> "printProposition"
   | "parseTerm" -> "printTerm"
   | _ -> "printSignedTerm"
-
-let advisory = " (quote the term to use non-ASCII names)"
-
-(* Remove the first occurrence of [advisory] (the recorded §16.4 divergence). *)
-let strip_advisory msg =
-  let ml = String.length msg and al = String.length advisory in
-  let rec find i =
-    if i + al > ml then None
-    else if String.sub msg i al = advisory then Some i
-    else find (i + 1)
-  in
-  match find 0 with
-  | None -> msg
-  | Some i -> String.sub msg 0 i ^ String.sub msg (i + al) (ml - i - al)
 
 (* None = both engines agree on [src] via [fn]; Some d = disagreement d. *)
 let compare_on fn src : string option =
@@ -89,7 +74,7 @@ let compare_on fn src : string option =
                  fn e.message src))
   | ( Failed (msg, pos),
       Error { name = "ParseError"; message = js_msg; pos = Some js_pos } ) ->
-      if pos = js_pos && strip_advisory msg = js_msg then None
+      if pos = js_pos && Result_json.strip_advisory msg = js_msg then None
       else
         Some
           (Printf.sprintf
@@ -109,25 +94,7 @@ let compare_on fn src : string option =
 
 let entry_points = [ "parseProposition"; "parseTerm"; "parseSignedTerm" ]
 
-(* ── 1.4 gate: inference core A ─────────────────────────────────────────── *)
-
-let occ_to_json (o : Tfl.Infer.occurrence) : Yojson.Safe.t =
-  let open Tfl.Infer in
-  `Assoc
-    [
-      ("term", Ast_json.term_to_json o.occ_term);
-      ( "path",
-        `List
-          (`String
-             (match o.side with
-             | On_subject -> "subject"
-             | On_predicate -> "predicate")
-          :: List.map
-               (function Occ_neg -> `String "neg" | Occ_at i -> `Int i)
-               o.steps) );
-      ("sign", `Int o.occ_sign);
-      ("ownWild", `Bool o.own_wild);
-    ]
+(* ── Shared comparison plumbing ─────────────────────────────────────────── *)
 
 (* Lazy chaining: report the first disagreement, skip the rest. *)
 let ( ||> ) (a : string option) (b : unit -> string option) =
@@ -143,6 +110,8 @@ let expect_json fn args expected : string option =
            (Yojson.Safe.to_string js))
   | Error e ->
       Some (Printf.sprintf "%s: js errored %s (%s)" fn e.name e.message)
+
+(* ── 1.4: inference core A over one proposition ─────────────────────────── *)
 
 let core_disagreement (p : Tfl.Ast.prop) : string option =
   let open Tfl.Infer in
@@ -164,7 +133,7 @@ let core_disagreement (p : Tfl.Ast.prop) : string option =
           (Ast_json.prop_to_json (tautology p.subject.term)))
   ||> (fun () ->
         expect_json "occurrences" [ pj ]
-          (`List (List.map occ_to_json (occurrences p))))
+          (`List (List.map Result_json.occ_to_json (occurrences p))))
   ||> fun () ->
   let ocaml = try Ok (validate_prop p) with Engine_error m -> Error m in
   match (ocaml, Shim_client.call shim "validateProp" [ pj ]) with
@@ -254,789 +223,234 @@ let corpus_gate () =
   let strings = extract_js_strings src |> List.sort_uniq compare in
   let checks = ref 0 in
   let failures = ref 0 in
+  let run label d =
+    incr checks;
+    match d with
+    | None -> ()
+    | Some detail ->
+        incr failures;
+        Printf.eprintf "✗ corpus %s: %s\n" label detail
+  in
   List.iter
     (fun s ->
-      List.iter
-        (fun fn ->
-          incr checks;
-          match compare_on fn s with
-          | None -> ()
-          | Some d ->
-              incr failures;
-              Printf.eprintf "✗ corpus: %s\n" d)
-        entry_points;
-      (* 1.4/1.9: every corpus string that parses also goes through the
-         inference-core and renderer comparisons. *)
+      List.iter (fun fn -> run fn (compare_on fn s)) entry_points;
+      (* every corpus string that parses also goes through the
+         inference-core and renderer comparisons *)
       (match parse_proposition s with
       | exception _ -> ()
-      | prop -> (
-          incr checks;
-          (match core_disagreement prop with
-          | None -> ()
-          | Some d ->
-              incr failures;
-              Printf.eprintf "✗ corpus core: %s\n" d);
-          incr checks;
-          match
-            expect_json "readProp"
-              [ Ast_json.prop_to_json prop ]
-              (`String (Tfl.Render.read_prop prop))
-          with
-          | None -> ()
-          | Some d ->
-              incr failures;
-              Printf.eprintf "✗ corpus readProp: %s\n" d));
+      | prop ->
+          run "core" (core_disagreement prop);
+          run "readProp"
+            (expect_json "readProp"
+               [ Ast_json.prop_to_json prop ]
+               (`String (Tfl.Render.read_prop prop))));
       match parse_term s with
       | exception _ -> ()
-      | term -> (
-          incr checks;
-          match
-            expect_json "readTerm"
-              [ Ast_json.term_to_json term ]
-              (`String (Tfl.Render.read_term term))
-          with
-          | None -> ()
-          | Some d ->
-              incr failures;
-              Printf.eprintf "✗ corpus readTerm: %s\n" d))
+      | term ->
+          run "readTerm"
+            (expect_json "readTerm"
+               [ Ast_json.term_to_json term ]
+               (`String (Tfl.Render.read_term term))))
     strings;
   Printf.printf "corpus gate: %d distinct strings, %d checks, %d disagreements\n"
     (List.length strings) !checks !failures;
   !failures = 0
 
-(* ── Random ASTs and random token strings ───────────────────────────────── *)
+(* ── QCheck gates, one per layer ────────────────────────────────────────── *)
+
+(* A gate property: run the comparison, print the disagreement on failure. *)
+let gate name ~count ~print gen compare =
+  QCheck2.Test.make ~count ~name ~print gen (fun x ->
+      match compare x with
+      | None -> true
+      | Some d ->
+          Printf.eprintf "✗ %s: %s\n" name d;
+          false)
 
 let diff_ast =
-  QCheck2.Test.make ~count:10_000
-    ~name:"differential: printers and parsers agree on generated ASTs"
-    ~print:print_proposition Gen.prop_gen (fun p ->
+  gate "differential: printers and parsers agree on generated ASTs"
+    ~count:10_000 ~print:print_proposition Gen.prop_gen (fun p ->
       let ast = Ast_json.prop_to_json p in
       let printed = print_proposition p in
       (match Shim_client.call shim "printProposition" [ ast ] with
-      | Ok (`String js_printed) -> js_printed = printed
-      | _ -> false)
-      &&
+      | Ok (`String js_printed) when js_printed = printed -> None
+      | _ -> Some "printProposition mismatch")
+      ||> fun () ->
       match Shim_client.call shim "parseProposition" [ `String printed ] with
-      | Ok js_ast -> Ast_json.json_equal ast js_ast
-      | _ -> false)
-
-(* Random concatenations of notation tokens: mostly ill-formed, some valid,
-   exercising every tokenizer/parser error path on both engines at once. *)
-let token_pool =
-  [
-    "+"; "-"; "−"; "±"; "+-"; "("; ")"; "["; "]"; "*"; "^"; "\""; "'"; "′";
-    "″"; " "; "\n"; "S"; "P"; "Dog"; "Boy'"; "p"; "q"; "x1"; "_"; "2"; "²";
-    "⁰"; "₁"; "7"; "head of a horse";
-  ]
-
-let token_string_gen : string QCheck2.Gen.t =
-  let open QCheck2.Gen in
-  let* n = int_bound 25 in
-  let* parts = list_size (return n) (oneof_list token_pool) in
-  return (String.concat "" parts)
+      | Ok js_ast when Ast_json.json_equal ast js_ast -> None
+      | _ -> Some "parseProposition mismatch")
 
 let diff_strings =
-  QCheck2.Test.make ~count:10_000
-    ~name:"differential: parse outcomes agree on random token strings"
-    ~print:String.escaped token_string_gen (fun s ->
-      List.for_all (fun fn -> compare_on fn s = None) entry_points)
+  gate "differential: parse outcomes agree on random token strings"
+    ~count:10_000 ~print:String.escaped Gen.token_string_gen (fun s ->
+      List.fold_left
+        (fun acc fn -> acc ||> fun () -> compare_on fn s)
+        None entry_points)
 
-(* ── 1.5 gate: inference core B ─────────────────────────────────────────── *)
-
-let line_to_json (l : Tfl.Derive.line) : Yojson.Safe.t =
-  `Assoc
-    [
-      ("n", `Int l.n);
-      ( "prop",
-        match l.l_prop with Some p -> Ast_json.prop_to_json p | None -> `Null
-      );
-      ("text", `String l.text);
-      ("rule", `String l.rule);
-      ("parents", `List (List.map (fun i -> `Int i) l.parents));
-    ]
-
-let proof_to_json (pr : Tfl.Derive.proof) : Yojson.Safe.t =
-  `Assoc
-    [
-      ("found", `Bool pr.found);
-      ("lines", `List (List.map line_to_json pr.lines));
-    ]
-
-let cancellation_to_json (c : Tfl.Decide.cancellation) : Yojson.Safe.t =
-  `Assoc
-    [
-      ("particular", Ast_json.prop_to_json c.particular);
-      ( "universals",
-        `List
-          (List.map
-             (fun (p, times) ->
-               `Assoc
-                 [ ("prop", Ast_json.prop_to_json p); ("times", `Int times) ])
-             c.universals) );
-    ]
-
-let certificate_to_json (c : Tfl.Decide.certificate) : Yojson.Safe.t =
-  `Assoc
-    [
-      ("point", `List (List.map (fun k -> `String k) c.point));
-      ( "clash",
-        match c.clash with
-        | Some (a, b) -> `List [ `String a; `String b ]
-        | None -> `Null );
-      ( "cancellation",
-        match c.cancellation with
-        | Some x -> cancellation_to_json x
-        | None -> `Null );
-    ]
-
-let decision_record_to_json (d : Tfl.Decide.numerical_decision) :
-    Yojson.Safe.t =
-  `Assoc
-    [
-      ("valid", `Bool d.n_valid);
-      ( "conditions",
-        `Assoc
-          [
-            ("sum", `Bool d.sum);
-            ("particular", `Bool d.n_particular);
-            ("level", `Bool d.level_ok);
-          ] );
-      ("carriedLevel", `Int d.carried_level);
-      ("conclusionLevel", `Int d.conclusion_level);
-      ("particularPremises", `Int d.particular_premises);
-      ("particularConclusions", `Int d.particular_conclusions);
-    ]
-
-let result_to_json (r : Tfl.Decide.result) : Yojson.Safe.t =
-  `Assoc
-    ([
-       ( "verdict",
-         `String
-           (match r.verdict with
-           | Valid -> "valid"
-           | Invalid -> "invalid"
-           | Contradicted -> "contradicted"
-           | Unknown -> "unknown") );
-       ( "method",
-         `String
-           (match r.meth with
-           | PZ -> "PZ"
-           | Derivation -> "derivation"
-           | Indirect -> "indirect"
-           | Numerical -> "numerical") );
-     ]
-    @ (match r.decision with
-      | Some d -> [ ("decision", decision_record_to_json d) ]
-      | None -> [])
-    @ (match r.certificate with
-      | Some c -> [ ("certificate", certificate_to_json c) ]
-      | None -> [])
-    @
-    match r.proof with
-    | Some pr -> [ ("proof", proof_to_json pr) ]
-    | None -> [])
-
-(* Random atomic-categorical arguments: sides are atoms under 0–2 negations
-   over a small name pool (so terms actually interact), ± only on bare fixed
-   references, all levels 0 — the fragment where the JS engine decides by P/Z
-   without the 1.6/1.8 layers. *)
-let atomic_argument_gen : (Tfl.Ast.prop list * Tfl.Ast.prop) QCheck2.Gen.t =
-  let open QCheck2.Gen in
-  let open Tfl.Ast in
-  let general =
-    map (fun n -> Atom { name = n; singular = false })
-      (oneof_list [ "A"; "B"; "C"; "D" ])
-  in
-  let fixed =
-    oneof_list
-      [
-        Atom { name = "s"; singular = true };
-        Atom { name = "t"; singular = true };
-        Atom { name = "x'"; singular = false };
-      ]
-  in
-  let rec wrap n t = if n = 0 then t else wrap (n - 1) (Neg t) in
-  let side =
-    let* atom = oneof_weighted [ (3, general); (1, fixed) ] in
-    let* negs = int_bound 2 in
-    return (wrap negs atom)
-  in
-  let signed_side =
-    let* sign = oneof_list [ Plus; Minus ] in
-    let* term = side in
-    return { sign; term; level = 0 }
-  in
-  let subject =
-    oneof_weighted
-      [
-        (3, signed_side);
-        (1, map (fun t -> { sign = Wild; term = t; level = 0 }) fixed);
-      ]
-  in
-  let prop =
-    let* subject = subject in
-    let* predicate = signed_side in
-    return { subject; predicate }
-  in
-  let* n = int_range 1 4 in
-  let* premises = list_size (return n) prop in
-  let* conclusion = prop in
-  return (premises, conclusion)
-
-let print_argument (premises, conclusion) =
-  String.concat "; " (List.map print_proposition premises)
-  ^ " ⊢ " ^ print_proposition conclusion
-
-let argument_disagreement (premises, conclusion) : string option =
-  let pj = `List (List.map Ast_json.prop_to_json premises) in
-  let cj = Ast_json.prop_to_json conclusion in
-  expect_json "checkArgument" [ pj; cj ]
-    (result_to_json (Tfl.Decide.check_argument premises conclusion))
-  ||> fun () ->
-  expect_json "checkInconsistent"
-    [ `List (List.map Ast_json.prop_to_json (premises @ [ conclusion ])) ]
-    (match Tfl.Decide.check_inconsistent (premises @ [ conclusion ]) with
-    | Some c -> certificate_to_json c
-    | None -> `Null)
+let diff_core =
+  gate "differential: inference core A agrees on generated props"
+    ~count:10_000 ~print:print_proposition Gen.prop_gen core_disagreement
 
 let diff_args =
-  QCheck2.Test.make ~count:10_000
-    ~name:"differential: checkArgument/checkInconsistent agree on categorical \
-           arguments"
-    ~print:print_argument atomic_argument_gen (fun a ->
-      match argument_disagreement a with
-      | None -> true
-      | Some d ->
-          Printf.eprintf "✗ args: %s\n" d;
-          false)
+  gate
+    "differential: checkArgument/checkInconsistent agree on categorical \
+     arguments"
+    ~count:10_000 ~print:Gen.print_argument Gen.atomic_argument_gen
+    (fun (premises, conclusion) ->
+      let pj = `List (List.map Ast_json.prop_to_json premises) in
+      let cj = Ast_json.prop_to_json conclusion in
+      expect_json "checkArgument" [ pj; cj ]
+        (Result_json.result_to_json
+           (Tfl.Decide.check_argument premises conclusion))
+      ||> fun () ->
+      expect_json "checkInconsistent"
+        [ `List (List.map Ast_json.prop_to_json (premises @ [ conclusion ])) ]
+        (match Tfl.Decide.check_inconsistent (premises @ [ conclusion ]) with
+        | Some c -> Result_json.certificate_to_json c
+        | None -> `Null))
 
 (* Whole-proof agreement for derive — line-for-line, testing that the OCaml
    saturation reproduces the JS iteration order exactly. maxLines 60 keeps
    10k+ searches affordable; order bugs surface early in the sequence. *)
 let diff_derive =
-  QCheck2.Test.make ~count:3_000
-    ~name:"differential: derive proofs agree line-for-line"
-    ~print:print_argument atomic_argument_gen (fun (premises, conclusion) ->
-      let expected =
-        proof_to_json (Tfl.Derive.derive ~max_lines:60 premises conclusion)
-      in
-      match
-        expect_json "derive"
-          [
-            `List (List.map Ast_json.prop_to_json premises);
-            Ast_json.prop_to_json conclusion;
-            `Assoc [ ("maxLines", `Int 60) ];
-          ]
-          expected
-      with
-      | None -> true
-      | Some d ->
-          Printf.eprintf "✗ derive: %s\n" d;
-          false)
-
-(* ── 1.6 gate: relational layer ─────────────────────────────────────────── *)
-
-let passive_to_json (r : Tfl.Relational.passive) : Yojson.Safe.t =
-  `Assoc
-    [
-      ("prop", Ast_json.prop_to_json r.p_prop);
-      ("equivalent", `Bool r.equivalent);
-      ("swapped", `Int r.swapped);
-    ]
-
-(* Random relational propositions over a small shared pool: subject a signed
-   atom (± only on fixed references), predicate usually a relational complex
-   (heads occasionally carrying pairing subscripts, objects occasionally
-   nested), sometimes a plain atom to hit the no-passive paths. *)
-let relational_prop_gen : Tfl.Ast.prop QCheck2.Gen.t =
-  let open QCheck2.Gen in
-  let open Tfl.Ast in
-  let general =
-    map (fun n -> Atom { name = n; singular = false })
-      (oneof_list [ "A"; "B"; "C" ])
-  in
-  let fixed =
-    oneof_list
-      [ Atom { name = "s"; singular = true }; Atom { name = "x'"; singular = false } ]
-  in
-  let signed_atom =
-    oneof_weighted
-      [
-        ( 4,
-          let* sign = oneof_list [ Plus; Minus ] in
-          let* term = oneof_weighted [ (3, general); (1, fixed) ] in
-          return { sign; term; level = 0 } );
-        (1, map (fun t -> { sign = Wild; term = t; level = 0 }) fixed);
-      ]
-  in
-  let head = oneof_list [ "R"; "Lov"; "R₂₁"; "Lov₂₁₃" ] in
-  let rel_term =
-    let* h = head in
-    let* n_objs = int_range 1 2 in
-    let* objects = list_size (return n_objs) signed_atom in
-    let* nest = oneof_weighted [ (4, return false); (1, return true) ] in
-    let base = Rel { head = Atom { name = h; singular = false }; objects } in
-    if nest then
-      let* outer_sign = oneof_list [ Plus; Minus ] in
-      return
-        (Rel
-           {
-             head = Atom { name = "R"; singular = false };
-             objects = [ { sign = outer_sign; term = base; level = 0 } ];
-           })
-    else return base
-  in
-  let* subject = signed_atom in
-  let* predicate =
-    (* predicates are + or − only (a ± predicate is outside the fragment;
-       invalid-input agreement is the 1.4 validateProp gate's job) *)
-    let* sign = oneof_list [ Plus; Minus ] in
-    let* term =
-      oneof_weighted
-        [ (4, rel_term); (1, oneof_weighted [ (3, general); (1, fixed) ]) ]
-    in
-    return { sign; term; level = 0 }
-  in
-  return { subject; predicate }
-
-let print_prop = print_proposition
+  gate "differential: derive proofs agree line-for-line" ~count:3_000
+    ~print:Gen.print_argument Gen.atomic_argument_gen
+    (fun (premises, conclusion) ->
+      expect_json "derive"
+        [
+          `List (List.map Ast_json.prop_to_json premises);
+          Ast_json.prop_to_json conclusion;
+          `Assoc [ ("maxLines", `Int 60) ];
+        ]
+        (Result_json.proof_to_json
+           (Tfl.Derive.derive ~max_lines:60 premises conclusion)))
 
 let diff_passives =
-  QCheck2.Test.make ~count:10_000
-    ~name:"differential: passives agree (prop, guard verdict, swap index)"
-    ~print:print_prop relational_prop_gen (fun p ->
-      match
-        expect_json "passives"
-          [ Ast_json.prop_to_json p ]
-          (`List (List.map passive_to_json (Tfl.Relational.passives p)))
-      with
-      | None -> true
-      | Some d ->
-          Printf.eprintf "✗ passives: %s\n" d;
-          false)
+  gate "differential: passives agree (prop, guard verdict, swap index)"
+    ~count:10_000 ~print:print_proposition Gen.relational_prop_gen (fun p ->
+      expect_json "passives"
+        [ Ast_json.prop_to_json p ]
+        (`List (List.map Result_json.passive_to_json (Tfl.Relational.passives p))))
 
 (* Full checkArgument on mixed relational/categorical arguments, comparing
    the whole result record — verdict, method, and proof lines (Pron/Anchor
-   fresh-name sequences included). maxLines 150 on both sides bounds the four
+   fresh-name sequences included). maxLines 60 on both sides bounds the four
    searches of an 'unknown'; identical fuel keeps verdicts comparable. *)
-let relational_argument_gen :
-    (Tfl.Ast.prop list * Tfl.Ast.prop) QCheck2.Gen.t =
-  let open QCheck2.Gen in
-  let* n = int_range 1 2 in
-  let* premises = list_size (return n) relational_prop_gen in
-  let* conclusion = relational_prop_gen in
-  return (premises, conclusion)
-
 let diff_rel_args =
-  QCheck2.Test.make ~count:600
-    ~name:"differential: checkArgument agrees on relational arguments \
-           (full records, maxLines 60)"
-    ~print:print_argument relational_argument_gen (fun (premises, conclusion) ->
-      let expected =
-        result_to_json
-          (Tfl.Decide.check_argument ~max_lines:60 premises conclusion)
-      in
-      match
-        expect_json "checkArgument"
-          [
-            `List (List.map Ast_json.prop_to_json premises);
-            Ast_json.prop_to_json conclusion;
-            `Assoc [ ("maxLines", `Int 60) ];
-          ]
-          expected
-      with
-      | None -> true
-      | Some d ->
-          Printf.eprintf "✗ rel args: %s\n" d;
-          false)
-
-(* ── 1.7 gate: programs, queries, equivalence ───────────────────────────── *)
-
-let program_to_json (r : Tfl.Program.parsed_program) : Yojson.Safe.t =
-  `Assoc
-    [
-      ( "propositions",
-        `List
-          (List.map
-             (fun (e : Tfl.Program.program_entry) ->
-               `Assoc
-                 [
-                   ("prop", Ast_json.prop_to_json e.prop);
-                   ("text", `String e.text);
-                   ("line", `Int e.line);
-                 ])
-             r.propositions) );
-      ( "errors",
-        `List
-          (List.map
-             (fun (e : Tfl.Program.program_error) ->
-               `Assoc
-                 [
-                   ("line", `Int e.err_line);
-                   ("message", `String (strip_advisory e.err_message));
-                   ("pos", `Int e.err_pos);
-                 ])
-             r.errors) );
-    ]
-
-let query_answers_to_json (answers : (Tfl.Ast.prop * string) list) :
-    Yojson.Safe.t =
-  `List
-    (List.map
-       (fun (p, text) ->
-         `Assoc [ ("prop", Ast_json.prop_to_json p); ("text", `String text) ])
-       answers)
-
-let prop_query_to_json (r : Tfl.Program.prop_query) : Yojson.Safe.t =
-  `Assoc
-    (( "verdict",
-       `String
-         (match r.q_verdict with
-         | Q_yes -> "yes"
-         | Q_no -> "no"
-         | Q_unknown -> "unknown") )
-    ::
-    (match r.support with
-    | Some s -> [ ("support", result_to_json s) ]
-    | None -> []))
-
-let consistency_to_json (r : Tfl.Program.consistency) : Yojson.Safe.t =
-  `Assoc
-    ([ ("consistent", `Bool r.consistent); ("complete", `Bool r.complete) ]
-    @ (if r.numerical then [ ("numerical", `Bool true) ] else [])
-    @ (match r.certificate with
-      | Some c ->
-          [
-            ("certificate", certificate_to_json c);
-            ( "proof",
-              match r.c_proof with Some p -> proof_to_json p | None -> `Null
-            );
-          ]
-      | None -> (
-          match r.c_proof with
-          | Some p -> [ ("proof", proof_to_json p) ]
-          | None -> [])))
-
-let equivalents_to_json (es : Tfl.Program.equivalent_entry list) :
-    Yojson.Safe.t =
-  `List
-    (List.map
-       (fun (e : Tfl.Program.equivalent_entry) ->
-         `Assoc
-           [
-             ("prop", Ast_json.prop_to_json e.eq_prop);
-             ("text", `String e.eq_text);
-             ("rule", `String e.eq_rule);
-             ("reading", `String e.reading);
-             ("path", `List (List.map (fun s -> `String s) e.path));
-           ])
-       es)
-
-let decision_to_json (r : Tfl.Program.equivalence_decision) : Yojson.Safe.t =
-  `Assoc
-    ([
-       ("equivalent", `Bool r.equivalent); ("method", `String r.e_method);
-     ]
-    @ (match r.atoms with
-      | Some atoms ->
-          [ ("atoms", `List (List.map (fun s -> `String s) atoms)) ]
-      | None -> [])
-    @ (match r.dnf with
-      | Some rows -> [ ("dnf", `List (List.map (fun s -> `String s) rows)) ]
-      | None -> [])
-    @
-    if r.e_method = "rewrite" then
-      [
-        ( "path",
-          match r.e_path with
-          | Some path -> `List (List.map (fun s -> `String s) path)
-          | None -> `Null );
-      ]
-    else [])
-
-(* Random program sources: printed props, comment tails, garbage lines. *)
-let program_src_gen : string QCheck2.Gen.t =
-  let open QCheck2.Gen in
-  let prop_line =
-    map print_proposition (oneof [ relational_prop_gen; Gen.prop_gen ])
-  in
-  let line =
-    oneof_weighted
-      [
-        (5, prop_line);
-        (2, map (fun p -> p ^ " -- a comment") prop_line);
-        (1, token_string_gen);
-        (1, return "");
-        (1, return "-- whole-line comment");
-      ]
-  in
-  let* n = int_range 1 4 in
-  let* lines = list_size (return n) line in
-  return (String.concat "\n" lines)
+  gate
+    "differential: checkArgument agrees on relational arguments (full \
+     records, maxLines 60)"
+    ~count:600 ~print:Gen.print_argument Gen.relational_argument_gen
+    (fun (premises, conclusion) ->
+      expect_json "checkArgument"
+        [
+          `List (List.map Ast_json.prop_to_json premises);
+          Ast_json.prop_to_json conclusion;
+          `Assoc [ ("maxLines", `Int 60) ];
+        ]
+        (Result_json.result_to_json
+           (Tfl.Decide.check_argument ~max_lines:60 premises conclusion)))
 
 let diff_parse_program =
-  QCheck2.Test.make ~count:2_000
-    ~name:"differential: parseProgram agrees on random program sources"
-    ~print:String.escaped program_src_gen (fun src ->
-      match
-        expect_json "parseProgram" [ `String src ]
-          (program_to_json (Tfl.Program.parse_program src))
-      with
-      | None -> true
-      | Some d ->
-          Printf.eprintf "✗ parseProgram: %s\n" d;
-          false)
-
-(* Term queries over small atomic programs (the categorical fragment the
-   query saturation serves). *)
-let query_term_gen :
-    (Tfl.Ast.prop list * Tfl.Ast.term) QCheck2.Gen.t =
-  let open QCheck2.Gen in
-  let open Tfl.Ast in
-  let* premises, conclusion = atomic_argument_gen in
-  let* term =
-    oneof_list
-      [
-        Atom { name = "A"; singular = false };
-        Atom { name = "B"; singular = false };
-        Atom { name = "s"; singular = true };
-        Atom { name = "x'"; singular = false };
-      ]
-  in
-  return (premises @ [ conclusion ], term)
+  gate "differential: parseProgram agrees on random program sources"
+    ~count:2_000 ~print:String.escaped Gen.program_src_gen (fun src ->
+      expect_json "parseProgram" [ `String src ]
+        (Result_json.program_to_json (Tfl.Program.parse_program src)))
 
 let diff_query_term =
-  QCheck2.Test.make ~count:1_000
-    ~name:"differential: queryTerm answers agree (content and order)"
+  gate "differential: queryTerm answers agree (content and order)"
+    ~count:1_000
     ~print:(fun (program, t) ->
       String.concat "; " (List.map print_proposition program)
       ^ " ? " ^ print_term t)
-    query_term_gen (fun (program, term) ->
-      match
-        expect_json "queryTerm"
-          [
-            `List (List.map Ast_json.prop_to_json program);
-            Ast_json.term_to_json term;
-          ]
-          (query_answers_to_json (Tfl.Program.query_term program term))
-      with
-      | None -> true
-      | Some d ->
-          Printf.eprintf "✗ queryTerm: %s\n" d;
-          false)
+    Gen.query_term_gen
+    (fun (program, term) ->
+      expect_json "queryTerm"
+        [
+          `List (List.map Ast_json.prop_to_json program);
+          Ast_json.term_to_json term;
+        ]
+        (Result_json.query_answers_to_json
+           (Tfl.Program.query_term program term)))
 
 let diff_query_prop =
-  QCheck2.Test.make ~count:2_000
-    ~name:"differential: queryProp three-way verdicts agree (with support)"
-    ~print:print_argument atomic_argument_gen (fun (program, query) ->
-      match
-        expect_json "queryProp"
-          [
-            `List (List.map Ast_json.prop_to_json program);
-            Ast_json.prop_to_json query;
-          ]
-          (prop_query_to_json (Tfl.Program.query_prop program query))
-      with
-      | None -> true
-      | Some d ->
-          Printf.eprintf "✗ queryProp: %s\n" d;
-          false)
+  gate "differential: queryProp three-way verdicts agree (with support)"
+    ~count:2_000 ~print:Gen.print_argument Gen.atomic_argument_gen
+    (fun (program, query) ->
+      expect_json "queryProp"
+        [
+          `List (List.map Ast_json.prop_to_json program);
+          Ast_json.prop_to_json query;
+        ]
+        (Result_json.prop_query_to_json (Tfl.Program.query_prop program query)))
 
 let diff_consistency =
-  QCheck2.Test.make ~count:1_200
-    ~name:"differential: checkProgramConsistency agrees (atomic + relational)"
-    ~print:print_argument relational_argument_gen
+  gate "differential: checkProgramConsistency agrees (atomic + relational)"
+    ~count:1_200 ~print:Gen.print_argument Gen.relational_argument_gen
     (fun (premises, conclusion) ->
       let program = premises @ [ conclusion ] in
-      match
-        expect_json "checkProgramConsistency"
-          [
-            `List (List.map Ast_json.prop_to_json program);
-            `Assoc [ ("maxLines", `Int 60) ];
-          ]
-          (consistency_to_json
-             (Tfl.Program.check_program_consistency ~max_lines:60 program))
-      with
-      | None -> true
-      | Some d ->
-          Printf.eprintf "✗ consistency: %s\n" d;
-          false)
-
-(* Statement propositions (lowercase atoms, negs/compounds/propterms) for the
-   DNF path; the relational/categorical generators cover the rewrite path. *)
-let statement_prop_gen : Tfl.Ast.prop QCheck2.Gen.t =
-  let open QCheck2.Gen in
-  let open Tfl.Ast in
-  let atom = map (fun n -> Atom { name = n; singular = false }) (oneof_list [ "p"; "q"; "r" ]) in
-  let rec term_sized n =
-    if n = 0 then atom
-    else
-      oneof_weighted
+      expect_json "checkProgramConsistency"
         [
-          (3, atom);
-          (1, map (fun t -> Neg t) (term_sized (n - 1)));
-          ( 1,
-            let* s1 = oneof_list [ Plus; Minus ] in
-            let* t1 = term_sized (n - 1) in
-            let* s2 = oneof_list [ Plus; Minus ] in
-            let* t2 = term_sized (n - 1) in
-            return
-              (Compound
-                 [
-                   { sign = s1; term = t1; level = 0 };
-                   { sign = s2; term = t2; level = 0 };
-                 ]) );
+          `List (List.map Ast_json.prop_to_json program);
+          `Assoc [ ("maxLines", `Int 60) ];
         ]
-  in
-  let* s_sign = oneof_list [ Plus; Minus ] in
-  let* s_term = term_sized 2 in
-  let* q_sign = oneof_list [ Plus; Minus ] in
-  let* q_term = term_sized 2 in
-  return
-    {
-      subject = { sign = s_sign; term = s_term; level = 0 };
-      predicate = { sign = q_sign; term = q_term; level = 0 };
-    }
-
-let equivalence_pair_gen : (Tfl.Ast.prop * Tfl.Ast.prop) QCheck2.Gen.t =
-  let open QCheck2.Gen in
-  let side = oneof_weighted [ (1, statement_prop_gen); (1, relational_prop_gen) ] in
-  let* a = side in
-  let* b =
-    (* half the time, derive b from a so genuine equivalences appear *)
-    oneof_weighted
-      [
-        (1, side);
-        (1, return (Tfl.Infer.obverse a));
-        ( 1,
-          return
-            (match Tfl.Infer.contrapositive a with Some c -> c | None -> a) );
-      ]
-  in
-  return (a, b)
+        (Result_json.consistency_to_json
+           (Tfl.Program.check_program_consistency ~max_lines:60 program)))
 
 let diff_equivalence =
-  QCheck2.Test.make ~count:3_000
-    ~name:"differential: equivalents + decideEquivalence agree"
+  gate "differential: equivalents + decideEquivalence agree" ~count:3_000
     ~print:(fun (a, b) -> print_proposition a ^ " ?= " ^ print_proposition b)
-    equivalence_pair_gen (fun (a, b) ->
-      match
-        expect_json "equivalents"
-          [ Ast_json.prop_to_json a ]
-          (equivalents_to_json (Tfl.Program.equivalents a))
-        ||> fun () ->
-        expect_json "decideEquivalence"
-          [ Ast_json.prop_to_json a; Ast_json.prop_to_json b ]
-          (decision_to_json (Tfl.Program.decide_equivalence a b))
-      with
-      | None -> true
-      | Some d ->
-          Printf.eprintf "✗ equivalence: %s\n" d;
-          false)
-
-(* ── 1.8 gate: numerical quantifiers (TFL⁺) ─────────────────────────────── *)
-
-(* Leveled atomic-categorical arguments: subjects are + or − (± has no
-   quantity-level reading and is rejected — error-path agreement is the 1.4
-   validateProp gate's job), levels 0–3 ride only + subjects, and at least
-   the conclusion or one premise usually carries a nonzero level so the
-   numerical route dominates; level-0 draws re-cover the P/Z route. *)
-let leveled_argument_gen : (Tfl.Ast.prop list * Tfl.Ast.prop) QCheck2.Gen.t =
-  let open QCheck2.Gen in
-  let open Tfl.Ast in
-  let atom =
-    let* name = oneof_list [ "A"; "B"; "C"; "g"; "s" ] in
-    let* singular = oneof_weighted [ (5, return false); (1, return true) ] in
-    return (Atom { name; singular })
-  in
-  let side =
-    let* a = atom in
-    let* negs = int_bound 2 in
-    let rec wrap n t = if n = 0 then t else wrap (n - 1) (Neg t) in
-    return (wrap negs a)
-  in
-  let prop =
-    let* s_sign = oneof_list [ Plus; Minus ] in
-    let* s_term = side in
-    let* level =
-      if s_sign = Plus then
-        oneof_weighted [ (2, return 0); (3, int_range 1 3) ]
-      else return 0
-    in
-    let* q_sign = oneof_list [ Plus; Minus ] in
-    let* q_term = side in
-    return
-      {
-        subject = { sign = s_sign; term = s_term; level };
-        predicate = { sign = q_sign; term = q_term; level = 0 };
-      }
-  in
-  let* n = int_range 1 3 in
-  let* premises = list_size (return n) prop in
-  let* conclusion = prop in
-  return (premises, conclusion)
+    Gen.equivalence_pair_gen
+    (fun (a, b) ->
+      expect_json "equivalents"
+        [ Ast_json.prop_to_json a ]
+        (Result_json.equivalents_to_json (Tfl.Program.equivalents a))
+      ||> fun () ->
+      expect_json "decideEquivalence"
+        [ Ast_json.prop_to_json a; Ast_json.prop_to_json b ]
+        (Result_json.decision_to_json (Tfl.Program.decide_equivalence a b)))
 
 let diff_numerical =
-  QCheck2.Test.make ~count:10_000
-    ~name:"differential: the numerical decision agrees (full decision records)"
-    ~print:print_argument leveled_argument_gen (fun (premises, conclusion) ->
-      match
-        expect_json "checkArgument"
-          [
-            `List (List.map Ast_json.prop_to_json premises);
-            Ast_json.prop_to_json conclusion;
-          ]
-          (result_to_json (Tfl.Decide.check_argument premises conclusion))
-      with
-      | None -> true
-      | Some d ->
-          Printf.eprintf "✗ numerical: %s\n" d;
-          false)
-
-(* ── 1.9 gate: NL rendering (byte-exact strings) ────────────────────────── *)
+  gate "differential: the numerical decision agrees (full decision records)"
+    ~count:10_000 ~print:Gen.print_argument Gen.leveled_argument_gen
+    (fun (premises, conclusion) ->
+      expect_json "checkArgument"
+        [
+          `List (List.map Ast_json.prop_to_json premises);
+          Ast_json.prop_to_json conclusion;
+        ]
+        (Result_json.result_to_json
+           (Tfl.Decide.check_argument premises conclusion)))
 
 let diff_render =
-  QCheck2.Test.make ~count:10_000
-    ~name:"differential: readProp/readTerm strings agree byte-for-byte"
-    ~print:print_proposition Gen.prop_gen (fun p ->
-      match
-        expect_json "readProp"
-          [ Ast_json.prop_to_json p ]
-          (`String (Tfl.Render.read_prop p))
-        ||> fun () ->
-        expect_json "readTerm"
-          [ Ast_json.term_to_json p.subject.term ]
-          (`String (Tfl.Render.read_term p.subject.term))
-      with
-      | None -> true
-      | Some d ->
-          Printf.eprintf "✗ render: %s\n" d;
-          false)
+  gate "differential: readProp/readTerm strings agree byte-for-byte"
+    ~count:10_000 ~print:print_proposition Gen.prop_gen (fun p ->
+      expect_json "readProp"
+        [ Ast_json.prop_to_json p ]
+        (`String (Tfl.Render.read_prop p))
+      ||> fun () ->
+      expect_json "readTerm"
+        [ Ast_json.term_to_json p.subject.term ]
+        (`String (Tfl.Render.read_term p.subject.term)))
 
 (* explainProof over real bounded proofs (direct and indirect, found or not):
    the OCaml proof record crosses the pipe in the JS proof shape, so both
    explainers narrate the very same proof. *)
 let diff_explain =
-  QCheck2.Test.make ~count:1_500
-    ~name:"differential: explainProof narrations agree"
-    ~print:print_argument relational_argument_gen (fun (premises, conclusion) ->
+  gate "differential: explainProof narrations agree" ~count:1_500
+    ~print:Gen.print_argument Gen.relational_argument_gen
+    (fun (premises, conclusion) ->
       let compare_proof (proof : Tfl.Derive.proof) =
         expect_json "explainProof"
-          [ proof_to_json proof ]
+          [ Result_json.proof_to_json proof ]
           (match Tfl.Render.explain_proof proof with
           | Some s -> `String s
           | None -> `Null)
       in
-      match
-        compare_proof (Tfl.Derive.derive ~max_lines:60 premises conclusion)
-        ||> fun () ->
-        compare_proof
-          (Tfl.Derive.indirect_proof ~max_lines:60 premises conclusion)
-      with
-      | None -> true
-      | Some d ->
-          Printf.eprintf "✗ explain: %s\n" d;
-          false)
+      compare_proof (Tfl.Derive.derive ~max_lines:60 premises conclusion)
+      ||> fun () ->
+      compare_proof
+        (Tfl.Derive.indirect_proof ~max_lines:60 premises conclusion))
 
 (* Harness self-test: a real divergence must be DETECTED, or a clean run means
    nothing. "+É+P" is the documented §16.4 case — the JS reference parses É as
@@ -1048,16 +462,6 @@ let negative_control () =
       prerr_endline
         "✗ negative control: harness failed to detect the §16.4 divergence";
       false
-
-let diff_core =
-  QCheck2.Test.make ~count:10_000
-    ~name:"differential: inference core A agrees on generated props"
-    ~print:print_proposition Gen.prop_gen (fun p ->
-      match core_disagreement p with
-      | None -> true
-      | Some d ->
-          Printf.eprintf "✗ core: %s\n" d;
-          false)
 
 let () =
   let control_ok = negative_control () in

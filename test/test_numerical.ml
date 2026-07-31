@@ -7,20 +7,9 @@
 open Tfl.Notation
 open Tfl.Decide
 
-let passed = ref 0
-let failed = ref 0
+open Harness
 
-let test name f =
-  try
-    f ();
-    incr passed
-  with e ->
-    incr failed;
-    Printf.eprintf "✗ %s\n  %s\n" name (Printexc.to_string e)
-
-let check cond msg = if not cond then failwith msg
 let p = parse_proposition
-let arg premises conclusion = check_argument (List.map p premises) (p conclusion)
 
 let conditions (r : result) =
   match r.decision with
@@ -111,5 +100,4 @@ let () =
       check ((arg [ "-M+P"; "+S^2+M" ] "+S^2+P").verdict = Valid)
         "att-1 carries");
 
-  Printf.printf "numerical unit tests: %d passed, %d failed\n" !passed !failed;
-  exit (if !failed > 0 then 1 else 0)
+  finish "numerical unit tests"
