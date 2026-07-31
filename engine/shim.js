@@ -56,6 +56,8 @@ const FNS = {
   decideEquivalence: (a, b, opts) => tfl.decideEquivalence(a, b, opts || {}),
   // 1.9 — NL rendering
   readProp: (p) => tfl.readProp(p),
+  readTerm: (t) => tfl.readTerm(t),
+  explainProof: (proof) => tfl.explainProof(proof),
 };
 
 const rl = readline.createInterface({ input: process.stdin, terminal: false });

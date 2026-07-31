@@ -72,7 +72,7 @@ Accept: ported tests green; differential agreement on corpus + random programs/q
 Quantity levels through parse/print/canon (already in 1.1–1.2 syntax) and `numericalDecision`, implementing the **term-matched** condition (iii) exactly as the JS engine does.
 Accept: ported tests green; differential agreement on corpus + random leveled arguments.
 
-*1.9 NL rendering.*
+*1.9 NL rendering.* ✅ DONE (2026-07-30)
 `readTerm`/`readProp` (deterministic English readings) and `explainProof` (numbered step lines with glosses). Match the reference's output strings exactly — the pipeline's back-translation check (4.4) depends on deterministic rendering.
 Accept: ported tests green; differential string equality on corpus + random inputs.
 

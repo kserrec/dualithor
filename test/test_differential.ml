@@ -265,17 +265,40 @@ let corpus_gate () =
               incr failures;
               Printf.eprintf "✗ corpus: %s\n" d)
         entry_points;
-      (* 1.4: every corpus string that parses as a proposition also goes
-         through the inference-core comparisons. *)
-      match parse_proposition s with
+      (* 1.4/1.9: every corpus string that parses also goes through the
+         inference-core and renderer comparisons. *)
+      (match parse_proposition s with
       | exception _ -> ()
       | prop -> (
           incr checks;
-          match core_disagreement prop with
+          (match core_disagreement prop with
           | None -> ()
           | Some d ->
               incr failures;
-              Printf.eprintf "✗ corpus core: %s\n" d))
+              Printf.eprintf "✗ corpus core: %s\n" d);
+          incr checks;
+          match
+            expect_json "readProp"
+              [ Ast_json.prop_to_json prop ]
+              (`String (Tfl.Render.read_prop prop))
+          with
+          | None -> ()
+          | Some d ->
+              incr failures;
+              Printf.eprintf "✗ corpus readProp: %s\n" d));
+      match parse_term s with
+      | exception _ -> ()
+      | term -> (
+          incr checks;
+          match
+            expect_json "readTerm"
+              [ Ast_json.term_to_json term ]
+              (`String (Tfl.Render.read_term term))
+          with
+          | None -> ()
+          | Some d ->
+              incr failures;
+              Printf.eprintf "✗ corpus readTerm: %s\n" d))
     strings;
   Printf.printf "corpus gate: %d distinct strings, %d checks, %d disagreements\n"
     (List.length strings) !checks !failures;
@@ -970,6 +993,51 @@ let diff_numerical =
           Printf.eprintf "✗ numerical: %s\n" d;
           false)
 
+(* ── 1.9 gate: NL rendering (byte-exact strings) ────────────────────────── *)
+
+let diff_render =
+  QCheck2.Test.make ~count:10_000
+    ~name:"differential: readProp/readTerm strings agree byte-for-byte"
+    ~print:print_proposition Gen.prop_gen (fun p ->
+      match
+        expect_json "readProp"
+          [ Ast_json.prop_to_json p ]
+          (`String (Tfl.Render.read_prop p))
+        ||> fun () ->
+        expect_json "readTerm"
+          [ Ast_json.term_to_json p.subject.term ]
+          (`String (Tfl.Render.read_term p.subject.term))
+      with
+      | None -> true
+      | Some d ->
+          Printf.eprintf "✗ render: %s\n" d;
+          false)
+
+(* explainProof over real bounded proofs (direct and indirect, found or not):
+   the OCaml proof record crosses the pipe in the JS proof shape, so both
+   explainers narrate the very same proof. *)
+let diff_explain =
+  QCheck2.Test.make ~count:1_500
+    ~name:"differential: explainProof narrations agree"
+    ~print:print_argument relational_argument_gen (fun (premises, conclusion) ->
+      let compare_proof (proof : Tfl.Derive.proof) =
+        expect_json "explainProof"
+          [ proof_to_json proof ]
+          (match Tfl.Render.explain_proof proof with
+          | Some s -> `String s
+          | None -> `Null)
+      in
+      match
+        compare_proof (Tfl.Derive.derive ~max_lines:60 premises conclusion)
+        ||> fun () ->
+        compare_proof
+          (Tfl.Derive.indirect_proof ~max_lines:60 premises conclusion)
+      with
+      | None -> true
+      | Some d ->
+          Printf.eprintf "✗ explain: %s\n" d;
+          false)
+
 (* Harness self-test: a real divergence must be DETECTED, or a clean run means
    nothing. "+É+P" is the documented §16.4 case — the JS reference parses É as
    a bare name, the OCaml engine raises a lexical error. *)
@@ -1000,6 +1068,7 @@ let () =
         diff_ast; diff_strings; diff_core; diff_args; diff_derive;
         diff_passives; diff_rel_args; diff_parse_program; diff_query_term;
         diff_query_prop; diff_consistency; diff_equivalence; diff_numerical;
+        diff_render; diff_explain;
       ]
   in
   Shim_client.stop shim;

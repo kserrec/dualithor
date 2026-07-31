@@ -265,3 +265,19 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   re-cover the P/Z route in passing. Differential suite now 13 tests, ~2m36s wall.
   With 1.8 the whole inference surface is ported; 1.9 (NL rendering) is the last
   functional layer before the oracle port.
+- **1.9 done — NL rendering** (`lib/tfl/render.ml`): read_term/read_prop (fixed-ref
+  re-orientation, article selection by leading vowel of the rendered predicate,
+  many/most/few with the "few" polarity inversion, typographic quotes around
+  propositional-term readings; ASCII-only lowercasing per §16.4) and explain_proof
+  (given-line narration, the ⊥ impossibility clause with the clashing pair). Byte-exact
+  contract: 10 unit tests — the D5 readProp sections and D9 glosses ported, plus
+  probe-verified reference strings for readTerm shapes and explainProof (the JS
+  explainProof tests run through the deferred answer() layer, so its expected strings
+  were captured from the reference directly). Differential: shim gained
+  readTerm/explainProof; corpus gate now compares readProp/readTerm on every parseable
+  corpus string (2,382 checks total); 10k random props through readProp+readTerm and
+  1,500 arguments' direct + indirect proofs through explainProof — the OCaml proof
+  record crosses the pipe in the JS proof shape, so both explainers narrate the same
+  proof. Zero disagreements; 15 differential tests, ~1m35s wall. **The functional port
+  is complete** — every exported surface in port-spec §15's "ported" table now has an
+  OCaml implementation gated against the reference. Next: the oracle port (1.10).

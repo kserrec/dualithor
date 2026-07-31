@@ -50,3 +50,8 @@
  (name test_numerical)
  (modules test_numerical)
  (libraries tfl test_support qcheck-core qcheck-core.runner))
+
+(test
+ (name test_render)
+ (modules test_render)
+ (libraries tfl test_support qcheck-core qcheck-core.runner))
