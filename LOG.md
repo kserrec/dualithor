@@ -534,3 +534,23 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   someone. The argument against: it is a deviation from the plan's vocabulary, and the
   fuzz shows it never fires. It is implemented, documented in `docs/engine-surface.md`,
   and reversible in about ten lines if Kyle prefers three classes.
+- **2.1 done — pipeline scaffold.** Four dune libraries: `translate/` (carrying the
+  `.env` loader the 2.2 client will read keys from), `router/`, `bench/`, `analysis/`
+  (empty stanzas their phases will fill — no placeholder code). `data/` tree created with
+  a committed README naming which subdirectories are gitignored and why; a root `dune`
+  marks `data/` as `data_only_dirs` so dune never interprets what Phase 6 downloads
+  there. README rewritten per the step: the two claims, quickstart, layout. New
+  `test/test_env.ml` (11 checks) guards the quiet key-handling failures: stray
+  whitespace/quotes on a key breaking auth without a useful error, a missing `.env`
+  reading as no bindings rather than an exception, the process environment beating a
+  stale file. Full `dune test` green.
+  `ocamlformat` 0.29.0 was installed into the switch to pin `.ocamlformat` to a real
+  version — a dev-only tool, not a library dependency; CLAUDE.md already names
+  ocamlformat defaults as the project style.
+- **Style commit alongside 2.1: repo-wide `dune fmt`.** The pre-config tree was
+  hand-approximated ocamlformat style; the real formatter reflows 27 existing files,
+  nine of them engine modules. The diff is whitespace/reflow only (ocamlformat refuses
+  to emit output whose parse tree differs from its input), so this is not an
+  engine-logic change — but because engine files are touched at all, it lands only
+  after the full post-1.12 gate: unit suite + paper-cases + 20k oracle + mass
+  differential, all green on the reformatted tree.

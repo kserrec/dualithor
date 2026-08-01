@@ -86,3 +86,9 @@
  (name test_safe)
  (modules test_safe)
  (libraries tfl test_support qcheck-core qcheck-core.runner unix))
+
+; The .env loader (2.1): key handling for the OpenRouter client.
+(test
+ (name test_env)
+ (modules test_env)
+ (libraries translate unix))

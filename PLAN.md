@@ -98,7 +98,7 @@ Accept: fuzz test committed and green; taxonomy documented in `docs/engine-surfa
 
 ## Phase 2 — Pipeline Scaffolding & Inputs
 
-*2.1 Pipeline scaffold.*
+*2.1 Pipeline scaffold.* ✅ DONE (2026-08-01)
 Dune libraries/executables: `translate/`, `router/`, `bench/`, `analysis/`; `data/` dirs; `.env` loading (gitignored; `.gitignore` covers `data/raw/`, `data/results/`); `ocamlformat` config; README updated (what TFL-Verify is, the two claims, OCaml toolchain quickstart, engine provenance).
 Accept: `dune build` + `dune test` green from clean checkout; commit made.
 
