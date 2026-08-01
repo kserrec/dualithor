@@ -159,6 +159,82 @@ let atomic_argument_gen : (prop list * prop) G.t =
   let* conclusion = prop in
   return (premises, conclusion)
 
+(* Arbitrary-shape arguments (PLAN 1.12): whole propositions straight from
+   [prop_gen], so propositional terms, nested compounds and quantity levels in
+   places the fragment forbids all reach checkArgument. Most of these are
+   engine-invalid — that is the point: the two engines must *reject* them
+   identically, not just decide the valid ones alike. *)
+let arbitrary_argument_gen : (prop list * prop) G.t =
+  let open G in
+  let* n = int_range 1 3 in
+  let* premises = list_size (return n) prop_gen in
+  let* conclusion = prop_gen in
+  return (premises, conclusion)
+
+(* The same arbitrary shapes, made fragment-valid: ± only on fixed references,
+   quantity levels only on a particular subject. Rejection agreement is what
+   [arbitrary_argument_gen] tests; this is its other half — checkArgument
+   *deciding* propterm/compound/nested-relational arguments, which the
+   fragment-shaped generators never build. *)
+let rec sanitize_term (t : term) : term =
+  match t with
+  | Atom _ -> t
+  | Neg t -> Neg (sanitize_term t)
+  | Compound elements ->
+      Compound
+        (List.map
+           (fun e ->
+             {
+               sign = (if e.sign = Wild then Plus else e.sign);
+               term = sanitize_term e.term;
+               level = 0;
+             })
+           elements)
+  | Rel { head; objects } ->
+      Rel
+        {
+          head = sanitize_term head;
+          objects =
+            List.map
+              (fun o ->
+                let term = sanitize_term o.term in
+                let sign =
+                  if o.sign = Wild && not (Tfl.Infer.is_fixed_ref term) then Plus
+                  else o.sign
+                in
+                { sign; term; level = 0 })
+              objects;
+        }
+  | PropTerm (Inner_prop p) -> PropTerm (Inner_prop (sanitize_prop p))
+  | PropTerm (Inner_term t) -> PropTerm (Inner_term (sanitize_term t))
+
+and sanitize_prop (p : prop) : prop =
+  let s_term = sanitize_term p.subject.term in
+  let s_sign =
+    if p.subject.sign = Wild && not (Tfl.Infer.is_fixed_ref s_term) then Plus
+    else p.subject.sign
+  in
+  {
+    subject =
+      {
+        sign = s_sign;
+        term = s_term;
+        level = (if s_sign = Plus then p.subject.level else 0);
+      };
+    predicate =
+      {
+        sign = (if p.predicate.sign = Wild then Plus else p.predicate.sign);
+        term = sanitize_term p.predicate.term;
+        level = 0;
+      };
+  }
+
+let valid_arbitrary_argument_gen : (prop list * prop) G.t =
+  G.map
+    (fun (premises, conclusion) ->
+      (List.map sanitize_prop premises, sanitize_prop conclusion))
+    arbitrary_argument_gen
+
 (* Relational propositions: predicate usually a relational complex (heads
    occasionally carrying pairing subscripts, objects occasionally nested),
    sometimes a plain atom to hit the no-passive paths. *)

@@ -379,3 +379,31 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   derivation, so they moved to the relational section and the courseware's own worked
   proofs (boys/girls/cowards; some boy loves every girl) took their place with the method
   asserted.
+
+## 2026-08-01
+
+- **1.12 done — the mass differential gate, and the handover.** `dune exec
+  test/test_differential.exe -- -mass`: 18 gates, **884,000 generated inputs** plus the
+  reference's own corpus (604 distinct strings, 2,382 checks), **zero disagreements**,
+  12m14s. Per-family volumes: parse/print 200k, inference core 100k, argument decision
+  249k, relational 105k, programs/queries/equivalence 105k, rendering 130k. Full table and
+  method in `docs/differential-report.md`. **From this commit the OCaml engine is
+  authoritative**; `engine/` is frozen reference material and the harness stays in
+  `dune test` at its standing counts (~100s) as a regression gate.
+  Mass mode is a `-mass` flag rather than a separate executable: every gate's standing and
+  handover counts sit side by side at its call site (`~count:(count 10_000 100_000)`), so
+  the ratio a gate runs at is visible where it is defined. Counts differ per gate by two
+  orders of magnitude because the costs do — 100k parse round-trips cost less than 5k
+  relational checkArguments, each of which runs four bounded searches on each side.
+  The three new gates close the two bughunt-probed coverage gaps: arbitrary-shape
+  checkArgument comparing *outcomes* (19,909/20,000 refused identically, 91 decided
+  identically), the same shapes sanitized to fragment-valid so the decision path is
+  exercised too (2,744 decided, 1,256 refused), and consistency-proof narrations (4,269
+  `refute_set` proofs, all carrying the `fact` lines no derive/indirect proof produces).
+  **Surprise worth recording:** the valid-arbitrary gate errored on its first run with
+  `EngineError("quantity levels are supported only in categorical (atomic) syllogisms")` on
+  `+a+a; +a+a; +a¹+(+a+a) ⊢ +a+a`. Not a port bug — a *second* class of refusal that
+  fragment-shaped generators can never reach: `checkArgument` guards its numerical route
+  on legal propositions, after `validateProp` has already passed them. Both engines raise
+  it identically; the gate now compares outcomes on both sides, and the distinction
+  (fragment validation vs procedure guards) is recorded in the 1.14 taxonomy.

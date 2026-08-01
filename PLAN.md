@@ -84,7 +84,7 @@ Accept: on ≥5k random (argument, small-n) instances, semantic entailment verdi
 Mirror `oracle.js`: categorical exactness, rule-step soundness, relational derivation soundness, passive equivalence (+ the two scope-trap counter-models), indirect-proof soundness, statement-model agreement.
 Accept: all six suites clean at 20k iterations; runtime logged (native speed should beat Node's — record the ratio for fun).
 
-*1.12 Mass differential gate — the handover.*
+*1.12 Mass differential gate — the handover.* ✅ DONE (2026-08-01 — 884,000 generated inputs + corpus through 18 gates, zero disagreements, 12m14s; `docs/differential-report.md`. **The OCaml engine is authoritative from here.**)
 One big run: full corpus + ≥100k random inputs per function family through both engines; verdicts, canonical forms, and renderings must agree (modulo LOG-documented proof-path variance). Close the two coverage gaps the 2026-07-30 bughunt probed (clean at 2k, but fold in permanently): arbitrary-shape arguments (propterms/compounds/levels-anywhere via `Gen.prop_gen`, error outcomes compared too) through `checkArgument`, and consistency-proof narrations (`fact`-rule lines) through `explainProof`. Archive the report as `docs/differential-report.md`. **After this step the OCaml engine is authoritative; the JS engine and shim remain as a frozen reference.**
 Accept: zero disagreements; report committed; LOG entry marks the handover.
 

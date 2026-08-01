@@ -12,6 +12,21 @@
 
 open Tfl.Notation
 
+(* Mass mode (PLAN 1.12, the handover gate): `dune test` runs the standing
+   counts; `-mass` raises every gate to its handover count. The handover counts
+   differ per gate by two orders of magnitude because the costs do — a parse
+   round-trip is two shim calls, a relational checkArgument is four bounded
+   proof searches on each side. Both numbers are visible at each call site. *)
+let mass = ref false
+
+let () =
+  Arg.parse
+    [ ("-mass", Arg.Set mass, " run the PLAN 1.12 handover counts") ]
+    (fun a -> raise (Arg.Bad ("unexpected argument " ^ a)))
+    "test_differential [-mass]"
+
+let count standing handover = if !mass then handover else standing
+
 (* Under `dune test` the cwd is _build/default/test (the deps put engine/
    one level up); under `dune exec` from the root it is the source tree. *)
 let engine_dir =
@@ -262,7 +277,7 @@ let gate = Harness.gate
 
 let diff_ast =
   gate "differential: printers and parsers agree on generated ASTs"
-    ~count:10_000 ~print:print_proposition Gen.prop_gen (fun p ->
+    ~count:(count 10_000 100_000) ~print:print_proposition Gen.prop_gen (fun p ->
       let ast = Ast_json.prop_to_json p in
       let printed = print_proposition p in
       (match Shim_client.call shim "printProposition" [ ast ] with
@@ -275,20 +290,20 @@ let diff_ast =
 
 let diff_strings =
   gate "differential: parse outcomes agree on random token strings"
-    ~count:10_000 ~print:String.escaped Gen.token_string_gen (fun s ->
+    ~count:(count 10_000 100_000) ~print:String.escaped Gen.token_string_gen (fun s ->
       List.fold_left
         (fun acc fn -> acc ||> fun () -> compare_on fn s)
         None entry_points)
 
 let diff_core =
   gate "differential: inference core A agrees on generated props"
-    ~count:10_000 ~print:print_proposition Gen.prop_gen core_disagreement
+    ~count:(count 10_000 100_000) ~print:print_proposition Gen.prop_gen core_disagreement
 
 let diff_args =
   gate
     "differential: checkArgument/checkInconsistent agree on categorical \
      arguments"
-    ~count:10_000 ~print:Gen.print_argument Gen.atomic_argument_gen
+    ~count:(count 10_000 100_000) ~print:Gen.print_argument Gen.atomic_argument_gen
     (fun (premises, conclusion) ->
       let pj = `List (List.map Ast_json.prop_to_json premises) in
       let cj = Ast_json.prop_to_json conclusion in
@@ -306,7 +321,7 @@ let diff_args =
    saturation reproduces the JS iteration order exactly. maxLines 60 keeps
    10k+ searches affordable; order bugs surface early in the sequence. *)
 let diff_derive =
-  gate "differential: derive proofs agree line-for-line" ~count:3_000
+  gate "differential: derive proofs agree line-for-line" ~count:(count 3_000 20_000)
     ~print:Gen.print_argument Gen.atomic_argument_gen
     (fun (premises, conclusion) ->
       expect_json "derive"
@@ -320,7 +335,7 @@ let diff_derive =
 
 let diff_passives =
   gate "differential: passives agree (prop, guard verdict, swap index)"
-    ~count:10_000 ~print:print_proposition Gen.relational_prop_gen (fun p ->
+    ~count:(count 10_000 100_000) ~print:print_proposition Gen.relational_prop_gen (fun p ->
       expect_json "passives"
         [ Ast_json.prop_to_json p ]
         (`List (List.map Result_json.passive_to_json (Tfl.Relational.passives p))))
@@ -333,7 +348,7 @@ let diff_rel_args =
   gate
     "differential: checkArgument agrees on relational arguments (full \
      records, maxLines 60)"
-    ~count:600 ~print:Gen.print_argument Gen.relational_argument_gen
+    ~count:(count 600 5_000) ~print:Gen.print_argument Gen.relational_argument_gen
     (fun (premises, conclusion) ->
       expect_json "checkArgument"
         [
@@ -346,13 +361,13 @@ let diff_rel_args =
 
 let diff_parse_program =
   gate "differential: parseProgram agrees on random program sources"
-    ~count:2_000 ~print:String.escaped Gen.program_src_gen (fun src ->
+    ~count:(count 2_000 30_000) ~print:String.escaped Gen.program_src_gen (fun src ->
       expect_json "parseProgram" [ `String src ]
         (Result_json.program_to_json (Tfl.Program.parse_program src)))
 
 let diff_query_term =
   gate "differential: queryTerm answers agree (content and order)"
-    ~count:1_000
+    ~count:(count 1_000 10_000)
     ~print:(fun (program, t) ->
       String.concat "; " (List.map print_proposition program)
       ^ " ? " ^ print_term t)
@@ -368,7 +383,7 @@ let diff_query_term =
 
 let diff_query_prop =
   gate "differential: queryProp three-way verdicts agree (with support)"
-    ~count:2_000 ~print:Gen.print_argument Gen.atomic_argument_gen
+    ~count:(count 2_000 25_000) ~print:Gen.print_argument Gen.atomic_argument_gen
     (fun (program, query) ->
       expect_json "queryProp"
         [
@@ -379,7 +394,7 @@ let diff_query_prop =
 
 let diff_consistency =
   gate "differential: checkProgramConsistency agrees (atomic + relational)"
-    ~count:1_200 ~print:Gen.print_argument Gen.relational_argument_gen
+    ~count:(count 1_200 10_000) ~print:Gen.print_argument Gen.relational_argument_gen
     (fun (premises, conclusion) ->
       let program = premises @ [ conclusion ] in
       expect_json "checkProgramConsistency"
@@ -391,7 +406,7 @@ let diff_consistency =
            (Tfl.Program.check_program_consistency ~max_lines:60 program)))
 
 let diff_equivalence =
-  gate "differential: equivalents + decideEquivalence agree" ~count:3_000
+  gate "differential: equivalents + decideEquivalence agree" ~count:(count 3_000 30_000)
     ~print:(fun (a, b) -> print_proposition a ^ " ?= " ^ print_proposition b)
     Gen.equivalence_pair_gen
     (fun (a, b) ->
@@ -405,7 +420,7 @@ let diff_equivalence =
 
 let diff_numerical =
   gate "differential: the numerical decision agrees (full decision records)"
-    ~count:10_000 ~print:Gen.print_argument Gen.leveled_argument_gen
+    ~count:(count 10_000 100_000) ~print:Gen.print_argument Gen.leveled_argument_gen
     (fun (premises, conclusion) ->
       expect_json "checkArgument"
         [
@@ -417,7 +432,7 @@ let diff_numerical =
 
 let diff_render =
   gate "differential: readProp/readTerm strings agree byte-for-byte"
-    ~count:10_000 ~print:print_proposition Gen.prop_gen (fun p ->
+    ~count:(count 10_000 100_000) ~print:print_proposition Gen.prop_gen (fun p ->
       expect_json "readProp"
         [ Ast_json.prop_to_json p ]
         (`String (Tfl.Render.read_prop p))
@@ -430,7 +445,7 @@ let diff_render =
    the OCaml proof record crosses the pipe in the JS proof shape, so both
    explainers narrate the very same proof. *)
 let diff_explain =
-  gate "differential: explainProof narrations agree" ~count:1_500
+  gate "differential: explainProof narrations agree" ~count:(count 1_500 10_000)
     ~print:Gen.print_argument Gen.relational_argument_gen
     (fun (premises, conclusion) ->
       let compare_proof (proof : Tfl.Derive.proof) =
@@ -444,6 +459,103 @@ let diff_explain =
       ||> fun () ->
       compare_proof
         (Tfl.Derive.indirect_proof ~max_lines:60 premises conclusion))
+
+(* ── 1.12: the two coverage gaps the 2026-07-30 bughunt probed ──────────── *)
+
+(* (a) Arbitrary-shape arguments through checkArgument, comparing the
+   *outcome*: both engines reject with the same EngineError, or both decide
+   and agree on the whole record. Rejection agreement is what the
+   fragment-shaped generators never tested — and there are two ways to be
+   rejected, validateProp's fragment rules and the numerical guard that fires
+   when a quantity level rides a non-categorical argument. *)
+type tally = { mutable decided : int; mutable rejected : int }
+
+let arbitrary_tally = { decided = 0; rejected = 0 }
+let valid_tally = { decided = 0; rejected = 0 }
+
+let compare_check_argument tally (premises, conclusion) : string option =
+  let args =
+    [
+      `List (List.map Ast_json.prop_to_json premises);
+      Ast_json.prop_to_json conclusion;
+      `Assoc [ ("maxLines", `Int 60) ];
+    ]
+  in
+  let ocaml =
+    try
+      Ok
+        (Result_json.result_to_json
+           (Tfl.Decide.check_argument ~max_lines:60 premises conclusion))
+    with Tfl.Infer.Engine_error m -> Error m
+  in
+  match (ocaml, Shim_client.call shim "checkArgument" args) with
+  | Ok expected, Ok js ->
+      if Ast_json.json_equal expected js then (
+        tally.decided <- tally.decided + 1;
+        None)
+      else
+        Some
+          (Printf.sprintf "checkArgument mismatch: ocaml %s vs js %s"
+             (Yojson.Safe.to_string expected)
+             (Yojson.Safe.to_string js))
+  | Error m, Error { name = "EngineError"; message; _ } when m = message ->
+      tally.rejected <- tally.rejected + 1;
+      None
+  | Ok _, Error e ->
+      Some
+        (Printf.sprintf "checkArgument: ocaml decided, js raised %s (%s)" e.name
+           e.message)
+  | Error m, Ok js ->
+      Some
+        (Printf.sprintf "checkArgument: ocaml rejected (%s), js decided %s" m
+           (Yojson.Safe.to_string js))
+  | Error m, Error e ->
+      Some
+        (Printf.sprintf "checkArgument rejection mismatch: ocaml %S vs js %s %S"
+           m e.name e.message)
+
+let diff_arbitrary_args =
+  gate
+    "differential: checkArgument agrees on arbitrary shapes (errors compared \
+     too)"
+    ~count:(count 2_000 20_000) ~print:Gen.print_argument
+    Gen.arbitrary_argument_gen
+    (compare_check_argument arbitrary_tally)
+
+(* The other half of (a): the same shapes made fragment-valid, so the whole
+   decision record gets compared on propterm / compound / nested relational
+   arguments. Costed like diff_rel_args — most of these run four bounded
+   searches on each side. *)
+let diff_valid_arbitrary_args =
+  gate
+    "differential: checkArgument agrees on arbitrary *valid* shapes (full \
+     records)"
+    ~count:(count 400 4_000) ~print:Gen.print_argument
+    Gen.valid_arbitrary_argument_gen
+    (compare_check_argument valid_tally)
+
+(* (b) Consistency-proof narrations. refute_set proofs carry `fact` lines,
+   a rule the derive/indirect proofs of diff_explain never produce, so the
+   renderer's fact clause was previously ungated. *)
+let narrated = ref 0
+
+let diff_consistency_narration =
+  gate "differential: consistency-proof narrations agree (fact lines)"
+    ~count:(count 1_500 20_000) ~print:Gen.print_argument
+    Gen.atomic_argument_gen
+    (fun (premises, conclusion) ->
+      let program = premises @ [ conclusion ] in
+      match
+        (Tfl.Program.check_program_consistency ~max_lines:60 program).c_proof
+      with
+      | None -> None
+      | Some proof ->
+          incr narrated;
+          expect_json "explainProof"
+            [ Result_json.proof_to_json proof ]
+            (match Tfl.Render.explain_proof proof with
+            | Some s -> `String s
+            | None -> `Null))
 
 (* Harness self-test: a real divergence must be DETECTED, or a clean run means
    nothing. "+É+P" is the documented §16.4 case — the JS reference parses É as
@@ -465,10 +577,19 @@ let () =
         diff_ast; diff_strings; diff_core; diff_args; diff_derive;
         diff_passives; diff_rel_args; diff_parse_program; diff_query_term;
         diff_query_prop; diff_consistency; diff_equivalence; diff_numerical;
-        diff_render; diff_explain;
+        diff_render; diff_explain; diff_arbitrary_args;
+        diff_valid_arbitrary_args; diff_consistency_narration;
       ]
   in
   Shim_client.stop shim;
+  (* Coverage the two new gates actually reached — a gate that never fires
+     proves nothing, so the counts go in the report. *)
+  Printf.printf
+    "arbitrary shapes: %d decided identically, %d rejected identically\n\
+     arbitrary valid shapes: %d decided identically, %d rejected identically\n\
+     consistency narrations: %d proofs narrated\n"
+    arbitrary_tally.decided arbitrary_tally.rejected valid_tally.decided
+    valid_tally.rejected !narrated;
   exit
     (if (not control_ok) || (not corpus_ok) || qcheck_failures <> 0 then 1
      else 0)
