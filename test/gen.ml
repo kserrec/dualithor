@@ -341,6 +341,94 @@ let program_src_gen : string G.t =
   let* lines = list_size (return n) line in
   return (String.concat "\n" lines)
 
+(* ── Oracle-semantics generators (PLAN 1.10) ────────────────────────────────
+   Mirrors engine/oracle.js's own random formulas: three general atoms plus one
+   singular and one proterm, so the vocabulary of an argument stays small
+   enough for both engines to enumerate every model exhaustively (the sampling
+   path is not comparable across engines — see Semantics). *)
+
+let sem_fixed : term G.t =
+  G.oneof_list
+    [ Atom { name = "s"; singular = true }; Atom { name = "t'"; singular = false } ]
+
+let sem_wild : signed_term G.t =
+  G.map (fun t -> { sign = Wild; term = t; level = 0 }) sem_fixed
+
+let rec wrap_negs n t = if n = 0 then t else wrap_negs (n - 1) (Neg t)
+
+(* An atom under 0–2 negations, fixed reference occasionally. *)
+let sem_atomic_term (atoms : string list) : term G.t =
+  let open G in
+  let* base =
+    oneof_weighted
+      [
+        (1, sem_fixed);
+        ( 5,
+          map (fun n -> Atom { name = n; singular = false }) (oneof_list atoms) );
+      ]
+  in
+  let* negs = oneof_weighted [ (3, return 0); (1, int_range 1 2) ] in
+  return (wrap_negs negs base)
+
+let sem_signed (gen : term G.t) : signed_term G.t =
+  let open G in
+  let* sign = oneof_list [ Plus; Minus ] in
+  let* term = gen in
+  return { sign; term; level = 0 }
+
+let sem_categorical_prop (atoms : string list) : prop G.t =
+  let open G in
+  let* subject =
+    oneof_weighted [ (1, sem_wild); (3, sem_signed (sem_atomic_term atoms)) ]
+  in
+  let* predicate = sem_signed (sem_atomic_term atoms) in
+  return { subject; predicate }
+
+(* Relational propositions over a single relation: objects are plain atoms or
+   fixed references, complexes nest one level deep, and either side may carry
+   the complex — the shapes suites 2, 3 and 5 of the oracle fuzz. *)
+let sem_relational_prop (atoms : string list) (rel_name : string) : prop G.t =
+  let open G in
+  let plain =
+    map (fun n -> Atom { name = n; singular = false }) (oneof_list atoms)
+  in
+  let obj = oneof_weighted [ (1, sem_wild); (2, sem_signed plain) ] in
+  let rec complex depth =
+    let* o =
+      if depth <= 0 then obj
+      else
+        oneof_weighted
+          [ (5, obj); (1, sem_signed (complex (depth - 1))) ]
+    in
+    return (Rel { head = Atom { name = rel_name; singular = false }; objects = [ o ] })
+  in
+  let side allow_rel =
+    if allow_rel then
+      oneof_weighted [ (1, sem_signed (complex 1)); (1, sem_signed plain) ]
+    else sem_signed plain
+  in
+  let* subject =
+    oneof_weighted
+      [
+        (1, sem_wild);
+        (1, side true);
+        (2, side false);
+      ]
+  in
+  let* predicate = side true in
+  return { subject; predicate }
+
+let sem_argument (prop : prop G.t) ~(max_premises : int) :
+    (prop list * prop) G.t =
+  let open G in
+  let* n = int_range 1 max_premises in
+  let* premises = list_size (return n) prop in
+  let* conclusion = prop in
+  return (premises, conclusion)
+
+let sem_categorical_argument = sem_argument (sem_categorical_prop [ "A"; "B"; "C" ]) ~max_premises:3
+let sem_relational_argument = sem_argument (sem_relational_prop [ "A"; "B" ] "R") ~max_premises:2
+
 let print_argument (premises, conclusion) =
   String.concat "; " (List.map Tfl.Notation.print_proposition premises)
   ^ " ⊢ "

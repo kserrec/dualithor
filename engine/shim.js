@@ -12,7 +12,22 @@
 'use strict';
 
 const tfl = require('./tfl.js');
+const oracle = require('./oracle.js');
 const readline = require('node:readline');
+
+// The oracle's models carry relations as Sets of comma-joined tuples; over the
+// pipe they are plain tuple arrays, so the OCaml side can serialize its own
+// model shape directly.
+const toModel = (m) => ({
+  n: m.n,
+  full: (1 << m.n) - 1,
+  singular: m.singular,
+  unary: m.unary,
+  rels: Object.fromEntries(
+    Object.entries(m.rels).map(([k, tuples]) =>
+      [k, new Set(tuples.map((t) => t.join(',')))]),
+  ),
+});
 
 // Functions callable over the pipe, per port-spec §17. Args arrive as JSON
 // values in call order; results are returned as-is (they are plain data).
@@ -58,6 +73,11 @@ const FNS = {
   readProp: (p) => tfl.readProp(p),
   readTerm: (t) => tfl.readTerm(t),
   explainProof: (proof) => tfl.explainProof(proof),
+  // 1.10 — finite-model semantics (engine/oracle.js, also frozen reference)
+  oracleEntails: (premises, conclusion, opts) =>
+    oracle.entails(premises, conclusion, opts || {}),
+  oracleEvalProp: (p, model) => oracle.evalProp(p, toModel(model)),
+  oracleVocab: (props) => oracle.vocabOf(props),
 };
 
 const rl = readline.createInterface({ input: process.stdin, terminal: false });

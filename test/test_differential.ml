@@ -258,14 +258,7 @@ let corpus_gate () =
 
 (* ── QCheck gates, one per layer ────────────────────────────────────────── *)
 
-(* A gate property: run the comparison, print the disagreement on failure. *)
-let gate name ~count ~print gen compare =
-  QCheck2.Test.make ~count ~name ~print gen (fun x ->
-      match compare x with
-      | None -> true
-      | Some d ->
-          Printf.eprintf "✗ %s: %s\n" name d;
-          false)
+let gate = Harness.gate
 
 let diff_ast =
   gate "differential: printers and parsers agree on generated ASTs"

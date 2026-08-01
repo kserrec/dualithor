@@ -4,7 +4,7 @@
 (library
  (name test_support)
  (wrapped false)
- (modules gen ast_json result_json shim_client harness)
+ (modules gen ast_json result_json shim_client harness semantics)
  (libraries tfl qcheck-core yojson unix))
 
 (test
@@ -44,7 +44,16 @@
  (name test_differential)
  (modules test_differential)
  (libraries tfl test_support qcheck-core qcheck-core.runner yojson)
- (deps ../engine/tfl.js ../engine/tfl.test.js ../engine/shim.js))
+ (deps ../engine/tfl.js ../engine/tfl.test.js ../engine/oracle.js
+   ../engine/shim.js))
+
+; The oracle port (1.10) compares against engine/oracle.js through the same
+; shim, so it carries the same Node-side deps.
+(test
+ (name test_semantics)
+ (modules test_semantics)
+ (libraries tfl test_support qcheck-core qcheck-core.runner yojson)
+ (deps ../engine/tfl.js ../engine/oracle.js ../engine/shim.js))
 
 (test
  (name test_numerical)

@@ -300,3 +300,32 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   deep-nesting Stack_overflow vs RangeError divergence is §16.5/1.14 (planned); the
   `side_coeff` non-atomic edge is unreachable from parsed input (OCaml raises a clean
   EngineError where JS TypeErrors — the saner behavior, kept).
+- **1.10 done — oracle port A, the finite-model semantics** (`test/semantics.ml`). It
+  lives with the tests, not in `lib/tfl`: the shipped engine certifies validity
+  symbolically, and this module exists only to catch it being wrong. Ported from
+  `engine/oracle.js` faithfully — bitmask denotations, complement/intersection,
+  relational complexes with pairing-subscript roles and left-to-right scope, the
+  propositional-term domain pun, no existential import anywhere (the empty domain is a
+  model unless a singular or proterm needs a world), quantity levels ignored exactly as
+  the JS oracle ignores them. Two shapes raise `Unmodeled` rather than guess, both
+  places the JS oracle throws or records `undefined`: a non-atomic relation head, and a
+  bare propositional term over anything but a plain unary atom.
+  **Deliberate deviation:** past the model cap the JS oracle samples from an LCG whose
+  state is shared with its own formula generation, so its stream is not reproducible
+  from OCaml. Our sampling is our own; the differential gate therefore compares only
+  vocabularies both engines enumerate exhaustively (`exhaustive_upto`), and reports how
+  many instances it skipped — in practice zero, because the gate generators reuse the
+  oracle's own small vocabulary (A/B/C + one singular + one proterm, relational at
+  n ≤ 2 where a binary relation still contributes only 2⁴ extensions).
+  Gates (`test/test_semantics.ml`, ~4s wall): 9 anchors stated as semantic facts
+  (Barbara valid, Darapti invalid without import, I/E conversion, A-conversion invalid,
+  the n = 0 model, fixed reference through a universal, the [A] pun, both Course 2 L3
+  scope traps non-equivalent, the ∀∀ passive equivalent) + a negative control (a
+  deliberately wrong entailment claim must be reported) + differential vs the shim:
+  5,000 vocabularies, 10,000 per-model `evalProp` evaluations (an aggregate entailment
+  check can cancel a term-level bug; this one cannot), and 5,000 entailment instances
+  (3,000 categorical at n ≤ 3, 2,000 relational at n ≤ 2) — zero disagreements, with
+  ~25%/~15% of instances entailed, so the gate is not degenerate. `engine/shim.js`
+  gained `oracleEntails`/`oracleEvalProp`/`oracleVocab` (harness code; `oracle.js`
+  itself untouched and now a dep of both shim-backed suites). `Harness.gate` extracted
+  on its second use. Next: 1.11, the six fuzz suites in QCheck.

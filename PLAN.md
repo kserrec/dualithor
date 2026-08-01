@@ -76,7 +76,7 @@ Accept: ported tests green; differential agreement on corpus + random leveled ar
 `readTerm`/`readProp` (deterministic English readings) and `explainProof` (numbered step lines with glosses). Match the reference's output strings exactly — the pipeline's back-translation check (4.4) depends on deterministic rendering.
 Accept: ported tests green; differential string equality on corpus + random inputs.
 
-*1.10 Oracle port A — finite-model semantics.*
+*1.10 Oracle port A — finite-model semantics.* ✅ DONE (2026-08-01 — `test/semantics.ml`; 5k entailment instances + 10k per-model evaluations + 5k vocabularies differential-clean)
 OCaml module: models over domain {0..n−1} per the reference oracle's semantics (no existential import; singulars/proterms as singletons; relational denotations with left-to-right scope and subscript roles; propositional-term domain pun; ± as restricted-some). Entailment check by model enumeration up to size n.
 Accept: on ≥5k random (argument, small-n) instances, semantic entailment verdicts agree with the JS oracle's evaluator via the shim.
 

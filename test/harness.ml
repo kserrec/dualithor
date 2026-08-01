@@ -28,6 +28,17 @@ let finish label =
   summarize label;
   exit (exit_code ())
 
+(* ── Differential gates (the shim-backed suites) ────────────────────────── *)
+
+(* A gate property: run the comparison, print the disagreement on failure. *)
+let gate name ~count ~print gen compare =
+  QCheck2.Test.make ~count ~name ~print gen (fun x ->
+      match compare x with
+      | None -> true
+      | Some d ->
+          Printf.eprintf "✗ %s: %s\n" name d;
+          false)
+
 (* ── Argument-checking helpers (decide/relational/numerical suites) ─────── *)
 
 let arg premises conclusion =
