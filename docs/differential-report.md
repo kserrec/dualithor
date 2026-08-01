@@ -150,11 +150,15 @@ the engine.
 4. **`side_coeff` on a non-atomic side.** OCaml raises a clean `EngineError` where the JS
    reference throws a `TypeError`. The input is unreachable from parsed text (2026-07-30
    bughunt); the OCaml behaviour is the saner one and is kept.
-5. **Planned, not yet landed:** PLAN 1.14(d) caps `find_cancellation`'s universal-re-use
-   search, which is uncapped in the reference (4^u nodes; a 14-line valid input hangs it for
-   minutes). Verdicts are decided *before* that search runs, so a node budget is
-   verdict-safe by construction. When it lands it becomes a documented deviation of the
-   OCaml engine from the frozen reference, and this list gains an entry.
+5. **The `find_cancellation` work cap** (PLAN 1.14(d), landed 2026-08-01, after this run).
+   The reference's universal-re-use search is uncapped — 4^u nodes, 1.9s at 11 universals
+   and ~days at 20 — so the OCaml engine gives it a 500,000-node budget and reports no
+   cancellation when it runs out. Verdicts are decided *before* that search runs and the
+   cancellation only decorates the certificate, so the cap is verdict-safe by construction;
+   the search stays complete through 9 re-usable universals. **This is the one deliberate
+   behavioural deviation of the OCaml engine from the reference.** The gates above never
+   reach the budget — their generated sets are three or four propositions — so this run
+   neither exercises nor contradicts it; `test/test_safe.ml` pins the behaviour directly.
 
 ## What the handover changes
 

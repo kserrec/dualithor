@@ -53,7 +53,22 @@ let z_occurrences (p : prop) : (string * int) list =
    (each 0–3 times) summing to zero per term key. Wild subjects try both
    readings, + first; over 256 combinations, fall back to the all-+ reading.
    The closure verdict stands whether or not a cancellation exists. *)
+exception Budget_exhausted
+
+(* PLAN 1.14(d) — a node budget on the re-use search, the one deliberate
+   behavioural deviation from the frozen JS reference (uncapped there, where it
+   is dev-only and never exposed). The DFS explores 4^u re-use combinations;
+   the 2026-07-30 audit measured exact ×4 growth per universal on a *valid*
+   14-line input — 26ms at 7, 105ms at 9, 1.9s at 11, ~days at 20. The closure
+   decides the verdict before this runs and the cancellation only decorates the
+   certificate, so giving up and reporting none is verdict-safe by
+   construction. The budget is shared across the whole call (every wild reading
+   and every particular), and leaves the search complete through 9 re-usable
+   universals. *)
+let cancellation_node_budget = 500_000
+
 let find_cancellation (canon_props : prop list) : cancellation option =
+  let budget = ref cancellation_node_budget in
   let try_resolved (resolved : prop list) : cancellation option =
     let particulars = List.filter (fun p -> p.subject.sign = Plus) resolved in
     let universals = List.filter (fun p -> p.subject.sign = Minus) resolved in
@@ -76,6 +91,8 @@ let find_cancellation (canon_props : prop list) : cancellation option =
           bump (z_occurrences particular) 1;
           let used = Array.make n_u 0 in
           let rec dfs i =
+            decr budget;
+            if !budget <= 0 then raise Budget_exhausted;
             if i = n_u then
               Hashtbl.fold (fun _ v acc -> acc && v = 0) total true
             else (
@@ -120,20 +137,22 @@ let find_cancellation (canon_props : prop list) : cancellation option =
       canon_props
   in
   let combos = List.fold_left (fun n r -> n * List.length r) 1 readings in
-  if combos > 256 then try_resolved (List.map List.hd readings)
-  else (
-    let rec walk rs acc =
-      match rs with
-      | [] -> try_resolved (List.rev acc)
-      | r :: rest ->
-          List.fold_left
-            (fun found reading ->
-              match found with
-              | Some _ -> found
-              | None -> walk rest (reading :: acc))
-            None r
-    in
-    walk readings [])
+  try
+    if combos > 256 then try_resolved (List.map List.hd readings)
+    else (
+      let rec walk rs acc =
+        match rs with
+        | [] -> try_resolved (List.rev acc)
+        | r :: rest ->
+            List.fold_left
+              (fun found reading ->
+                match found with
+                | Some _ -> found
+                | None -> walk rest (reading :: acc))
+              None r
+      in
+      walk readings [])
+  with Budget_exhausted -> None
 
 (* ── The inconsistency closure ──────────────────────────────────────────── *)
 

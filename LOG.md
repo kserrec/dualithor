@@ -407,3 +407,53 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   on legal propositions, after `validateProp` has already passed them. Both engines raise
   it identically; the gate now compares outcomes on both sides, and the distinction
   (fragment validation vs procedure guards) is recorded in the 1.14 taxonomy.
+- **1.14 done — robustness: the total surface, the depth cap, the work cap. Phase 1 is
+  complete.** `lib/tfl/safe.ml` is now the only entry point anything downstream may use.
+  (a) **Taxonomy.** `Lexical | Syntactic | Outside_fragment`, classified by *where* the
+  refusal was raised, never by its message text: `Safe.parse` runs the tokenizer alone
+  first, so a failure there is lexical by construction and one from the parser proper is
+  syntactic. Costs one extra linear pass; buys immunity from a message edit silently
+  reclassifying anything. The full inventory — 22 distinct refusals — is in
+  `docs/engine-surface.md`, which also records the sub-split the 1.12 gate surfaced:
+  `Outside_fragment` covers both the standing fragment rules (`validate_prop`) and the
+  *procedure guards* that fire on propositions the parser and validator both accepted.
+  **Deviation from the PLAN's three-class list:** a fourth kind, `Internal`, for exceptions
+  that should be unreachable. It classifies the engine, not the input — a bug to fix, not
+  an escalation to make — and folding a crash into `Outside_fragment` would let a defect
+  hide inside an expected outcome. The fuzz run is the evidence it never fires.
+  (b) **Total API.** `parse`, `parse_all`, `check`; every exception mapped to a structured
+  failure. `check` validates each proposition under its own label before deciding, because
+  `check_argument` validates its whole input at the head and a refusal would otherwise be
+  reported against the argument when one premise is at fault. Every failure names its
+  input (`premise 2`, `conclusion`, or `argument`).
+  (c) **Depth cap.** Nesting in this notation is exactly bracket nesting, so depth is
+  measured from the token stream *before* any recursion: past 64 levels the input is a
+  structured `Syntactic` refusal rather than a `Stack_overflow` (port-spec §16.5 closed).
+  64 is ~20× any real formula and far below what the engine's tree walks can take.
+  **Fuzz: 102,000 adversarial inputs** — 30k random byte strings (invalid UTF-8 included),
+  20k token strings, 30k truncations of printed formulas cut on byte indices (so UTF-8
+  sequences are sliced mid-sequence), 10k inputs nested 1–3,000 deep in both bracket
+  flavours balanced and unbalanced, 2k pathological lengths to 20,000 characters, 10k
+  `check` calls over garbage. No escaping exception, no `Internal`, **no case over 0.036s**
+  against the 1s bound.
+  (d) **`find_cancellation` work cap** — the one deliberate behavioural deviation of the
+  OCaml engine from the frozen reference. 500,000-node budget shared across the call;
+  exhaustion reports no cancellation. Verdict-safe by construction (the closure decides
+  before the search runs; the cancellation only decorates the certificate), complete
+  through 9 re-usable universals. The audit's 20-universal probe — uncapped, ~days — is
+  pinned as a test and returns in under a second.
+  Two findings during the pass, both caught by the new tests and diagnosed before any edit:
+  `check` was losing input attribution on validation refusals (fixed as above), and the
+  cancellation positive control initially reused the audit's own probe, which is *by
+  construction* a set whose clash can never cancel — replaced with Barbara's counterclaim,
+  which does cancel. Engine change gate (post-1.12 rule): unit suites, 62 paper cases and the
+  18-gate differential at standing counts all green. **The 20k oracle is
+  outstanding** — it was clean through suites 1–2 (categorical exactness
+  5,111/20,000 valid, identical to the pre-change run; rule-step soundness,
+  85,731 steps) when a power cut ended the session mid-run. Re-run
+  `dune exec test/test_oracle.exe -- -n 20000` and record the result here.
+  Committing ahead of it was a deliberate call (Kyle, power loss imminent, the
+  alternative being an uncommitted engine change sitting in a tree whose PLAN
+  already said the step was done): the cap only decorates certificates inside
+  the atomic-categorical closure, which is suite 1's territory and clean at
+  full count, and none of suites 3–6 touch `find_cancellation` at all.
