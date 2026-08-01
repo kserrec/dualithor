@@ -428,7 +428,9 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   input (`premise 2`, `conclusion`, or `argument`).
   (c) **Depth cap.** Nesting in this notation is exactly bracket nesting, so depth is
   measured from the token stream *before* any recursion: past 64 levels the input is a
-  structured `Syntactic` refusal rather than a `Stack_overflow` (port-spec §16.5 closed).
+  structured `Syntactic` refusal rather than a `Stack_overflow` (port-spec §16.5 closed
+  **for the `Safe` entry points**; `Program.parse_program` is still exposed — see the
+  2026-08-01 bughunt entry and PLAN 3.1).
   64 is ~20× any real formula and far below what the engine's tree walks can take.
   **Fuzz: 102,000 adversarial inputs** — 30k random byte strings (invalid UTF-8 included),
   20k token strings, 30k truncations of printed formulas cut on byte indices (so UTF-8
@@ -455,3 +457,44 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   verdict-safe-by-construction should look like from the outside. (The commit
   landed a few minutes ahead of the run finishing, during a power-loss warning;
   the run completed clean and this line records it.)
+- **Bughunt (whole project) — 3 confirmed, 2 fixed, 1 roadmapped; plus a verification
+  gap closed.** The previous hunt (2026-07-30) predates 1.10–1.14, so `Safe`, the
+  semantics module and the cancellation cap had never been examined. The 884k-input
+  differential means OCaml-vs-JS port bugs are effectively excluded *on covered paths*,
+  so the hunt targeted code with no JS counterpart and input shapes no generator builds.
+  1. **A quoted term containing `--` broke a program line — fixed.** `strip_comment`
+     scanned for two adjacent minuses anywhere, quoted spans included, so
+     `+"well--known"+P` — which parses perfectly on its own — came back from
+     `parse_program` as `Unclosed quote (at position 1)`: an error that blames the quote
+     for a comment marker nobody wrote. The frozen reference does the same (verified by
+     running it), so this was inherited, not a port defect. The stripper is now
+     quote-aware: it walks name and quoted tokens whole instead of testing every
+     position. **Deliberate deviation from the reference**, normalized in the harness the
+     way §16.4 is — `diff_parse_program` runs the reference's naive rule beside the
+     engine's and skips only sources where they legitimately differ, reporting the count.
+     At standing counts 4 of 2,000 sources hit it, so without the skip the gate would
+     have gone red — the random token generator does produce quoted `--`.
+  2. **`explain_proof` raised on a found-but-empty proof — fixed.**
+     `explain_proof {found = true; lines = []}` raised `Invalid_argument("List.nth")`
+     (the reference TypeErrors on the same input). Unreachable from engine-produced
+     proofs, which always have at least one line — but reachable the moment 3.1
+     deserializes a proof record from JSON, which is 3.1's job. Now returns None, matching
+     the documented "None for missing/failed proofs" contract and the accepted
+     side_coeff precedent: unreachable input gets the saner answer, not a crash.
+  3. **`Program.parse_program` still stack-overflows on deep input — roadmapped to 3.1.**
+     1.14's depth cap lives in `Tfl.Safe`, so the program-loading path is unguarded:
+     measured a hard `Stack_overflow` at 200,000 levels where `Safe.parse` returns a
+     clean syntactic refusal. No contract is violated (1.14's contract names `Tfl.Safe`),
+     but the LOG line claiming "§16.5 closed" was overstated and is now corrected.
+  **Verification gap closed (not a bug):** the semantics differential generated only
+  atoms and relational complexes, so `Semantics.eval_term`'s Compound and PropTerm
+  branches — which the oracle's rule-step suite leans on heavily — were never compared
+  against `oracle.js`. Checked by hand first (8 propositions × every A/B/C assignment at
+  n = 1 and 2 = 576 evaluations, identical), then closed permanently: `sem_compound_prop`
+  and a new `sem_propterm_prop` now feed both `diff_vocab` and `diff_eval`.
+  Cleared without action, so they are not re-litigated: `too_deep`'s running bracket
+  counter can go negative on excess closers, but the parser always errors on an unmatched
+  closer before recursing; `Safe.parse` tokenizing twice cannot reclassify a failure;
+  the cancellation budget abandons only call-local state; `head_roles` on an
+  all-subscript quoted name falls back to identity roles; level saturation on a huge `^`
+  run is the documented §16.3 out-of-contract case.

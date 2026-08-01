@@ -131,6 +131,8 @@ let diff_vocab =
        [
          Gen.sem_categorical_prop [ "A"; "B"; "C" ];
          Gen.sem_relational_prop [ "A"; "B" ] "R";
+         Gen.sem_compound_prop [ "A"; "B" ];
+         Gen.sem_propterm_prop [ "A"; "B" ];
        ])
     (fun p ->
       expect_json "oracleVocab"
@@ -181,6 +183,8 @@ let diff_eval =
          [
            Gen.sem_categorical_prop [ "A"; "B"; "C" ];
            Gen.sem_relational_prop [ "A"; "B" ] "R";
+           Gen.sem_compound_prop [ "A"; "B" ];
+           Gen.sem_propterm_prop [ "A"; "B" ];
          ]
      in
      let* m = model_of p in

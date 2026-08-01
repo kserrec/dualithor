@@ -350,11 +350,39 @@ let diff_rel_args =
         (Result_json.result_to_json
            (Tfl.Decide.check_argument ~max_lines:60 premises conclusion)))
 
+(* Documented deviation (LOG 2026-08-01): the OCaml comment stripper is
+   quote-aware and the frozen reference's is not, so a source with `--` inside
+   a quoted term legitimately parses differently. Those sources — and only
+   those — are skipped, detected by running the reference's naive rule beside
+   the engine's own. *)
+let naive_strip (cps : int array) : int array =
+  let n = Array.length cps in
+  let is_minus c = c = 0x2D || c = 0x2212 in
+  let rec find i =
+    if i + 1 >= n then None
+    else if is_minus cps.(i) && is_minus cps.(i + 1) then Some i
+    else find (i + 1)
+  in
+  match find 0 with None -> cps | Some i -> Array.sub cps 0 i
+
+let strippers_agree (src : string) : bool =
+  List.for_all
+    (fun line ->
+      let cps = Tfl.Notation.decode line in
+      naive_strip cps = Tfl.Program.strip_comment cps)
+    (String.split_on_char '\n' src)
+
+let quote_comment_skips = ref 0
+
 let diff_parse_program =
   gate "differential: parseProgram agrees on random program sources"
     ~count:(count 2_000 30_000) ~print:String.escaped Gen.program_src_gen (fun src ->
-      expect_json "parseProgram" [ `String src ]
-        (Result_json.program_to_json (Tfl.Program.parse_program src)))
+      if not (strippers_agree src) then (
+        incr quote_comment_skips;
+        None)
+      else
+        expect_json "parseProgram" [ `String src ]
+          (Result_json.program_to_json (Tfl.Program.parse_program src)))
 
 let diff_query_term =
   gate "differential: queryTerm answers agree (content and order)"
@@ -578,9 +606,10 @@ let () =
   Printf.printf
     "arbitrary shapes: %d decided identically, %d rejected identically\n\
      arbitrary valid shapes: %d decided identically, %d rejected identically\n\
-     consistency narrations: %d proofs narrated\n"
+     consistency narrations: %d proofs narrated\n\
+     parseProgram: %d sources skipped (quoted-comment deviation)\n"
     arbitrary_tally.decided arbitrary_tally.rejected valid_tally.decided
-    valid_tally.rejected !narrated;
+    valid_tally.rejected !narrated !quote_comment_skips;
   exit
     (if (not control_ok) || (not corpus_ok) || qcheck_failures <> 0 then 1
      else 0)

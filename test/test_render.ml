@@ -71,5 +71,11 @@ let () =
       match explain_proof { found = false; lines = [] } with
       | None -> ()
       | Some s -> failwith ("unexpected explanation: " ^ s));
+  (* A proof record deserialized from JSON (PLAN 3.1) can claim found with no
+     lines; reading its last line used to raise (bughunt 2026-08-01). *)
+  test "explainProof: a found-but-empty proof explains nothing" (fun () ->
+      match explain_proof { found = true; lines = [] } with
+      | None -> ()
+      | Some s -> failwith ("unexpected explanation: " ^ s));
 
   finish "render unit tests"

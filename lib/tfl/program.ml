@@ -16,17 +16,36 @@ type parsed_program = {
 }
 
 (* Comments run from `--` (any mix of ASCII/typographic minus, two adjacent)
-   to end of line — two adjacent minuses can never occur in valid notation,
-   since negative terms are always parenthesized. *)
+   to end of line. Outside quotes two adjacent minuses can never occur in valid
+   notation, since negative terms are always parenthesized — but a quoted term
+   carries arbitrary text, so the scan walks name and quoted tokens whole
+   rather than testing every position. Deliberate deviation from the frozen
+   reference, which strips naively and truncates `+"well--known"+P` into an
+   "Unclosed quote" error on a valid line (LOG 2026-08-01). *)
 let strip_comment (cps : int array) : int array =
   let n = Array.length cps in
   let is_minus c = c = 0x2D || c = 0x2212 in
-  let rec find i =
-    if i + 1 >= n then None
-    else if is_minus cps.(i) && is_minus cps.(i + 1) then Some i
-    else find (i + 1)
+  (* a bare name absorbs a following double quote as a double prime, so the
+     whole name token is skipped before any quote can open *)
+  let rec end_of_name j =
+    if
+      j < n
+      && (Notation.is_name_char cps.(j)
+         || cps.(j) = 0x22 (* a double quote here is a double prime *)
+         || cps.(j) = 0x2032 (* ′ *)
+         || cps.(j) = 0x2033 (* ″ *))
+    then end_of_name (j + 1)
+    else j
   in
-  match find 0 with None -> cps | Some i -> Array.sub cps 0 i
+  let rec end_of_quote j = if j >= n || cps.(j) = 0x22 then j + 1 else end_of_quote (j + 1) in
+  let rec scan i =
+    if i >= n then None
+    else if Notation.is_name_start cps.(i) then scan (end_of_name (i + 1))
+    else if cps.(i) = 0x22 then scan (end_of_quote (i + 1))
+    else if i + 1 < n && is_minus cps.(i) && is_minus cps.(i + 1) then Some i
+    else scan (i + 1)
+  in
+  match scan 0 with None -> cps | Some i -> Array.sub cps 0 i
 
 (* JS String.trim: strip the same whitespace set the tokenizer skips. *)
 let trim_cps (cps : int array) : int array =

@@ -536,6 +536,30 @@ let sem_passive_prop (atoms : string list) (rel_name : string) : prop G.t =
         };
     }
 
+(* Propositional terms over the same tiny vocabulary — the domain pun the
+   semantics implements and the differential otherwise never evaluates. Bare
+   inners stay plain non-fixed atoms: anything else is outside the modelled
+   fragment on both sides (Semantics.Unmodeled). *)
+let sem_propterm_prop (atoms : string list) : prop G.t =
+  let open G in
+  let plain =
+    map (fun n -> Atom { name = n; singular = false }) (oneof_list atoms)
+  in
+  let inner =
+    oneof_weighted
+      [
+        (1, map (fun t -> Inner_term t) plain);
+        (1, map (fun q -> Inner_prop q) (sem_categorical_prop atoms));
+      ]
+  in
+  let side =
+    oneof_weighted
+      [ (2, sem_signed plain); (1, sem_signed (map (fun i -> PropTerm i) inner)) ]
+  in
+  let* subject = side in
+  let* predicate = side in
+  return { subject; predicate }
+
 let sem_argument (prop : prop G.t) ~(max_premises : int) :
     (prop list * prop) G.t =
   let open G in

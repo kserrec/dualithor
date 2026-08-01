@@ -115,7 +115,11 @@ and read_prop (raw : prop) : string =
 (* "Because <premises>, <conclusion>." A refutation ends "— which is
    impossible." None for missing/failed proofs. *)
 let explain_proof (proof : Derive.proof) : string option =
-  if not proof.found then None
+  (* A found proof always has lines; a record deserialized from JSON (PLAN 3.1)
+     might not, and reading its last line would raise. The frozen reference
+     TypeErrors here — same accepted call as the side_coeff edge (LOG
+     2026-07-30): unreachable input gets the saner answer, not a crash. *)
+  if (not proof.found) || proof.lines = [] then None
   else (
     let lines = proof.lines in
     let is_given r = r = "premise" || r = "fact" || r = "counterclaim" in

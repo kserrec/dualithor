@@ -17,6 +17,22 @@ let fido =
       "−Man+Mortal";
     ]
 
+(* A quoted term carries arbitrary text, `--` included; the naive stripper the
+   frozen reference uses truncates the line into an "Unclosed quote" error on a
+   formula that parses perfectly on its own (bughunt 2026-08-01). *)
+let () =
+  test "a quoted term containing -- is not a comment" (fun () ->
+      let r = parse_program "+\"well--known\"+P" in
+      check (List.length r.errors = 0) "no error expected";
+      check (List.length r.propositions = 1) "the line should yield one prop";
+      match r.propositions with
+      | [ e ] -> check_eq (Tfl.Notation.print_proposition e.prop) "+\"well--known\"+P"
+      | _ -> failwith "expected exactly one proposition");
+  test "a comment after a quoted term still works" (fun () ->
+      let r = parse_program "+\"well-known\"+P -- a comment" in
+      check (List.length r.errors = 0) "no error expected";
+      check (List.length r.propositions = 1) "one prop, comment stripped")
+
 let () =
   (* parse_program *)
   test "parseProgram: -- comments and blank lines are skipped" (fun () ->
