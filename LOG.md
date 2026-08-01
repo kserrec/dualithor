@@ -359,3 +359,23 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   the cap the semantics samples, which can only miss a counter-model, never invent one.
   Suite 1 is the exception (it compares verdicts for *equality*) and its vocabulary stays
   under the cap at n = 4, so it always enumerates exhaustively.
+- **1.13 done, pulled ahead of 1.12** (`test/paper_cases.ml`, 62 cases, all green, no
+  engine-vs-book disagreements). Rationale for the reordering: the step is independent of
+  the port by its own terms, and it was the one piece of real work available while the 20k
+  oracle gate held the dune build lock for 28 minutes. Contents: the 15 syllogistic moods
+  valid without existential import; the 9 subalternate moods that need import, each of
+  which must therefore come back *invalid*; 4 standard fallacies; 13 immediate inferences
+  (conversion valid for I and E only, obversion on all four forms, contraposition on A and
+  O only); 10 relational cases including De Morgan's head-of-a-horse and the ∀∃/∃∀ scope
+  trap; 4 indirect proofs (the Course 2/3 worked proofs, method asserted, plus the
+  does-not-overclaim negative); and 7 numerical cases from Castro-Manzano et al. 2018's
+  Tables 10–13 with the att-1/att-3 discriminator. Every expectation was written from the
+  literature and hand-checked against the 1.10 semantics before running anything.
+  Two verdict conventions, both from port-spec §12: inside the atomic-categorical fragment
+  an invalid argument must come back exactly `invalid` (P/Z is complete there); outside it
+  the search is incomplete, so those cases assert only that the engine never returns
+  `valid` (unknown ≠ invalid). One correction during the pass, on test *selection* not on
+  an expectation: three arguments filed as indirect proofs turned out to be found by direct
+  derivation, so they moved to the relational section and the courseware's own worked
+  proofs (boys/girls/cowards; some boy loves every girl) took their place with the method
+  asserted.

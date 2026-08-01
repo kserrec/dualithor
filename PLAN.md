@@ -88,7 +88,7 @@ Accept: all six suites clean at 20k iterations; runtime logged (native speed sho
 One big run: full corpus + ≥100k random inputs per function family through both engines; verdicts, canonical forms, and renderings must agree (modulo LOG-documented proof-path variance). Close the two coverage gaps the 2026-07-30 bughunt probed (clean at 2k, but fold in permanently): arbitrary-shape arguments (propterms/compounds/levels-anywhere via `Gen.prop_gen`, error outcomes compared too) through `checkArgument`, and consistency-proof narrations (`fact`-rule lines) through `explainProof`. Archive the report as `docs/differential-report.md`. **After this step the OCaml engine is authoritative; the JS engine and shim remain as a frozen reference.**
 Accept: zero disagreements; report committed; LOG entry marks the handover.
 
-*1.13 Curated paper-cases audit ("triple check").*
+*1.13 Curated paper-cases audit ("triple check").* ✅ DONE (2026-08-01, pulled ahead of 1.12 — the step is independent of the port by its own terms; `test/paper_cases.ml`, 62 cases, no engine-vs-book disagreements)
 Independent of the port: hand-verify ~40 textbook arguments against Sommers & Englebretsen — the 15 classically valid syllogism forms without existential import, the existential-import traps (Barbari/Darapti-style), obversion/contraposition/conversion cases, ≥5 relational arguments from the book, ≥3 indirect proofs, 5 numerical cases. Permanent test file `test/paper_cases.ml`. Engine-vs-book disagreements go to Kyle before any change.
 Accept: suite green; disagreements (if any) resolved with Kyle and logged.
 

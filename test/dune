@@ -72,3 +72,10 @@
  (name test_oracle)
  (modules test_oracle)
  (libraries tfl test_support qcheck-core unix))
+
+; The curated paper-cases audit (1.13): expectations from the literature, not
+; from the engine. Pure engine calls, no Node, no fuzzing.
+(test
+ (name paper_cases)
+ (modules paper_cases)
+ (libraries tfl test_support))
