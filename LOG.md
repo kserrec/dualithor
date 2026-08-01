@@ -643,3 +643,30 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   executable, coupling engine testing to a downstream layer), and the double parse in
   `Tfl_verify.check` for proofless verdicts (removing it needs `Safe.check` to return its
   parsed propositions — an interface change).
+- **3.4 done — readable gloss orientation (from Kyle's 3.3 review).** Kyle's one complaint
+  about the trace samples: `+(Lov+Girl)+Boy` glosses as "some lov some girl is boy", which
+  he found harder to read than the TFL it explains — and the E-form sibling
+  "no lov some coward is boy" the same way. Cause: canonical form puts the relational
+  complex in subject position, and the renderer concatenates word-for-word, having no
+  relative-clause machinery. Same proposition, readable the other way round.
+  Fix, entirely in our trace layer: gloss the converse orientation when one exists —
+  "some boy lov some girl", "no boy lov some coward". **The formal step is never
+  rewritten**; only its English gloss moves, so the proof record stays byte-faithful to
+  what the engine derived. No change to `Render`, so no deviation from the frozen 1.9
+  contract and no impact on the rendering differential gate — the trace record has no
+  counterpart in the JS engine at all.
+  The correctness guard matters more than the readability: converting a form conversion
+  is invalid on would make the gloss assert something the step does not — a lying audit
+  trail, worse than an awkward one. `Relational.orientations` supplies a converse only
+  for I- and E-forms (A and O return unchanged), and we add a level check of our own
+  because that converse is built with `Infer.st`, which sets level 0 — glossing a "most"
+  step as a bare "some" would understate it. All three guards pinned: A-form, O-form and
+  levelled subjects are asserted *identical* after the call, not merely different.
+  **Two open items, both now visible in `docs/trace-samples.md`.** (a) `explain_proof` is
+  frozen, so the explanation sentence still reads "Because some lov some girl is boy…"
+  directly beneath trace lines that read well — the inconsistency is more conspicuous
+  than the original uniform awkwardness, and improving it is a deliberate deviation with
+  the full gate. Kyle's call. (b) Universals with a relational subject (De Morgan's
+  head-of-a-horse: "every head some horse head some animal") cannot be converted at all —
+  A-forms do not convert — and reading them well would need real English machinery inside
+  the frozen renderer.

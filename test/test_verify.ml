@@ -106,6 +106,68 @@ let () =
       | _ -> check false "malformed premise 2 should be an error");
       check (e.meth = None) "errors carry no method")
 
+(* ── Readable orientation of glosses (PLAN 3.4) ─────────────────────────────
+   A relational complex in subject position glosses as "some lov some girl is
+   boy", which Kyle could not read. Conversion says the same thing
+   subject-first. The threat this guards is the opposite failure: converting a
+   form conversion is NOT valid on would make the gloss state something the
+   proof step does not — a lying audit trail, worse than an awkward one. *)
+
+let prop = Tfl.Notation.parse_proposition
+
+let () =
+  test "an I-form with a relational subject is glossed subject-first" (fun () ->
+      let p = prop "+(Lov+Girl)+Boy" in
+      check_eq
+        (Tfl.Render.read_prop (Tfl_verify.readable_orientation p))
+        "some boy lov some girl");
+
+  test "an E-form with a relational subject converts too" (fun () ->
+      let p = prop "−(Lov+Coward)−Boy" in
+      check_eq
+        (Tfl.Render.read_prop (Tfl_verify.readable_orientation p))
+        "no boy lov some coward");
+
+  test "an A-form is left exactly as it is — A does not convert" (fun () ->
+      let p = prop "−(Head+Horse)+(Head+Animal)" in
+      check
+        (Tfl_verify.readable_orientation p = p)
+        "an A-form must never be re-oriented");
+
+  test "an O-form is left exactly as it is — O does not convert" (fun () ->
+      let p = prop "+(Lov+Girl)−Boy" in
+      check
+        (Tfl_verify.readable_orientation p = p)
+        "an O-form must never be re-oriented");
+
+  (* orientations builds its converse with level 0, so a "most" step would be
+     understated as a bare "some". *)
+  test "a levelled proposition keeps its level" (fun () ->
+      let p = prop "+(Lov+Girl)^2+Boy" in
+      check
+        (Tfl_verify.readable_orientation p = p)
+        "a levelled subject must never be re-oriented");
+
+  test "a plain subject is never disturbed" (fun () ->
+      let p = prop "+Boy+(Lov+Girl)" in
+      check (Tfl_verify.readable_orientation p = p) "nothing to improve");
+
+  (* End to end: the gloss improves, the formal step does not move. *)
+  test "the proof step is never rewritten, only its gloss" (fun () ->
+      let r = run [ "+Boy+(Lov+Girl)"; "-Boy-(Lov+Coward)" ] "+Girl-Coward" in
+      let glosses =
+        List.map (fun (l : Tfl_verify.trace_line) -> l.gloss) r.trace
+      in
+      let steps =
+        List.map (fun (l : Tfl_verify.trace_line) -> l.step) r.trace
+      in
+      check
+        (List.mem "some boy lov some girl" glosses)
+        "the gloss reads subject-first";
+      check
+        (List.mem "+(Lov+Girl)+Boy" steps)
+        "the step keeps the engine's canonical form")
+
 (* ── JSON: synthetic corners the engine cannot produce today ────────────── *)
 
 let () =

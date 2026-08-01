@@ -56,6 +56,35 @@ let of_failure (f : Tfl.Safe.failure) : error_info =
     where = f.where;
   }
 
+(* A proposition reads badly in English when its subject is a relational
+   complex: +(Lov+Girl)+Boy glosses as "some lov some girl is boy", because
+   the grammatical subject is a relation and the renderer has no
+   relative-clause machinery to carry it. Conversion states the same thing
+   with a plain term in subject position — "some boy lov some girl" — so the
+   gloss describes that orientation instead. The *step* is never rewritten:
+   the formal record stays the line the engine actually derived.
+
+   [Relational.orientations] supplies a converse only for the I- and E-forms
+   conversion is valid on (A and O come back unchanged), which is the guard
+   that keeps a gloss from saying something the step does not. Levelled
+   propositions are excluded here because the converse it builds carries
+   level 0, which would understate a "most"/"many" step. *)
+let readable_orientation (p : Tfl.Ast.prop) : Tfl.Ast.prop =
+  let subject_is_relational (st : Tfl.Ast.signed_term) =
+    match st.term with Tfl.Ast.Rel _ -> true | _ -> false
+  in
+  if
+    (not (subject_is_relational p.subject))
+    || p.subject.level <> 0 || p.predicate.level <> 0
+  then p
+  else
+    Option.value ~default:p
+      (List.find_opt
+         (fun (o : Tfl.Ast.prop) -> not (subject_is_relational o.subject))
+         (Tfl.Relational.orientations p))
+
+let gloss_of_prop p = Tfl.Render.read_prop (readable_orientation p)
+
 let trace_of_proof (pr : Tfl.Derive.proof) : trace_line list =
   List.map
     (fun (l : Tfl.Derive.line) ->
@@ -64,7 +93,7 @@ let trace_of_proof (pr : Tfl.Derive.proof) : trace_line list =
         step = l.text;
         gloss =
           (match l.l_prop with
-          | Some p -> Tfl.Render.read_prop p
+          | Some p -> gloss_of_prop p
           (* only the synthetic ⊥ closing line of a refutation *)
           | None -> "which is impossible");
         rule = l.rule;
@@ -88,7 +117,7 @@ let trace_of_argument (premises : string list) (conclusion : string) :
           {
             n = !n;
             step = Tfl.Notation.print_proposition p;
-            gloss = Tfl.Render.read_prop p;
+            gloss = gloss_of_prop p;
             rule;
             parents = [];
           }
