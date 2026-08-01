@@ -670,3 +670,10 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   head-of-a-horse: "every head some horse head some animal") cannot be converted at all —
   A-forms do not convert — and reading them well would need real English machinery inside
   the frozen renderer.
+- **3.3 accepted.** Kyle approved the trace format on the post-3.4 samples ("these sound
+  good now"). Phase 3 is complete. Carried forward, not silently closed: the frozen
+  `explain_proof` sentence still renders relational subjects the old way, so it reads
+  inconsistently with the trace lines directly above it. Fixing it is a deliberate
+  deviation from the frozen reference plus the full engine gate, and Kyle has not been
+  asked to spend that — it stays a named open item in `docs/trace-samples.md` rather than
+  a quiet acceptance.

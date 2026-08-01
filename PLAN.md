@@ -124,10 +124,10 @@ Accept: JSON round-trip tests green; `Unknown` documented in the interface.
 ≥30 cases through the public API: valid syllogisms, invalid forms, relational, numerical, malformed input, empty input — drawing from `paper_cases` so the suites agree.
 Accept: all green.
 
-*3.3 Trace legibility review.*
+*3.3 Trace legibility review.* ✅ DONE (2026-08-01 — Kyle approved the format after 3.4)
 Generate 3 sample traces (categorical, relational, indirect proof) into `docs/trace-samples.md`. Paper selling point — auditable proofs.
 Accept: Kyle reviews and approves the format.
-*Status:* samples drafted 2026-08-01; Kyle's review found relational-subject glosses ("some lov some girl is boy") unreadable → 3.4. Samples regenerated; awaiting his read of the new format.
+His review found relational-subject glosses ("some lov some girl is boy", "no lov some coward is boy") harder to read than the TFL they explain → 3.4 fixed both; format approved on the regenerated samples. **Still open, deliberately:** the frozen `explain_proof` sentence keeps the old shape, so it now reads inconsistently with the trace lines above it — a renderer deviation Kyle has not been asked to spend yet (`docs/trace-samples.md`, "Where this does not reach").
 
 *3.4 Readable gloss orientation.* ✅ DONE (2026-08-01 — `Tfl_verify.readable_orientation`; no engine change, no frozen-renderer deviation)
 From the 3.3 review: a relational complex in subject position glosses word-for-word ("some lov some girl is boy") because the renderer has no relative-clause machinery. The trace layer now glosses the *converse* orientation where conversion is valid — "some boy lov some girl" — leaving the formal step untouched. Guarded by `Relational.orientations`, which offers a converse only for I- and E-forms (A and O come back unchanged), plus a level check of our own since that converse carries level 0 and would understate a "most" step. Reaches only what conversion reaches: universals with a relational subject (De Morgan's head-of-a-horse) and the frozen `explain_proof` sentence keep the old shape — both recorded in `docs/trace-samples.md` as open items.
