@@ -526,3 +526,11 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   quoted and dev-only. The `sat` search accepted as exponential-on-paper in the last audit
   now has data: flat ~0.15s to 30 disjoint universals and a 25-long chain, and that 0.15s
   is the cancellation budget, not the search.
+- **Open question for Kyle (raised 2026-08-01, unanswered — carried forward).** PLAN
+  1.14(a) names three failure classes; the implementation has a fourth, `Internal`, for
+  exceptions that should be unreachable. The argument for it: it classifies the engine
+  rather than the input, so folding a crash into `Outside_fragment` would let a defect
+  hide inside an expected outcome, and the router would escalate where it should page
+  someone. The argument against: it is a deviation from the plan's vocabulary, and the
+  fuzz shows it never fires. It is implemented, documented in `docs/engine-surface.md`,
+  and reversible in about ten lines if Kyle prefers three classes.

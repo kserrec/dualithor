@@ -23,15 +23,20 @@ need, both for simplicity and to keep the word from ever being ambiguous here.
 ## Commands
 
 ```bash
-node engine/tfl.test.js              # JS reference engine test suite (201 asserts)
-node engine/oracle.js -n 20000       # JS reference semantic fuzz gate
 opam exec -- dune build              # build the OCaml project
-opam exec -- dune test               # OCaml test suite (QCheck coverage + properties)
+opam exec -- dune test               # full suite: units, paper cases, differential, oracle smoke (~4 min)
+
+# The two long gates. Both are required after any change to OCaml engine logic.
+opam exec -- dune exec test/test_oracle.exe -- -n 20000      # six fuzz suites vs the semantics (~25 min)
+opam exec -- dune exec test/test_differential.exe -- -mass   # 884k inputs vs the JS reference (~13 min)
+
+node engine/tfl.test.js              # JS reference engine test suite (201 asserts)
+node engine/oracle.js -n 20000       # JS reference semantic fuzz gate (~2h; consulted, not required)
 ```
 
 The opam switch is `default` (system OCaml 4.14.1); `opam exec --` supplies the
-environment, so no shell setup is needed. Add further commands here as they come
-online, including the differential harness invocation.
+environment, so no shell setup is needed. `dune test` caches results — use
+`--force` when you need to see the counts again.
 
 ## Correctness bar
 
