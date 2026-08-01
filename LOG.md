@@ -572,3 +572,30 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   plus `lwt`, `cohttp-lwt-unix`, `tls-lwt` (never hand-roll TLS). One system
   prerequisite surfaced: `zarith` needs `pkg-config`, installed by Kyle via apt
   (GitHub's ubuntu runners ship it, so CI is unaffected).
+- **3.1 done — the verification API.** New library `lib/verify/` (`Tfl_verify`, public
+  name `tfl-verify.verify`): `check ~premises ~conclusion` on plain strings returns
+  `{verdict; meth; trace; explanation}` with verdict
+  `Valid | Invalid | Contradicted | Unknown | Error of error_info` (the 1.14 taxonomy),
+  and the Unknown ≠ Invalid contract documented at the head of the module. JSON goes both
+  ways: `to_json`/`of_json` are exact inverses (round-trip-tested on every method the
+  engine can produce plus synthetic corners it can't yet, e.g. `Internal`), and `of_json`
+  is total — malformed payloads return `Error msg`, never an exception.
+  **Trace policy (a design point the PLAN left open):** proof-carrying verdicts
+  (derivation/indirect) render the proof's own lines — step text, rule, parents, and a
+  deterministic English gloss per line via 1.9, the synthetic ⊥ line glossed "which is
+  impossible"; certificate and search-less verdicts (P/Z, numerical, failed searches)
+  render the argument itself as numbered premise/conclusion lines, so **no verdict is
+  ever traceless** — the auditable-trace claim shouldn't have a silent hole for the very
+  method that decides most of the fragment.
+  One live bug caught by probing before pinning tests: the framing trace numbered the
+  conclusion 1 — OCaml evaluates `@`'s arguments right to left, so the conclusion's
+  counter increment ran first. Sequenced explicitly; pinned in the suite.
+  `Safe.parse_program` lands with it (the roadmapped §16.5 gap): per-line, pre-parse
+  bracket-depth check on the same comment-stripped text the program parser reads, naming
+  the offending line; 300k-level nesting — past the measured 200k crash — now a
+  structured `Syntactic` refusal, pinned. `docs/engine-surface.md` updated; while there,
+  removed a `val describe` the table listed but the code never implemented.
+  Gate for the safe.ml change: unit suites + paper-cases green; 20k oracle and mass
+  differential recorded below.
+  Gate results for the 3.1 safe.ml change: mass differential `success (ran 18 tests)`,
+  zero disagreements; oracle clean at 20k across all six suites, 2,236s.

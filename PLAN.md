@@ -116,7 +116,7 @@ Accept: all six prior-art items covered across 2.3 + 2.4.
 
 ## Phase 3 — Verification Interface & Traces
 
-*3.1 Verification API.*
+*3.1 Verification API.* ✅ DONE (2026-08-01 — `lib/verify/tfl_verify.ml`; `Safe.parse_program` closes the §16.5 program-path gap; full engine gate green)
 `Tfl_verify.check ~premises ~conclusion` returning a record: verdict (`Valid | Invalid | Contradicted | Unknown | Error of taxonomy`), method, and `trace` — numbered lines, each the plus-minus step plus its one-line English gloss (via 1.9). `Unknown` semantics documented prominently (`Unknown` ≠ `Invalid`). JSON serialization for all result types. **Also close the 1.14 gap the 2026-08-01 bughunt proved:** the depth cap lives in `Tfl.Safe`, so `Program.parse_program` — the program-loading path this phase exposes — still stack-overflows on deeply nested input (measured at 200k levels). Add a `Safe.parse_program` wrapper carrying the same cap, and only ever call programs through it.
 Accept: JSON round-trip tests green; `Unknown` documented in the interface.
 

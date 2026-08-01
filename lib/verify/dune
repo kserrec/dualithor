@@ -1,0 +1,4 @@
+(library
+ (name tfl_verify)
+ (public_name tfl-verify.verify)
+ (libraries tfl yojson))

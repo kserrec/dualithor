@@ -154,13 +154,25 @@ type failure = {
   where   : string option; (* "premise 2" | "conclusion" | "argument" *)
 }
 
-val kind_name : failure_kind -> string
-val describe  : failure -> string
-val parse     : ?where:string -> string -> (Ast.prop, failure) result
-val parse_all : string -> string list -> (Ast.prop list, failure) result
-val check     : premises:string list -> conclusion:string
-             -> (Decide.result, failure) result
+val kind_name     : failure_kind -> string
+val parse         : ?where:string -> string -> (Ast.prop, failure) result
+val parse_all     : string -> string list -> (Ast.prop list, failure) result
+val check         : premises:string list -> conclusion:string
+                 -> (Decide.result, failure) result
+val parse_program : string -> (Program.parsed_program, failure) result
 ```
+
+(An earlier revision of this table listed a `describe` helper that was never
+implemented; removed 2026-08-01.)
+
+`parse_program` (added in PLAN 3.1) closes the gap 1.14 left open: the depth cap
+lived only in `Safe.parse`, so the program-loading path could still exhaust the
+stack — measured as a hard `Stack_overflow` at 200k nesting levels. The wrapper
+checks bracket depth per line, pre-parse, on the same comment-stripped text the
+program parser reads, and names the offending line (`where = "line N"`).
+Per-line syntax errors remain collected in the returned program's `errors`
+field, exactly as the underlying `Program.parse_program` reports them; programs
+are loaded through this wrapper and nowhere else.
 
 `check` validates each proposition under its own label before deciding, so a fragment
 refusal names the premise that caused it rather than the argument as a whole —

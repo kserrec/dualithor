@@ -108,6 +108,44 @@ let parse_all (label : string) (sources : string list) :
   in
   go 1 sources
 
+(* The program-loading path (PLAN 3.1). [Program.parse_program] collects
+   per-line Parse_errors itself, so unbounded nesting is the one hazard left
+   here — the same stack exhaustion [parse] caps, measured as a hard
+   Stack_overflow at 200k levels (LOG 2026-08-01). Depth is checked per line,
+   pre-parse, on the same comment-stripped text the program parser reads;
+   callers load programs through this wrapper and nowhere else. *)
+let parse_program (src : string) : (Program.parsed_program, failure) result =
+  let check_line n raw =
+    let code =
+      Program.cps_to_string
+        (Program.trim_cps (Program.strip_comment (Notation.decode raw)))
+    in
+    if code = "" then None
+    else
+      match Notation.tokenize code with
+      (* a tokenizer refusal is that line's own recorded error — the program
+         parser reports it in [errors] *)
+      | exception _ -> None
+      | tokens ->
+          Option.map
+            (fun pos ->
+              {
+                (depth_failure pos) with
+                where = Some (Printf.sprintf "line %d" n);
+              })
+            (too_deep tokens)
+  in
+  let rec scan n = function
+    | [] -> None
+    | raw :: rest -> (
+        match check_line n raw with
+        | Some f -> Some f
+        | None -> scan (n + 1) rest)
+  in
+  match scan 1 (String.split_on_char '\n' src) with
+  | Some f -> Error f
+  | None -> guard (fun () -> Program.parse_program src)
+
 (* Parse every input, then decide. A refusal from the inference layer —
    including the guards that fire on propositions the parser accepted — comes
    back as Outside_fragment, never as an exception and never as a verdict.

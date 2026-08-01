@@ -96,6 +96,13 @@
  (modules test_safe)
  (libraries tfl test_support qcheck-core qcheck-core.runner unix))
 
+; The verification API (3.1): JSON round-trips, the Unknown ≠ Invalid
+; contract, and the Safe.parse_program depth cap.
+
+(test
+ (name test_verify)
+ (modules test_verify)
+ (libraries tfl tfl_verify yojson))
 ; The .env loader (2.1): key handling for the OpenRouter client.
 
 (test
