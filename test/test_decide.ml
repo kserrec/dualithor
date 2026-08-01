@@ -5,12 +5,10 @@
    relational-derivation and oracle-spot-check sections arrive with 1.6/1.10;
    the quantity-level guard test arrives with 1.8. *)
 
-open Tfl.Notation
 open Tfl.Decide
 
 open Harness
 
-let p = parse_proposition
 let valid premises conclusion msg = expect_verdict premises conclusion "valid" msg
 let invalid premises conclusion msg = expect_verdict premises conclusion "invalid" msg
 

@@ -41,6 +41,8 @@ let gate name ~count ~print gen compare =
 
 (* ── Argument-checking helpers (decide/relational/numerical suites) ─────── *)
 
+let p = Tfl.Notation.parse_proposition
+
 let arg premises conclusion =
   Tfl.Decide.check_argument
     (List.map Tfl.Notation.parse_proposition premises)

@@ -9,7 +9,6 @@ open Tfl.Relational
 
 open Harness
 
-let p = parse_proposition
 
 let () =
   (* Relational derivations (deferred from 1.5) *)

@@ -9,7 +9,6 @@ open Tfl.Render
 
 open Harness
 
-let p = parse_proposition
 let t = parse_term
 
 let () =

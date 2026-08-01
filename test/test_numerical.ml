@@ -9,7 +9,6 @@ open Tfl.Decide
 
 open Harness
 
-let p = parse_proposition
 
 let conditions (r : result) =
   match r.decision with

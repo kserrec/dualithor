@@ -27,12 +27,7 @@ let () =
 
 let count standing handover = if !mass then handover else standing
 
-(* Under `dune test` the cwd is _build/default/test (the deps put engine/
-   one level up); under `dune exec` from the root it is the source tree. *)
-let engine_dir =
-  if Sys.file_exists "../engine/shim.js" then "../engine" else "engine"
-
-let shim = Shim_client.start ~shim_path:(engine_dir ^ "/shim.js")
+let shim = Shim_client.start ~shim_path:(Shim_client.default_path ())
 
 (* ── Parse/print comparison (1.2) ───────────────────────────────────────── *)
 
@@ -115,16 +110,7 @@ let entry_points = [ "parseProposition"; "parseTerm"; "parseSignedTerm" ]
 let ( ||> ) (a : string option) (b : unit -> string option) =
   match a with Some _ -> a | None -> b ()
 
-let expect_json fn args expected : string option =
-  match Shim_client.call shim fn args with
-  | Ok js when Ast_json.json_equal expected js -> None
-  | Ok js ->
-      Some
-        (Printf.sprintf "%s mismatch: ocaml %s vs js %s" fn
-           (Yojson.Safe.to_string expected)
-           (Yojson.Safe.to_string js))
-  | Error e ->
-      Some (Printf.sprintf "%s: js errored %s (%s)" fn e.name e.message)
+let expect_json = Shim_client.expect_json shim
 
 (* ── 1.4: inference core A over one proposition ─────────────────────────── *)
 
@@ -233,7 +219,12 @@ let extract_js_strings (src : string) : string list =
 
 let corpus_gate () =
   let src =
-    In_channel.with_open_bin (engine_dir ^ "/tfl.test.js") In_channel.input_all
+    let corpus =
+      Filename.concat
+        (Filename.dirname (Shim_client.default_path ()))
+        "tfl.test.js"
+    in
+    In_channel.with_open_bin corpus In_channel.input_all
   in
   let strings = extract_js_strings src |> List.sort_uniq compare in
   let checks = ref 0 in

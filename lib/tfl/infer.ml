@@ -181,21 +181,18 @@ and canon_prop (p : prop) : prop =
      fixed-reference subject joins in via whichever reading matches. *)
   let i_like = (s_sign = Plus || s_sign = Wild) && q_sign = Plus in
   let e_like = (s_sign = Minus || s_sign = Wild) && q_sign = Minus in
-  if
-    (i_like || e_like)
-    && Notation.print_term q_term < Notation.print_term s_term
-  then (
+  if i_like || e_like then (
     let base = if i_like then Plus else Minus in
-    {
-      subject = st (if is_fixed_ref q_term then Wild else base) q_term;
-      predicate = st base s_term;
-    })
-  else if i_like || e_like then (
-    let base = if i_like then Plus else Minus in
-    {
-      subject = st (if is_fixed_ref s_term then Wild else base) s_term;
-      predicate = st q_sign q_term;
-    })
+    if Notation.print_term q_term < Notation.print_term s_term then
+      {
+        subject = st (if is_fixed_ref q_term then Wild else base) q_term;
+        predicate = st base s_term;
+      }
+    else
+      {
+        subject = st (if is_fixed_ref s_term then Wild else base) s_term;
+        predicate = st q_sign q_term;
+      })
   else { subject = st s_sign s_term; predicate = st q_sign q_term }
 
 let prop_key p = Notation.print_proposition (canon_prop p)

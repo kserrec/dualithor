@@ -9,7 +9,6 @@ open Tfl.Infer
 
 open Harness
 
-let p = parse_proposition
 let eq_up_to a b = prop_eq_up_to (p a) (p b)
 
 let () =

@@ -32,6 +32,15 @@ let is_atomic_prop (p : prop) =
 
 let is_atomic_categorical props = List.for_all is_atomic_prop props
 
+(* Term-keyed signed counters: both decision procedures accumulate occurrence
+   counts and then ask whether everything cancelled. *)
+let add_count (counts : (string, int) Hashtbl.t) key delta =
+  Hashtbl.replace counts key
+    ((match Hashtbl.find_opt counts key with Some v -> v | None -> 0) + delta)
+
+let all_zero (counts : (string, int) Hashtbl.t) =
+  Hashtbl.fold (fun _ v acc -> acc && v = 0) counts true
+
 (* ── The P/Z cancellation display ───────────────────────────────────────── *)
 
 type cancellation = { particular : prop; universals : (prop * int) list }
@@ -79,22 +88,14 @@ let find_cancellation (canon_props : prop list) : cancellation option =
       | particular :: rest -> (
           let total : (string, int) Hashtbl.t = Hashtbl.create 16 in
           let bump occs k =
-            List.iter
-              (fun (key, sign) ->
-                Hashtbl.replace total key
-                  ((match Hashtbl.find_opt total key with
-                   | Some v -> v
-                   | None -> 0)
-                  + (sign * k)))
-              occs
+            List.iter (fun (key, sign) -> add_count total key (sign * k)) occs
           in
           bump (z_occurrences particular) 1;
           let used = Array.make n_u 0 in
           let rec dfs i =
             decr budget;
             if !budget <= 0 then raise Budget_exhausted;
-            if i = n_u then
-              Hashtbl.fold (fun _ v acc -> acc && v = 0) total true
+            if i = n_u then all_zero total
             else (
               let found = ref false in
               (try
@@ -169,6 +170,50 @@ type pt = { mutable lits : string list }
 let pt_mem pt k = List.mem k pt.lits
 let pt_add pt k = if not (pt_mem pt k) then pt.lits <- pt.lits @ [ k ]
 
+(* Is [units] satisfiable under [implications]? Unit propagation plus genuine
+   case splits — completeness needs the splits: closure alone misses forced
+   literals like B in {B→¬B, ¬B→¬A, ¬A→B}. Boolean result only, so propagation
+   order is free. *)
+let var_of k = String.sub k 1 (String.length k - 1)
+
+let rec sat (implications : (string * string) list) (units : string list) : bool
+    =
+  let assign : (string, bool) Hashtbl.t = Hashtbl.create 16 in
+  let stack = ref units in
+  let ok = ref true in
+  while !ok && !stack <> [] do
+    match !stack with
+    | [] -> ()
+    | k :: rest -> (
+        stack := rest;
+        let v = var_of k and pol = k.[0] = '+' in
+        match Hashtbl.find_opt assign v with
+        | Some p -> if p <> pol then ok := false
+        | None ->
+            Hashtbl.add assign v pol;
+            List.iter
+              (fun (from_, to_) ->
+                if from_ = k then stack := to_ :: !stack;
+                if to_ = neg_key k then stack := neg_key from_ :: !stack)
+              implications)
+  done;
+  if not !ok then false
+  else
+    match
+      List.find_opt
+        (fun (from_, _) -> not (Hashtbl.mem assign (var_of from_)))
+        implications
+    with
+    | None -> true
+    | Some (from_, _) ->
+        let units' =
+          Hashtbl.fold
+            (fun v pol acc -> ((if pol then "+" else "-") ^ v) :: acc)
+            assign []
+        in
+        sat implications (from_ :: units')
+        || sat implications (neg_key from_ :: units')
+
 let check_inconsistent (props : prop list) : certificate option =
   List.iter Infer.validate_prop props;
   if not (is_atomic_categorical props) then
@@ -215,48 +260,6 @@ let check_inconsistent (props : prop list) : certificate option =
     singulars.lits;
   let implications = !implications in
 
-  (* Is [units] + the implications satisfiable? Unit propagation plus genuine
-     case splits — completeness needs the splits: closure alone misses forced
-     literals like B in {B→¬B, ¬B→¬A, ¬A→B}. Boolean result only, so
-     propagation order is free. *)
-  let var_of k = String.sub k 1 (String.length k - 1) in
-  let rec sat units =
-    let assign : (string, bool) Hashtbl.t = Hashtbl.create 16 in
-    let stack = ref units in
-    let ok = ref true in
-    while !ok && !stack <> [] do
-      match !stack with
-      | [] -> ()
-      | k :: rest -> (
-          stack := rest;
-          let v = var_of k and pol = k.[0] = '+' in
-          match Hashtbl.find_opt assign v with
-          | Some p -> if p <> pol then ok := false
-          | None ->
-              Hashtbl.add assign v pol;
-              List.iter
-                (fun (from_, to_) ->
-                  if from_ = k then stack := to_ :: !stack;
-                  if to_ = neg_key k then stack := neg_key from_ :: !stack)
-                implications)
-    done;
-    if not !ok then false
-    else
-      match
-        List.find_opt
-          (fun (from_, _) -> not (Hashtbl.mem assign (var_of from_)))
-          implications
-      with
-      | None -> true
-      | Some (from_, _) ->
-          let units' =
-            Hashtbl.fold
-              (fun v pol acc -> ((if pol then "+" else "-") ^ v) :: acc)
-              assign []
-          in
-          sat (from_ :: units') || sat (neg_key from_ :: units')
-  in
-
   (* Fixpoint: a point forced (2-SAT backbone) to carry a positive
      fixed-reference literal gains it explicitly; points sharing one merge
      (that named individual is one individual). *)
@@ -292,7 +295,9 @@ let check_inconsistent (props : prop list) : certificate option =
       (fun point ->
         List.iter
           (fun l ->
-            if (not (pt_mem point l)) && not (sat (point.lits @ [ neg_key l ]))
+            if
+              (not (pt_mem point l))
+              && not (sat implications (point.lits @ [ neg_key l ]))
             then (
               pt_add point l;
               changed := true))
@@ -304,7 +309,8 @@ let check_inconsistent (props : prop list) : certificate option =
   let rec first_unsat = function
     | [] -> None
     | point :: rest ->
-        if not (sat point.lits) then Some point else first_unsat rest
+        if not (sat implications point.lits) then Some point
+        else first_unsat rest
   in
   match first_unsat !points with
   | None -> None
@@ -364,9 +370,7 @@ let numerical_decision (premises : prop list) (conclusion : prop) :
   let coeff : (string, int) Hashtbl.t = Hashtbl.create 16 in
   let bump st factor =
     let key, c = side_coeff st in
-    Hashtbl.replace coeff key
-      ((match Hashtbl.find_opt coeff key with Some v -> v | None -> 0)
-      + (factor * c))
+    add_count coeff key (factor * c)
   in
   List.iter
     (fun p ->
@@ -375,7 +379,7 @@ let numerical_decision (premises : prop list) (conclusion : prop) :
     premises;
   bump conclusion.subject (-1);
   bump conclusion.predicate (-1);
-  let sum = Hashtbl.fold (fun _ v acc -> acc && v = 0) coeff true in
+  let sum = all_zero coeff in
   (* (ii) the particular counts match. *)
   let particular_premises =
     List.length (List.filter (fun p -> p.subject.sign = Plus) premises)

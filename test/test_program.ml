@@ -8,7 +8,6 @@ open Tfl.Program
 
 open Harness
 
-let p = parse_proposition
 
 (* The paper's Socrates/Fido program (Castro-Manzano et al. 2018 §6). *)
 let fido =

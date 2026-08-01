@@ -80,10 +80,7 @@ let anchors () =
 
 (* ── (b) Differential against engine/oracle.js ──────────────────────────── *)
 
-let engine_dir =
-  if Sys.file_exists "../engine/shim.js" then "../engine" else "engine"
-
-let shim = Shim_client.start ~shim_path:(engine_dir ^ "/shim.js")
+let shim = Shim_client.start ~shim_path:(Shim_client.default_path ())
 
 type tally = { mutable compared : int; mutable entailed : int; mutable skipped : int }
 
@@ -110,15 +107,7 @@ let model_to_json (m : Semantics.model) : Yojson.Safe.t =
              m.rels) );
     ]
 
-let expect_json fn args expected : string option =
-  match Shim_client.call shim fn args with
-  | Ok js when Ast_json.json_equal expected js -> None
-  | Ok js ->
-      Some
-        (Printf.sprintf "%s mismatch: ocaml %s vs js %s" fn
-           (Yojson.Safe.to_string expected)
-           (Yojson.Safe.to_string js))
-  | Error e -> Some (Printf.sprintf "%s: js errored %s (%s)" fn e.name e.message)
+let expect_json = Shim_client.expect_json shim
 
 let vocab_to_json (v : Semantics.vocab) : Yojson.Safe.t =
   `Assoc

@@ -27,12 +27,6 @@ let kind_name = function
   | Outside_fragment -> "outside_fragment"
   | Internal -> "internal"
 
-let describe (f : failure) : string =
-  Printf.sprintf "%s%s: %s%s"
-    (match f.where with Some w -> w ^ " " | None -> "")
-    (kind_name f.kind) f.message
-    (match f.pos with Some p -> Printf.sprintf " (at position %d)" p | None -> "")
-
 (* ── Bounds ─────────────────────────────────────────────────────────────────
    The parser and every tree walk after it are recursive descent, so nesting
    depth is the one input dimension that can exhaust the stack (port-spec

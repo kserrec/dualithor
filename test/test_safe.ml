@@ -44,13 +44,7 @@ let safe_on (src : string) : string option =
         Some (Printf.sprintf "a fragment refusal carried a source position (%d)" p)
     | Error _ -> None
 
-let gate name ~count ~print gen f =
-  QCheck2.Test.make ~count ~name ~print gen (fun x ->
-      match f x with
-      | None -> true
-      | Some d ->
-          Printf.eprintf "✗ %s: %s\n" name d;
-          false)
+let gate = Harness.gate
 
 (* ── Adversarial generators ─────────────────────────────────────────────── *)
 

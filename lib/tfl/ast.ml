@@ -25,5 +25,4 @@ and prop = { subject : signed_term; predicate : signed_term }
    these wrappers pin the types so a mismatched comparison can't typecheck. *)
 
 let term_eq (a : term) (b : term) = a = b
-let signed_term_eq (a : signed_term) (b : signed_term) = a = b
 let prop_eq (a : prop) (b : prop) = a = b

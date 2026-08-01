@@ -187,16 +187,17 @@ let extract (lines : sat_line array) (roots : int list)
 
 (* ── Direct derivation ──────────────────────────────────────────────────── *)
 
+(* The board's size bound: nothing derived may exceed the largest input by more
+   than [slack] nodes. [base] seeds the maximum with the input that is not in
+   [props] — the goal for a derivation, the queried term for a term query. *)
+let size_cap ~slack ~base (props : prop list) =
+  List.fold_left (fun acc p -> max acc (Infer.prop_nodes p)) base props + slack
+
 let derive ?max_lines ?(slack = 8) (premises : prop list) (goal : prop) : proof
     =
   List.iter Infer.validate_prop premises;
   Infer.validate_prop goal;
-  let size_cap =
-    List.fold_left
-      (fun acc p -> max acc (Infer.prop_nodes p))
-      (Infer.prop_nodes goal) premises
-    + slack
-  in
+  let size_cap = size_cap ~slack ~base:(Infer.prop_nodes goal) premises in
   let goal_key = Notation.print_proposition (Infer.canon_prop goal) in
   let lines, hit =
     saturate ?max_lines ~size_cap
@@ -224,10 +225,7 @@ type entry = { e_prop : prop; e_rule : string }
 let refute_set ?max_lines ?(slack = 8) (entries : entry list) : proof =
   List.iter (fun e -> Infer.validate_prop e.e_prop) entries;
   let size_cap =
-    List.fold_left
-      (fun acc e -> max acc (Infer.prop_nodes e.e_prop))
-      min_int entries
-    + slack
+    size_cap ~slack ~base:min_int (List.map (fun e -> e.e_prop) entries)
   in
   let used : (string, unit) Hashtbl.t = Hashtbl.create 16 in
   List.iter (fun e -> Relational.collect_names e.e_prop used) entries;

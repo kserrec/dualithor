@@ -81,12 +81,7 @@ let query_term ?max_lines ?(slack = 6) (program : prop list) (term : term) :
        as an argument (premises ⊢ conclusion) instead";
   Infer.validate_term term;
   let key = Infer.term_key term in
-  let size_cap =
-    List.fold_left
-      (fun acc p -> max acc (Infer.prop_nodes p))
-      (Infer.node_count term) program
-    + slack
-  in
+  let size_cap = Derive.size_cap ~slack ~base:(Infer.node_count term) program in
   let lines, (_ : unit option) =
     Derive.saturate
       ~max_lines:(Option.value max_lines ~default:300)
