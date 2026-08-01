@@ -103,6 +103,7 @@ Dune libraries/executables: `translate/`, `router/`, `bench/`, `analysis/`; `dat
 Accept: `dune build` + `dune test` green from clean checkout; commit made.
 
 *2.2 OpenRouter client.* ✅ DONE (2026-08-01 — slugs: `anthropic/claude-sonnet-5`, `openai/gpt-5.6-terra`, `moonshotai/kimi-k3`; live smoke green on all three, $0.003)
+*Credentials (recorded so a later session does not re-provision):* Kyle created the OpenRouter account and key on 2026-08-01; the key lives in `.env` at the repo root (gitignored) as `OPENROUTER_API_KEY`, and the account is funded — the smoke test billed against it successfully. `pkg-config` was installed system-wide via apt for `zarith`; GitHub's runners ship it, so CI needs nothing.
 `translate/llm_client.ml`: `complete ~model ~system ~user ~max_tokens` against OpenRouter's OpenAI-compatible endpoint (cohttp + TLS), retry (3 attempts, exponential backoff), timeout, cost/token counter appending to `data/usage.jsonl`. Look up the three current slugs (Claude, GPT-5.6, Kimi K-series) at execution time; record in `config.ml` + LOG.
 Accept: smoke test hits all three slugs with "reply OK" and gets responses; usage log written.
 
@@ -120,7 +121,7 @@ Accept: all six prior-art items covered across 2.3 + 2.4.
 `Tfl_verify.check ~premises ~conclusion` returning a record: verdict (`Valid | Invalid | Contradicted | Unknown | Error of taxonomy`), method, and `trace` — numbered lines, each the plus-minus step plus its one-line English gloss (via 1.9). `Unknown` semantics documented prominently (`Unknown` ≠ `Invalid`). JSON serialization for all result types. **Also close the 1.14 gap the 2026-08-01 bughunt proved:** the depth cap lives in `Tfl.Safe`, so `Program.parse_program` — the program-loading path this phase exposes — still stack-overflows on deeply nested input (measured at 200k levels). Add a `Safe.parse_program` wrapper carrying the same cap, and only ever call programs through it.
 Accept: JSON round-trip tests green; `Unknown` documented in the interface.
 
-*3.2 Verification test suite.* ✅ DONE (2026-08-01 — `test/test_verify_cases.ml`, 35 cases, green)
+*3.2 Verification test suite.* ✅ DONE (2026-08-01 — `test/test_verify_cases.ml`, 36 cases, green)
 ≥30 cases through the public API: valid syllogisms, invalid forms, relational, numerical, malformed input, empty input — drawing from `paper_cases` so the suites agree.
 Accept: all green.
 
