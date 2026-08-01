@@ -115,34 +115,24 @@ let parse_all (label : string) (sources : string list) :
    pre-parse, on the same comment-stripped text the program parser reads;
    callers load programs through this wrapper and nowhere else. *)
 let parse_program (src : string) : (Program.parsed_program, failure) result =
-  let check_line n raw =
-    let code =
-      Program.cps_to_string
-        (Program.trim_cps (Program.strip_comment (Notation.decode raw)))
-    in
-    if code = "" then None
-    else
-      match Notation.tokenize code with
-      (* a tokenizer refusal is that line's own recorded error — the program
-         parser reports it in [errors] *)
-      | exception _ -> None
-      | tokens ->
-          Option.map
-            (fun pos ->
-              {
-                (depth_failure pos) with
-                where = Some (Printf.sprintf "line %d" n);
-              })
-            (too_deep tokens)
+  let too_deep_line (n, raw) =
+    match Notation.tokenize (Program.line_code raw) with
+    (* a tokenizer refusal is that line's own recorded error — the program
+       parser reports it in [errors] *)
+    | exception _ -> None
+    | tokens ->
+        Option.map
+          (fun pos ->
+            {
+              (depth_failure pos) with
+              where = Some (Printf.sprintf "line %d" n);
+            })
+          (too_deep tokens)
   in
-  let rec scan n = function
-    | [] -> None
-    | raw :: rest -> (
-        match check_line n raw with
-        | Some f -> Some f
-        | None -> scan (n + 1) rest)
+  let numbered =
+    List.mapi (fun i raw -> (i + 1, raw)) (String.split_on_char '\n' src)
   in
-  match scan 1 (String.split_on_char '\n' src) with
+  match List.find_map too_deep_line numbered with
   | Some f -> Error f
   | None -> guard (fun () -> Program.parse_program src)
 

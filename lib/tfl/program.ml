@@ -67,6 +67,12 @@ let cps_to_string (cps : int array) : string =
   Array.iter (fun c -> Buffer.add_utf_8_uchar b (Uchar.of_int c)) cps;
   Buffer.contents b
 
+(* The code a program line contributes: comment stripped, then trimmed. Safe
+   checks nesting depth on this same text before parsing (PLAN 3.1), so the
+   two must not drift apart. *)
+let line_code (raw : string) : string =
+  cps_to_string (trim_cps (strip_comment (Notation.decode raw)))
+
 (* Line-oriented; per-line ParseErrors are collected, not thrown. Note:
    parse_program does not validate — fragment validation happens in the
    query functions. *)
@@ -76,9 +82,7 @@ let parse_program (src : string) : parsed_program =
   List.iteri
     (fun i raw ->
       let line = i + 1 in
-      let code =
-        cps_to_string (trim_cps (strip_comment (Notation.decode raw)))
-      in
+      let code = line_code raw in
       if code <> "" then
         match Notation.parse_proposition code with
         | prop -> propositions := { prop; text = code; line } :: !propositions

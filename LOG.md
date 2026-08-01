@@ -615,3 +615,31 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   re-orientation of premises in proof lines, bare relation-name glosses ("lov"), and
   DON parent order. Awaiting Kyle's format approval per the acceptance check; the PLAN
   box stays open until then.
+- **Refactor of the Phase 3 work — zero functional change.** One real duplication: 3.1's
+  depth check re-implemented, inside `safe.ml`, the exact `decode → strip_comment →
+  trim_cps → cps_to_string` pipeline `Program.parse_program` uses — two copies of a
+  pipeline that *must* agree, since drift would leave the depth check inspecting
+  different text than the parser. Extracted as `Program.line_code`, called from both, so
+  the invariant is structural rather than a comment promising it. (The one deliberate
+  addition to the engine's exported surface; nothing existing changed signature.)
+  Also in `safe.ml`: the `code = ""` guard was provably redundant — empty input either
+  tokenizes to no tokens (`too_deep` returns None) or raises into the existing catch-all,
+  None either way — and the hand-rolled `scan` recursion became `List.find_map`, still
+  short-circuiting. Both new test suites hand-rolled their own pass/fail counters instead
+  of the shared `Harness`; both now use it, which revealed the case suite's hardcoded
+  "35 cases passed" was off by one (36 test blocks).
+  One test added, pinning behavior measured rather than assumed: the depth pass decodes
+  and tokenizes each line itself, ahead of the parser, so it is a second place hostile
+  bytes reach — invalid UTF-8, lone surrogates, NUL bytes, control characters and a deep
+  line ending in an invalid byte all stay per-line recorded errors, no raise. (The
+  suspected escape — an exception slipping past the `guard` and breaking Safe's
+  never-raises contract — was checked empirically first and does not happen:
+  `Notation.decode` uses `String.get_utf_8_uchar`, which substitutes rather than raises.)
+  Full engine gate on the refactored tree: quick suite green (12 files), mass
+  differential `success (ran 18 tests)` with zero disagreements, oracle clean at 20k
+  across all six suites (2,490s).
+  Considered and deliberately skipped, with Kyle's agreement: hoisting the two suites'
+  six-line `v_name` into `test_support` (would link `tfl_verify` into every engine test
+  executable, coupling engine testing to a downstream layer), and the double parse in
+  `Tfl_verify.check` for proofless verdicts (removing it needs `Safe.check` to return its
+  parsed propositions — an interface change).

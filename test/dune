@@ -102,7 +102,7 @@
 (test
  (name test_verify)
  (modules test_verify)
- (libraries tfl tfl_verify yojson))
+ (libraries tfl tfl_verify test_support yojson))
 
 ; The verification suite (3.2): ≥30 arguments through the public API,
 ; expectations shared with paper_cases so the two suites agree.
@@ -110,7 +110,7 @@
 (test
  (name test_verify_cases)
  (modules test_verify_cases)
- (libraries tfl_verify))
+ (libraries tfl_verify test_support))
 
 ; The .env loader (2.1): key handling for the OpenRouter client.
 

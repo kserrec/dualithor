@@ -6,12 +6,7 @@
    paper_cases cannot cover: malformed input, empty input, and the taxonomy
    classes the API must report rather than raise. *)
 
-let failures = ref 0
-
-let check b msg =
-  if not b then (
-    incr failures;
-    print_endline ("FAIL: " ^ msg))
+open Harness
 
 let v_name = function
   | Tfl_verify.Valid -> "valid"
@@ -20,11 +15,12 @@ let v_name = function
   | Unknown -> "unknown"
   | Error e -> "error:" ^ Tfl_verify.class_name e.error_class
 
-let expect premises conclusion verdict name =
-  let r = Tfl_verify.check ~premises ~conclusion in
-  check
-    (v_name r.verdict = verdict)
-    (Printf.sprintf "%s: expected %s, got %s" name verdict (v_name r.verdict))
+let expect premises conclusion expected name =
+  test name (fun () ->
+      let r = Tfl_verify.check ~premises ~conclusion in
+      check
+        (v_name r.verdict = expected)
+        (Printf.sprintf "expected %s, got %s" expected (v_name r.verdict)))
 
 let valid ps c name = expect ps c "valid" name
 let invalid ps c name = expect ps c "invalid" name
@@ -32,23 +28,23 @@ let invalid ps c name = expect ps c "invalid" name
 (* paper_cases' [not_valid] contract: outside the complete fragment the engine
    must at least not certify — any verdict but Valid passes. *)
 let not_valid ps c name =
-  let r = Tfl_verify.check ~premises:ps ~conclusion:c in
-  check
-    (r.verdict <> Tfl_verify.Valid)
-    (Printf.sprintf "%s: must not certify, got valid" name)
+  test name (fun () ->
+      let r = Tfl_verify.check ~premises:ps ~conclusion:c in
+      check (r.verdict <> Tfl_verify.Valid) "must not certify, got valid")
 
-let expect_error ps c cls where name =
-  let r = Tfl_verify.check ~premises:ps ~conclusion:c in
-  match r.verdict with
-  | Tfl_verify.Error e ->
-      check
-        (Tfl_verify.class_name e.error_class = cls)
-        (Printf.sprintf "%s: expected %s, got %s" name cls
-           (Tfl_verify.class_name e.error_class));
-      check (e.where = where) (Printf.sprintf "%s: wrong where" name)
-  | _ ->
-      check false
-        (Printf.sprintf "%s: expected an error, got %s" name (v_name r.verdict))
+let expect_error ps c expected_class expected_where name =
+  test name (fun () ->
+      let r = Tfl_verify.check ~premises:ps ~conclusion:c in
+      match r.verdict with
+      | Tfl_verify.Error e ->
+          check
+            (Tfl_verify.class_name e.error_class = expected_class)
+            (Printf.sprintf "expected %s, got %s" expected_class
+               (Tfl_verify.class_name e.error_class));
+          check (e.where = expected_where) "the failing input is misnamed"
+      | _ ->
+          check false
+            (Printf.sprintf "expected an error, got %s" (v_name r.verdict)))
 
 (* ── Valid syllogisms (paper_cases §A) ──────────────────────────────────── *)
 
@@ -127,8 +123,4 @@ let () =
      decides. *)
   invalid [] "−A+B" "no premises: a contingent conclusion is invalid"
 
-let () =
-  if !failures > 0 then (
-    Printf.printf "test_verify_cases: %d failure(s)\n" !failures;
-    exit 1)
-  else print_endline "test_verify_cases: 35 cases passed"
+let () = finish "test_verify_cases"
