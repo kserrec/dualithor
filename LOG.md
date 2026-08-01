@@ -556,3 +556,19 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   differential, all green on the reformatted tree.
   Result: quick suite green; mass differential `success (ran 18 tests)`, zero
   disagreements; oracle clean at 20k across all six suites, 1,486s. Committed.
+- **2.2 done — OpenRouter client.** `translate/llm_client.ml`: one `complete ~model
+  ~system ~user ~max_tokens` surface over cohttp-lwt-unix; three attempts with
+  exponential backoff and a per-attempt wall-clock timeout, retrying only what is
+  transient (429, 5xx, timeout, network) — auth and malformed-request errors fail fast;
+  every call appends tokens/cost/request-id to `data/usage.jsonl` (gitignored: a growing
+  local ledger, never credentials). Model slugs looked up live and **tier-matched** so no
+  vendor is represented by a flagship while another sends its budget model:
+  `anthropic/claude-sonnet-5` ($2/$10 per Mtok), `openai/gpt-5.6-terra` ($1/$6 — there is
+  no plain "gpt-5.6"; Terra is the middle tier between the Sol flagship and the Luna
+  budget model), `moonshotai/kimi-k3` ($3/$15). Live smoke: all three answered "OK";
+  total spend $0.0028, ledger verified key-free. `smoke.exe` is hand-run only — it
+  spends money and needs the key, so it is never wired into `dune test`.
+  Dependencies added per the approved set (CLAUDE.md): `yojson` moves to runtime,
+  plus `lwt`, `cohttp-lwt-unix`, `tls-lwt` (never hand-roll TLS). One system
+  prerequisite surfaced: `zarith` needs `pkg-config`, installed by Kyle via apt
+  (GitHub's ubuntu runners ship it, so CI is unaffected).

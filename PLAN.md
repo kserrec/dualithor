@@ -102,7 +102,7 @@ Accept: fuzz test committed and green; taxonomy documented in `docs/engine-surfa
 Dune libraries/executables: `translate/`, `router/`, `bench/`, `analysis/`; `data/` dirs; `.env` loading (gitignored; `.gitignore` covers `data/raw/`, `data/results/`); `ocamlformat` config; README updated (what TFL-Verify is, the two claims, OCaml toolchain quickstart, engine provenance).
 Accept: `dune build` + `dune test` green from clean checkout; commit made.
 
-*2.2 OpenRouter client.*
+*2.2 OpenRouter client.* ✅ DONE (2026-08-01 — slugs: `anthropic/claude-sonnet-5`, `openai/gpt-5.6-terra`, `moonshotai/kimi-k3`; live smoke green on all three, $0.003)
 `translate/llm_client.ml`: `complete ~model ~system ~user ~max_tokens` against OpenRouter's OpenAI-compatible endpoint (cohttp + TLS), retry (3 attempts, exponential backoff), timeout, cost/token counter appending to `data/usage.jsonl`. Look up the three current slugs (Claude, GPT-5.6, Kimi K-series) at execution time; record in `config.ml` + LOG.
 Accept: smoke test hits all three slugs with "reply OK" and gets responses; usage log written.
 

@@ -12,4 +12,7 @@
    (>= 4.14))
   dune
   (qcheck-core :with-test)
-  (yojson :with-test)))
+  yojson
+  lwt
+  cohttp-lwt-unix
+  tls-lwt))

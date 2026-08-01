@@ -1,6 +1,10 @@
 _build/
 .env
 
+# Local spend ledger (tokens/costs/ids, never credentials) — a growing
+# machine log, not repo material.
+data/usage.jsonl
+
 # Third-party benchmark corpora carry their own licences and must never enter
 # this MIT repo's history (CLAUDE.md; 2026-08-01 audit). Our own authored data
 # — data/policybench/ — is deliberately NOT ignored.
