@@ -6,9 +6,7 @@
 
 open Tfl.Notation
 open Tfl.Relational
-
 open Harness
-
 
 let () =
   (* Relational derivations (deferred from 1.5) *)
@@ -49,8 +47,9 @@ let () =
         "+Student−(Reads−Document)" "valid" "double denial");
 
   (* Passive mechanics and the symmetry guard *)
-  test "passive mechanics: participants swap, signs travel, roles land in \
-        the head" (fun () ->
+  test
+    "passive mechanics: participants swap, signs travel, roles land in the head"
+    (fun () ->
       match passives (p "−Philosopher+(Teaches+Student)") with
       | r :: _ ->
           check
@@ -68,9 +67,7 @@ let () =
     (fun () ->
       List.iter
         (fun src ->
-          check
-            (List.for_all (fun r -> r.equivalent) (passives (p src)))
-            src)
+          check (List.for_all (fun r -> r.equivalent) (passives (p src))) src)
         [
           "+Man+(Lov+Woman)";
           "−Man+(Lov−Woman)";
@@ -91,7 +88,8 @@ let () =
            (passives (p "−S+(Gave+Rose+Girl)")))
         "mixed n-ary";
       check
-        (List.for_all (fun r -> r.equivalent)
+        (List.for_all
+           (fun r -> r.equivalent)
            (passives (p "+S+(Gave+Rose+Girl)")))
         "uniform n-ary");
   test "no passive without a relational predicate of + quality" (fun () ->
@@ -112,9 +110,7 @@ let () =
           (p "−Student+(Teaches₂₁+Philosopher)")
       in
       check res.found "∃∀ ⊢ ∀∃ should be provable";
-      let rev =
-        Tfl.Derive.indirect_proof [ p "−A+(R+B)" ] (p "+B+(R₂₁−A)")
-      in
+      let rev = Tfl.Derive.indirect_proof [ p "−A+(R+B)" ] (p "+B+(R₂₁−A)") in
       check (not rev.found) "∀∃ ⊬ ∃∀");
 
   (* Proterms and pronominalization *)
@@ -163,13 +159,15 @@ let () =
         (Tfl.Derive.derive
            [ p "±Cat'+Cat"; p "−Cat−(Fears+Dog)" ]
            (p "±Cat'−(Fears+Dog)"))
-          .found "anchored donation");
+          .found
+        "anchored donation");
   test "distributed proterm: a ± donor read as −" (fun () ->
       check
         (Tfl.Derive.derive
            [ p "±Owl'+(Watches±Mouse')"; p "±Mouse'+Rodent" ]
            (p "±Owl'+(Watches+Rodent)"))
-          .found "wild donor");
+          .found
+        "wild donor");
   test "proterm co-denotation is what makes the categorical pair valid"
     (fun () ->
       expect_verdict [ "+M'+S"; "±M'+A" ] "+S+A" "valid" "co-denotation";
@@ -191,9 +189,7 @@ let () =
           check (last.text = "⊥") "closing text is ⊥"
       | None -> failwith "no proof");
   test "an indirect proof that needs the whole D3 stack" (fun () ->
-      let res =
-        arg [ "+Boy+(Lov−Girl)"; "+Girl+Rebel" ] "+Boy+(Lov+Rebel)"
-      in
+      let res = arg [ "+Boy+(Lov−Girl)"; "+Girl+Rebel" ] "+Boy+(Lov+Rebel)" in
       check (verdict_name res = "valid") ("verdict " ^ verdict_name res);
       check (res.meth = Indirect) "method should be indirect";
       let rules = proof_rules res in

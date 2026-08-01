@@ -17,7 +17,10 @@ let sign_gen : sign G.t = G.oneof_list [ Plus; Minus; Wild ]
 let bare_name : string G.t =
   let open G in
   let letter = oneof [ char_range 'a' 'z'; char_range 'A' 'Z' ] in
-  let rest = oneof [ char_range 'a' 'z'; char_range 'A' 'Z'; char_range '0' '9'; return '_' ] in
+  let rest =
+    oneof
+      [ char_range 'a' 'z'; char_range 'A' 'Z'; char_range '0' '9'; return '_' ]
+  in
   let* c = letter in
   let* tail = string_size ~gen:rest (int_bound 5) in
   let* primes = int_bound 2 in
@@ -40,7 +43,8 @@ let atom_gen : term G.t =
 
 (* Levels: mostly 0 (classical); occasionally 1-3 (TFL+ intermediate
    quantifiers). *)
-let level_gen : int G.t = G.oneof_weighted [ (8, G.return 0); (2, G.int_range 1 3) ]
+let level_gen : int G.t =
+  G.oneof_weighted [ (8, G.return 0); (2, G.int_range 1 3) ]
 
 let rec term_sized (n : int) : term G.t =
   if n <= 0 then atom_gen
@@ -104,9 +108,37 @@ let prop_gen : prop G.t = G.sized (fun n -> prop_sized (min n 8))
    exercising every tokenizer/parser error path on both engines at once. *)
 let token_pool =
   [
-    "+"; "-"; "−"; "±"; "+-"; "("; ")"; "["; "]"; "*"; "^"; "\""; "'"; "′";
-    "″"; " "; "\n"; "S"; "P"; "Dog"; "Boy'"; "p"; "q"; "x1"; "_"; "2"; "²";
-    "⁰"; "₁"; "7"; "head of a horse";
+    "+";
+    "-";
+    "−";
+    "±";
+    "+-";
+    "(";
+    ")";
+    "[";
+    "]";
+    "*";
+    "^";
+    "\"";
+    "'";
+    "′";
+    "″";
+    " ";
+    "\n";
+    "S";
+    "P";
+    "Dog";
+    "Boy'";
+    "p";
+    "q";
+    "x1";
+    "_";
+    "2";
+    "²";
+    "⁰";
+    "₁";
+    "7";
+    "head of a horse";
   ]
 
 let token_string_gen : string G.t =
@@ -120,7 +152,8 @@ let token_string_gen : string G.t =
 let atomic_argument_gen : (prop list * prop) G.t =
   let open G in
   let general =
-    map (fun n -> Atom { name = n; singular = false })
+    map
+      (fun n -> Atom { name = n; singular = false })
       (oneof_list [ "A"; "B"; "C"; "D" ])
   in
   let fixed =
@@ -199,7 +232,8 @@ let rec sanitize_term (t : term) : term =
               (fun o ->
                 let term = sanitize_term o.term in
                 let sign =
-                  if o.sign = Wild && not (Tfl.Infer.is_fixed_ref term) then Plus
+                  if o.sign = Wild && not (Tfl.Infer.is_fixed_ref term) then
+                    Plus
                   else o.sign
                 in
                 { sign; term; level = 0 })
@@ -241,12 +275,16 @@ let valid_arbitrary_argument_gen : (prop list * prop) G.t =
 let relational_prop_gen : prop G.t =
   let open G in
   let general =
-    map (fun n -> Atom { name = n; singular = false })
+    map
+      (fun n -> Atom { name = n; singular = false })
       (oneof_list [ "A"; "B"; "C" ])
   in
   let fixed =
     oneof_list
-      [ Atom { name = "s"; singular = true }; Atom { name = "x'"; singular = false } ]
+      [
+        Atom { name = "s"; singular = true };
+        Atom { name = "x'"; singular = false };
+      ]
   in
   let signed_atom =
     oneof_weighted
@@ -312,8 +350,7 @@ let leveled_argument_gen : (prop list * prop) G.t =
     let* s_sign = oneof_list [ Plus; Minus ] in
     let* s_term = side in
     let* level =
-      if s_sign = Plus then
-        oneof_weighted [ (2, return 0); (3, int_range 1 3) ]
+      if s_sign = Plus then oneof_weighted [ (2, return 0); (3, int_range 1 3) ]
       else return 0
     in
     let* q_sign = oneof_list [ Plus; Minus ] in
@@ -334,7 +371,9 @@ let leveled_argument_gen : (prop list * prop) G.t =
 let statement_prop_gen : prop G.t =
   let open G in
   let atom =
-    map (fun n -> Atom { name = n; singular = false }) (oneof_list [ "p"; "q"; "r" ])
+    map
+      (fun n -> Atom { name = n; singular = false })
+      (oneof_list [ "p"; "q"; "r" ])
   in
   let rec term_sized n =
     if n = 0 then atom
@@ -368,7 +407,9 @@ let statement_prop_gen : prop G.t =
 
 let equivalence_pair_gen : (prop * prop) G.t =
   let open G in
-  let side = oneof_weighted [ (1, statement_prop_gen); (1, relational_prop_gen) ] in
+  let side =
+    oneof_weighted [ (1, statement_prop_gen); (1, relational_prop_gen) ]
+  in
   let* a = side in
   let* b =
     (* half the time, derive b from a so genuine equivalences appear *)
@@ -425,7 +466,10 @@ let program_src_gen : string G.t =
 
 let sem_fixed : term G.t =
   G.oneof_list
-    [ Atom { name = "s"; singular = true }; Atom { name = "t'"; singular = false } ]
+    [
+      Atom { name = "s"; singular = true };
+      Atom { name = "t'"; singular = false };
+    ]
 
 let sem_wild : signed_term G.t =
   G.map (fun t -> { sign = Wild; term = t; level = 0 }) sem_fixed
@@ -440,7 +484,8 @@ let sem_atomic_term (atoms : string list) : term G.t =
       [
         (1, sem_fixed);
         ( 5,
-          map (fun n -> Atom { name = n; singular = false }) (oneof_list atoms) );
+          map (fun n -> Atom { name = n; singular = false }) (oneof_list atoms)
+        );
       ]
   in
   let* negs = oneof_weighted [ (3, return 0); (1, int_range 1 2) ] in
@@ -472,11 +517,11 @@ let sem_relational_prop (atoms : string list) (rel_name : string) : prop G.t =
   let rec complex depth =
     let* o =
       if depth <= 0 then obj
-      else
-        oneof_weighted
-          [ (5, obj); (1, sem_signed (complex (depth - 1))) ]
+      else oneof_weighted [ (5, obj); (1, sem_signed (complex (depth - 1))) ]
     in
-    return (Rel { head = Atom { name = rel_name; singular = false }; objects = [ o ] })
+    return
+      (Rel
+         { head = Atom { name = rel_name; singular = false }; objects = [ o ] })
   in
   let side allow_rel =
     if allow_rel then
@@ -484,12 +529,7 @@ let sem_relational_prop (atoms : string list) (rel_name : string) : prop G.t =
     else sem_signed plain
   in
   let* subject =
-    oneof_weighted
-      [
-        (1, sem_wild);
-        (1, side true);
-        (2, side false);
-      ]
+    oneof_weighted [ (1, sem_wild); (1, side true); (2, side false) ]
   in
   let* predicate = side true in
   return { subject; predicate }
@@ -508,7 +548,9 @@ let sem_compound_prop (atoms : string list) : prop G.t =
     in
     return (Compound elements)
   in
-  let side = G.oneof [ sem_signed compound; sem_signed (sem_atomic_term atoms) ] in
+  let side =
+    G.oneof [ sem_signed compound; sem_signed (sem_atomic_term atoms) ]
+  in
   let* subject = side in
   let* predicate = side in
   return { subject; predicate }
@@ -531,7 +573,8 @@ let sem_passive_prop (atoms : string list) (rel_name : string) : prop G.t =
       predicate =
         {
           sign = Plus;
-          term = Rel { head = Atom { name = rel_name; singular = false }; objects };
+          term =
+            Rel { head = Atom { name = rel_name; singular = false }; objects };
           level = 0;
         };
     }
@@ -554,7 +597,9 @@ let sem_propterm_prop (atoms : string list) : prop G.t =
   in
   let side =
     oneof_weighted
-      [ (2, sem_signed plain); (1, sem_signed (map (fun i -> PropTerm i) inner)) ]
+      [
+        (2, sem_signed plain); (1, sem_signed (map (fun i -> PropTerm i) inner));
+      ]
   in
   let* subject = side in
   let* predicate = side in
@@ -568,8 +613,11 @@ let sem_argument (prop : prop G.t) ~(max_premises : int) :
   let* conclusion = prop in
   return (premises, conclusion)
 
-let sem_categorical_argument = sem_argument (sem_categorical_prop [ "A"; "B"; "C" ]) ~max_premises:3
-let sem_relational_argument = sem_argument (sem_relational_prop [ "A"; "B" ] "R") ~max_premises:2
+let sem_categorical_argument =
+  sem_argument (sem_categorical_prop [ "A"; "B"; "C" ]) ~max_premises:3
+
+let sem_relational_argument =
+  sem_argument (sem_relational_prop [ "A"; "B" ] "R") ~max_premises:2
 
 let print_argument (premises, conclusion) =
   String.concat "; " (List.map Tfl.Notation.print_proposition premises)

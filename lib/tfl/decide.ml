@@ -96,7 +96,7 @@ let find_cancellation (canon_props : prop list) : cancellation option =
             decr budget;
             if !budget <= 0 then raise Budget_exhausted;
             if i = n_u then all_zero total
-            else (
+            else
               let found = ref false in
               (try
                  for k = 0 to 3 do
@@ -111,7 +111,7 @@ let find_cancellation (canon_props : prop list) : cancellation option =
               else (
                 bump u_occs.(i) (-3);
                 used.(i) <- 0;
-                false))
+                false)
           in
           match dfs 0 with
           | true ->
@@ -140,7 +140,7 @@ let find_cancellation (canon_props : prop list) : cancellation option =
   let combos = List.fold_left (fun n r -> n * List.length r) 1 readings in
   try
     if combos > 256 then try_resolved (List.map List.hd readings)
-    else (
+    else
       let rec walk rs acc =
         match rs with
         | [] -> try_resolved (List.rev acc)
@@ -152,7 +152,7 @@ let find_cancellation (canon_props : prop list) : cancellation option =
                 | None -> walk rest (reading :: acc))
               None r
       in
-      walk readings [])
+      walk readings []
   with Budget_exhausted -> None
 
 (* ── The inconsistency closure ──────────────────────────────────────────── *)
@@ -221,9 +221,18 @@ let check_inconsistent (props : prop list) : certificate option =
       "the inconsistency check requires an atomic-categorical set";
   let canon = List.map Infer.canon_prop props in
 
-  let implications = ref [] (* (from, to) over literal keys, in push order *) in
-  let points = ref [] (* in push order *) in
-  let singulars = { lits = [] } (* insertion-ordered set of literal keys *) in
+  let implications =
+    ref []
+    (* (from, to) over literal keys, in push order *)
+  in
+  let points =
+    ref []
+    (* in push order *)
+  in
+  let singulars =
+    { lits = [] }
+    (* insertion-ordered set of literal keys *)
+  in
   List.iter
     (fun p ->
       let s =
@@ -233,7 +242,8 @@ let check_inconsistent (props : prop list) : certificate option =
       in
       let q =
         match core_lit (Infer.canon_term p.predicate.term) with
-        | Some l -> if p.predicate.sign = Minus then { l with pol = not l.pol } else l
+        | Some l ->
+            if p.predicate.sign = Minus then { l with pol = not l.pol } else l
         | None -> assert false
       in
       let s_k = lit_key s and q_k = lit_key q in
@@ -264,8 +274,7 @@ let check_inconsistent (props : prop list) : certificate option =
      fixed-reference literal gains it explicitly; points sharing one merge
      (that named individual is one individual). *)
   let is_fixed_key k =
-    k.[0] = '+'
-    && (String.ends_with ~suffix:"*" k || Infer.is_proterm_name k)
+    k.[0] = '+' && (String.ends_with ~suffix:"*" k || Infer.is_proterm_name k)
   in
   let merge_pass () =
     let arr = Array.of_list !points in
@@ -319,8 +328,7 @@ let check_inconsistent (props : prop list) : certificate option =
         List.find_opt (fun k -> pt_mem point (neg_key k)) point.lits
         |> Option.map (fun k -> (k, neg_key k))
       in
-      Some
-        { point = point.lits; clash; cancellation = find_cancellation canon }
+      Some { point = point.lits; clash; cancellation = find_cancellation canon }
 
 (* ── The numerical decision (TFL⁺, PLAN 1.8) ────────────────────────────── *)
 
@@ -343,7 +351,7 @@ let side_coeff (st : signed_term) : string * int =
   match core_lit st.term with
   | Some lit ->
       let occ = if st.sign = Minus then -1 else 1 in
-      ( lit.l_name ^ (if lit.l_singular then "*" else ""),
+      ( (lit.l_name ^ if lit.l_singular then "*" else ""),
         occ * if lit.pol then 1 else -1 )
   | None -> Infer.engine_error "numerical sides must be atomic"
 
@@ -384,16 +392,16 @@ let numerical_decision (premises : prop list) (conclusion : prop) :
   let particular_premises =
     List.length (List.filter (fun p -> p.subject.sign = Plus) premises)
   in
-  let particular_conclusions = if conclusion.subject.sign = Plus then 1 else 0 in
+  let particular_conclusions =
+    if conclusion.subject.sign = Plus then 1 else 0
+  in
   let n_particular = particular_premises = particular_conclusions in
   (* (iii) the term-matched level condition. *)
   let c_sub_key = Infer.term_key conclusion.subject.term in
   let carried_level =
     List.fold_left
       (fun acc p ->
-        if
-          p.subject.sign = Plus
-          && Infer.term_key p.subject.term = c_sub_key
+        if p.subject.sign = Plus && Infer.term_key p.subject.term = c_sub_key
         then max acc p.subject.level
         else acc)
       0 premises
@@ -428,7 +436,7 @@ let check_argument ?max_lines ?slack (premises : prop list) (conclusion : prop)
     : result =
   List.iter Infer.validate_prop premises;
   Infer.validate_prop conclusion;
-  if List.exists has_level (premises @ [ conclusion ]) then (
+  if List.exists has_level (premises @ [ conclusion ]) then
     (* Numerical fragment: any nonzero level routes to the decision method. *)
     let d = numerical_decision premises conclusion in
     {
@@ -437,52 +445,80 @@ let check_argument ?max_lines ?slack (premises : prop list) (conclusion : prop)
       certificate = None;
       proof = None;
       decision = Some d;
-    })
+    }
   else
-  let counterclaim = premises @ [ Infer.contradictory conclusion ] in
-  if is_atomic_categorical counterclaim then (
-    match check_inconsistent counterclaim with
-    | Some certificate ->
-        { verdict = Valid; meth = PZ; certificate = Some certificate; proof = None; decision = None }
-    | None -> { verdict = Invalid; meth = PZ; certificate = None; proof = None; decision = None })
-  else (
-    let proof = Derive.derive ?max_lines ?slack premises conclusion in
-    if proof.found then
-      { verdict = Valid; meth = Derivation; certificate = None; proof = Some proof; decision = None }
-    else
-      let indirect = Derive.indirect_proof ?max_lines ?slack premises conclusion in
-      if indirect.found then
-        { verdict = Valid; meth = Indirect; certificate = None; proof = Some indirect; decision = None }
-      else
-        let refutation =
-          Derive.derive ?max_lines ?slack premises (Infer.contradictory conclusion)
-        in
-        if refutation.found then
+    let counterclaim = premises @ [ Infer.contradictory conclusion ] in
+    if is_atomic_categorical counterclaim then
+      match check_inconsistent counterclaim with
+      | Some certificate ->
           {
-            verdict = Contradicted;
-            meth = Derivation;
+            verdict = Valid;
+            meth = PZ;
+            certificate = Some certificate;
+            proof = None;
+            decision = None;
+          }
+      | None ->
+          {
+            verdict = Invalid;
+            meth = PZ;
             certificate = None;
-            proof = Some refutation;
+            proof = None;
+            decision = None;
+          }
+    else
+      let proof = Derive.derive ?max_lines ?slack premises conclusion in
+      if proof.found then
+        {
+          verdict = Valid;
+          meth = Derivation;
+          certificate = None;
+          proof = Some proof;
+          decision = None;
+        }
+      else
+        let indirect =
+          Derive.indirect_proof ?max_lines ?slack premises conclusion
+        in
+        if indirect.found then
+          {
+            verdict = Valid;
+            meth = Indirect;
+            certificate = None;
+            proof = Some indirect;
             decision = None;
           }
         else
-          let indirect_ref =
-            Derive.indirect_proof ?max_lines ?slack premises
+          let refutation =
+            Derive.derive ?max_lines ?slack premises
               (Infer.contradictory conclusion)
           in
-          if indirect_ref.found then
+          if refutation.found then
             {
               verdict = Contradicted;
-              meth = Indirect;
+              meth = Derivation;
               certificate = None;
-              proof = Some indirect_ref;
+              proof = Some refutation;
               decision = None;
             }
           else
-            {
-              verdict = Unknown;
-              meth = Derivation;
-              certificate = None;
-              proof = None;
-              decision = None;
-            })
+            let indirect_ref =
+              Derive.indirect_proof ?max_lines ?slack premises
+                (Infer.contradictory conclusion)
+            in
+            if indirect_ref.found then
+              {
+                verdict = Contradicted;
+                meth = Indirect;
+                certificate = None;
+                proof = Some indirect_ref;
+                decision = None;
+              }
+            else
+              {
+                verdict = Unknown;
+                meth = Derivation;
+                certificate = None;
+                proof = None;
+                decision = None;
+              }

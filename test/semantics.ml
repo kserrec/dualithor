@@ -66,8 +66,7 @@ let vocab_of (props : prop list) : vocab =
     | PropTerm (Inner_term _) ->
         raise
           (Unmodeled
-             "a bare propositional term is modeled only over a plain unary \
-              atom")
+             "a bare propositional term is modeled only over a plain unary atom")
   and walk_prop p =
     walk_term p.subject.term ~as_head:false ~arity:0;
     walk_term p.predicate.term ~as_head:false ~arity:0
@@ -90,7 +89,8 @@ type model = {
 let lookup what assoc name =
   match List.assoc_opt name assoc with
   | Some v -> v
-  | None -> raise (Unmodeled (Printf.sprintf "%s %s is not in the model" what name))
+  | None ->
+      raise (Unmodeled (Printf.sprintf "%s %s is not in the model" what name))
 
 (* All arity-length tuples over {0..n−1}, last position varying fastest — the
    JS oracle's allTuples order, kept so tuple indices mean the same thing on
@@ -118,7 +118,7 @@ let rec eval_term (t : term) (m : model) : int =
       List.fold_left
         (fun mask el ->
           let d = eval_term el.term m in
-          mask land (if el.sign = Minus then m.full land lnot d else d))
+          mask land if el.sign = Minus then m.full land lnot d else d)
         m.full elements
   | Rel { head; objects } -> eval_rel head objects m
   | PropTerm (Inner_prop p) -> if eval_prop p m then m.full else 0
@@ -190,14 +190,16 @@ and eval_prop (p : prop) (m : model) : bool =
    compares it against the cap in floats too. *)
 let model_count (v : vocab) (n : int) : float =
   let fn = float_of_int n in
-  fn ** float_of_int (List.length v.singular)
+  (fn ** float_of_int (List.length v.singular))
   *. (2. ** float_of_int (List.length v.unary * n))
   *. List.fold_left
-       (fun acc (_, arity) -> acc *. (2. ** (fn ** float_of_int arity)))
+       (fun acc (_, arity) -> acc *. (2. ** fn ** float_of_int arity))
        1. v.rels
 
 let exhaustive_upto (v : vocab) ~max_n ~cap : bool =
-  let rec go n = n > max_n || (model_count v n <= float_of_int cap && go (n + 1)) in
+  let rec go n =
+    n > max_n || (model_count v n <= float_of_int cap && go (n + 1))
+  in
   go 0
 
 (* Sampling for vocabularies too big to enumerate. The stream deliberately
@@ -208,8 +210,8 @@ let exhaustive_upto (v : vocab) ~max_n ~cap : bool =
 let seed = ref 20260704
 
 let rand k =
-  seed := (!seed * 1103515245 + 12345) land 0x7fffffff;
-  !seed lsr 16 mod k
+  seed := ((!seed * 1103515245) + 12345) land 0x7fffffff;
+  (!seed lsr 16) mod k
 
 let random_model (v : vocab) (n : int) : model =
   let full = (1 lsl n) - 1 in
@@ -281,8 +283,9 @@ let counter_model ~max_n ~cap (premises : prop list) (conclusion : prop) :
     if n > max_n then None
     else if
       iter_models v n ~cap (fun m ->
-          if List.for_all (fun p -> eval_prop p m) premises
-             && not (eval_prop conclusion m)
+          if
+            List.for_all (fun p -> eval_prop p m) premises
+            && not (eval_prop conclusion m)
           then (
             found := Some m;
             true)
@@ -303,7 +306,8 @@ let show_model (m : model) : string =
     else
       [
         label ^ ": "
-        ^ String.concat ", " (List.map (fun (k, v) -> Printf.sprintf "%s=%d" k v) l);
+        ^ String.concat ", "
+            (List.map (fun (k, v) -> Printf.sprintf "%s=%d" k v) l);
       ]
   in
   let rels =

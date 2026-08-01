@@ -26,7 +26,6 @@ let () =
     "test_differential [-mass]"
 
 let count standing handover = if !mass then handover else standing
-
 let shim = Shim_client.start ~shim_path:(Shim_client.default_path ())
 
 (* ── Parse/print comparison (1.2) ───────────────────────────────────────── *)
@@ -58,13 +57,13 @@ let print_fn_of = function
 (* None = both engines agree on [src] via [fn]; Some d = disagreement d. *)
 let compare_on fn src : string option =
   match (ocaml_parse fn src, Shim_client.call shim fn [ `String src ]) with
-  | Parsed (ast, printed), Ok js_ast ->
+  | Parsed (ast, printed), Ok js_ast -> (
       if not (Ast_json.json_equal ast js_ast) then
         Some
           (Printf.sprintf "%s AST mismatch on %S: ocaml %s vs js %s" fn src
              (Yojson.Safe.to_string ast)
              (Yojson.Safe.to_string js_ast))
-      else (
+      else
         (* Same AST — now the printers must emit the same string. The OCaml
            AST JSON goes through the JS printer, checking both printers and
            the serialization in one pass. *)
@@ -88,8 +87,8 @@ let compare_on fn src : string option =
       else
         Some
           (Printf.sprintf
-             "%s error mismatch on %S: ocaml (%S at %d) vs js (%S at %d)" fn
-             src msg pos js_msg js_pos)
+             "%s error mismatch on %S: ocaml (%S at %d) vs js (%S at %d)" fn src
+             msg pos js_msg js_pos)
   | Parsed _, Error e ->
       Some
         (Printf.sprintf "%s: ocaml parsed but js errored (%s: %s) on %S" fn
@@ -117,42 +116,39 @@ let expect_json = Shim_client.expect_json shim
 let core_disagreement (p : Tfl.Ast.prop) : string option =
   let open Tfl.Infer in
   let pj = Ast_json.prop_to_json p in
-  expect_json "canonProp" [ pj ] (Ast_json.prop_to_json (canon_prop p))
-  ||> (fun () ->
-        expect_json "contradictory" [ pj ]
-          (Ast_json.prop_to_json (contradictory p)))
-  ||> (fun () ->
-        expect_json "obverse" [ pj ] (Ast_json.prop_to_json (obverse p)))
-  ||> (fun () ->
+  ( ( ( ( ( expect_json "canonProp" [ pj ] (Ast_json.prop_to_json (canon_prop p))
+          ||> fun () ->
+            expect_json "contradictory" [ pj ]
+              (Ast_json.prop_to_json (contradictory p)) )
+        ||> fun () ->
+          expect_json "obverse" [ pj ] (Ast_json.prop_to_json (obverse p)) )
+      ||> fun () ->
         expect_json "contrapositive" [ pj ]
           (match contrapositive p with
           | Some q -> Ast_json.prop_to_json q
-          | None -> `Null))
-  ||> (fun () ->
-        expect_json "tautology"
-          [ Ast_json.term_to_json p.subject.term ]
-          (Ast_json.prop_to_json (tautology p.subject.term)))
-  ||> (fun () ->
-        expect_json "occurrences" [ pj ]
-          (`List (List.map Result_json.occ_to_json (occurrences p))))
+          | None -> `Null) )
+    ||> fun () ->
+      expect_json "tautology"
+        [ Ast_json.term_to_json p.subject.term ]
+        (Ast_json.prop_to_json (tautology p.subject.term)) )
+  ||> fun () ->
+    expect_json "occurrences" [ pj ]
+      (`List (List.map Result_json.occ_to_json (occurrences p))) )
   ||> fun () ->
   let ocaml = try Ok (validate_prop p) with Engine_error m -> Error m in
   match (ocaml, Shim_client.call shim "validateProp" [ pj ]) with
   | Ok (), Ok `Null -> None
-  | Error m, Error { name = "EngineError"; message; _ } when m = message ->
-      None
+  | Error m, Error { name = "EngineError"; message; _ } when m = message -> None
   | Ok (), Error e ->
       Some
         (Printf.sprintf "validateProp: ocaml accepted, js rejected (%s: %s)"
            e.name e.message)
   | Error m, Ok _ ->
-      Some
-        (Printf.sprintf "validateProp: js accepted, ocaml rejected (%s)" m)
+      Some (Printf.sprintf "validateProp: js accepted, ocaml rejected (%s)" m)
   | Error m, Error e ->
       Some
-        (Printf.sprintf
-           "validateProp message mismatch: ocaml %S vs js %s %S" m e.name
-           e.message)
+        (Printf.sprintf "validateProp message mismatch: ocaml %S vs js %s %S" m
+           e.name e.message)
   | Ok (), Ok other ->
       Some
         (Printf.sprintf "validateProp: js returned unexpected %s"
@@ -258,7 +254,8 @@ let corpus_gate () =
                [ Ast_json.term_to_json term ]
                (`String (Tfl.Render.read_term term))))
     strings;
-  Printf.printf "corpus gate: %d distinct strings, %d checks, %d disagreements\n"
+  Printf.printf
+    "corpus gate: %d distinct strings, %d checks, %d disagreements\n"
     (List.length strings) !checks !failures;
   !failures = 0
 
@@ -268,12 +265,13 @@ let gate = Harness.gate
 
 let diff_ast =
   gate "differential: printers and parsers agree on generated ASTs"
-    ~count:(count 10_000 100_000) ~print:print_proposition Gen.prop_gen (fun p ->
+    ~count:(count 10_000 100_000) ~print:print_proposition Gen.prop_gen
+    (fun p ->
       let ast = Ast_json.prop_to_json p in
       let printed = print_proposition p in
       (match Shim_client.call shim "printProposition" [ ast ] with
-      | Ok (`String js_printed) when js_printed = printed -> None
-      | _ -> Some "printProposition mismatch")
+        | Ok (`String js_printed) when js_printed = printed -> None
+        | _ -> Some "printProposition mismatch")
       ||> fun () ->
       match Shim_client.call shim "parseProposition" [ `String printed ] with
       | Ok js_ast when Ast_json.json_equal ast js_ast -> None
@@ -281,21 +279,23 @@ let diff_ast =
 
 let diff_strings =
   gate "differential: parse outcomes agree on random token strings"
-    ~count:(count 10_000 100_000) ~print:String.escaped Gen.token_string_gen (fun s ->
+    ~count:(count 10_000 100_000) ~print:String.escaped Gen.token_string_gen
+    (fun s ->
       List.fold_left
         (fun acc fn -> acc ||> fun () -> compare_on fn s)
         None entry_points)
 
 let diff_core =
   gate "differential: inference core A agrees on generated props"
-    ~count:(count 10_000 100_000) ~print:print_proposition Gen.prop_gen core_disagreement
+    ~count:(count 10_000 100_000) ~print:print_proposition Gen.prop_gen
+    core_disagreement
 
 let diff_args =
   gate
     "differential: checkArgument/checkInconsistent agree on categorical \
      arguments"
-    ~count:(count 10_000 100_000) ~print:Gen.print_argument Gen.atomic_argument_gen
-    (fun (premises, conclusion) ->
+    ~count:(count 10_000 100_000) ~print:Gen.print_argument
+    Gen.atomic_argument_gen (fun (premises, conclusion) ->
       let pj = `List (List.map Ast_json.prop_to_json premises) in
       let cj = Ast_json.prop_to_json conclusion in
       expect_json "checkArgument" [ pj; cj ]
@@ -312,9 +312,9 @@ let diff_args =
    saturation reproduces the JS iteration order exactly. maxLines 60 keeps
    10k+ searches affordable; order bugs surface early in the sequence. *)
 let diff_derive =
-  gate "differential: derive proofs agree line-for-line" ~count:(count 3_000 20_000)
-    ~print:Gen.print_argument Gen.atomic_argument_gen
-    (fun (premises, conclusion) ->
+  gate "differential: derive proofs agree line-for-line"
+    ~count:(count 3_000 20_000) ~print:Gen.print_argument
+    Gen.atomic_argument_gen (fun (premises, conclusion) ->
       expect_json "derive"
         [
           `List (List.map Ast_json.prop_to_json premises);
@@ -326,10 +326,12 @@ let diff_derive =
 
 let diff_passives =
   gate "differential: passives agree (prop, guard verdict, swap index)"
-    ~count:(count 10_000 100_000) ~print:print_proposition Gen.relational_prop_gen (fun p ->
+    ~count:(count 10_000 100_000) ~print:print_proposition
+    Gen.relational_prop_gen (fun p ->
       expect_json "passives"
         [ Ast_json.prop_to_json p ]
-        (`List (List.map Result_json.passive_to_json (Tfl.Relational.passives p))))
+        (`List
+           (List.map Result_json.passive_to_json (Tfl.Relational.passives p))))
 
 (* Full checkArgument on mixed relational/categorical arguments, comparing
    the whole result record — verdict, method, and proof lines (Pron/Anchor
@@ -337,10 +339,10 @@ let diff_passives =
    searches of an 'unknown'; identical fuel keeps verdicts comparable. *)
 let diff_rel_args =
   gate
-    "differential: checkArgument agrees on relational arguments (full \
-     records, maxLines 60)"
-    ~count:(count 600 5_000) ~print:Gen.print_argument Gen.relational_argument_gen
-    (fun (premises, conclusion) ->
+    "differential: checkArgument agrees on relational arguments (full records, \
+     maxLines 60)"
+    ~count:(count 600 5_000) ~print:Gen.print_argument
+    Gen.relational_argument_gen (fun (premises, conclusion) ->
       expect_json "checkArgument"
         [
           `List (List.map Ast_json.prop_to_json premises);
@@ -376,12 +378,14 @@ let quote_comment_skips = ref 0
 
 let diff_parse_program =
   gate "differential: parseProgram agrees on random program sources"
-    ~count:(count 2_000 30_000) ~print:String.escaped Gen.program_src_gen (fun src ->
+    ~count:(count 2_000 30_000) ~print:String.escaped Gen.program_src_gen
+    (fun src ->
       if not (strippers_agree src) then (
         incr quote_comment_skips;
         None)
       else
-        expect_json "parseProgram" [ `String src ]
+        expect_json "parseProgram"
+          [ `String src ]
           (Result_json.program_to_json (Tfl.Program.parse_program src)))
 
 let diff_query_term =
@@ -402,8 +406,8 @@ let diff_query_term =
 
 let diff_query_prop =
   gate "differential: queryProp three-way verdicts agree (with support)"
-    ~count:(count 2_000 25_000) ~print:Gen.print_argument Gen.atomic_argument_gen
-    (fun (program, query) ->
+    ~count:(count 2_000 25_000) ~print:Gen.print_argument
+    Gen.atomic_argument_gen (fun (program, query) ->
       expect_json "queryProp"
         [
           `List (List.map Ast_json.prop_to_json program);
@@ -413,8 +417,8 @@ let diff_query_prop =
 
 let diff_consistency =
   gate "differential: checkProgramConsistency agrees (atomic + relational)"
-    ~count:(count 1_200 10_000) ~print:Gen.print_argument Gen.relational_argument_gen
-    (fun (premises, conclusion) ->
+    ~count:(count 1_200 10_000) ~print:Gen.print_argument
+    Gen.relational_argument_gen (fun (premises, conclusion) ->
       let program = premises @ [ conclusion ] in
       expect_json "checkProgramConsistency"
         [
@@ -425,7 +429,8 @@ let diff_consistency =
            (Tfl.Program.check_program_consistency ~max_lines:60 program)))
 
 let diff_equivalence =
-  gate "differential: equivalents + decideEquivalence agree" ~count:(count 3_000 30_000)
+  gate "differential: equivalents + decideEquivalence agree"
+    ~count:(count 3_000 30_000)
     ~print:(fun (a, b) -> print_proposition a ^ " ?= " ^ print_proposition b)
     Gen.equivalence_pair_gen
     (fun (a, b) ->
@@ -439,8 +444,8 @@ let diff_equivalence =
 
 let diff_numerical =
   gate "differential: the numerical decision agrees (full decision records)"
-    ~count:(count 10_000 100_000) ~print:Gen.print_argument Gen.leveled_argument_gen
-    (fun (premises, conclusion) ->
+    ~count:(count 10_000 100_000) ~print:Gen.print_argument
+    Gen.leveled_argument_gen (fun (premises, conclusion) ->
       expect_json "checkArgument"
         [
           `List (List.map Ast_json.prop_to_json premises);
@@ -451,7 +456,8 @@ let diff_numerical =
 
 let diff_render =
   gate "differential: readProp/readTerm strings agree byte-for-byte"
-    ~count:(count 10_000 100_000) ~print:print_proposition Gen.prop_gen (fun p ->
+    ~count:(count 10_000 100_000) ~print:print_proposition Gen.prop_gen
+    (fun p ->
       expect_json "readProp"
         [ Ast_json.prop_to_json p ]
         (`String (Tfl.Render.read_prop p))
@@ -561,8 +567,7 @@ let narrated = ref 0
 let diff_consistency_narration =
   gate "differential: consistency-proof narrations agree (fact lines)"
     ~count:(count 1_500 20_000) ~print:Gen.print_argument
-    Gen.atomic_argument_gen
-    (fun (premises, conclusion) ->
+    Gen.atomic_argument_gen (fun (premises, conclusion) ->
       let program = premises @ [ conclusion ] in
       match
         (Tfl.Program.check_program_consistency ~max_lines:60 program).c_proof
@@ -593,11 +598,24 @@ let () =
   let qcheck_failures =
     QCheck_base_runner.run_tests ~verbose:true
       [
-        diff_ast; diff_strings; diff_core; diff_args; diff_derive;
-        diff_passives; diff_rel_args; diff_parse_program; diff_query_term;
-        diff_query_prop; diff_consistency; diff_equivalence; diff_numerical;
-        diff_render; diff_explain; diff_arbitrary_args;
-        diff_valid_arbitrary_args; diff_consistency_narration;
+        diff_ast;
+        diff_strings;
+        diff_core;
+        diff_args;
+        diff_derive;
+        diff_passives;
+        diff_rel_args;
+        diff_parse_program;
+        diff_query_term;
+        diff_query_prop;
+        diff_consistency;
+        diff_equivalence;
+        diff_numerical;
+        diff_render;
+        diff_explain;
+        diff_arbitrary_args;
+        diff_valid_arbitrary_args;
+        diff_consistency_narration;
       ]
   in
   Shim_client.stop shim;

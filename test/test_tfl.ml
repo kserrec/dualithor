@@ -36,7 +36,8 @@ let count_prop (c : counts) (p : prop) =
         if singular then c.singulars <- c.singulars + 1;
         if String.length name > 0 && name.[String.length name - 1] = '\'' then
           c.primed_names <- c.primed_names + 1;
-        if not (Tfl.Notation.is_bare_name name) then c.quoted_names <- c.quoted_names + 1
+        if not (Tfl.Notation.is_bare_name name) then
+          c.quoted_names <- c.quoted_names + 1
     | Neg t ->
         c.negs <- c.negs + 1;
         term t
@@ -66,10 +67,19 @@ let count_prop (c : counts) (p : prop) =
 let coverage () =
   let c =
     {
-      atoms = 0; negs = 0; compounds = 0; rels = 0;
-      propterm_props = 0; propterm_terms = 0;
-      plus = 0; minus = 0; wild = 0;
-      singulars = 0; nonzero_levels = 0; primed_names = 0; quoted_names = 0;
+      atoms = 0;
+      negs = 0;
+      compounds = 0;
+      rels = 0;
+      propterm_props = 0;
+      propterm_terms = 0;
+      plus = 0;
+      minus = 0;
+      wild = 0;
+      singulars = 0;
+      nonzero_levels = 0;
+      primed_names = 0;
+      quoted_names = 0;
     }
   in
   let rand = Random.State.make [| 0x7f1; 0x5eed |] in
@@ -98,15 +108,17 @@ let coverage () =
 (* ── Properties: generated values build and compare structurally ────────── *)
 
 let reflexivity =
-  QCheck2.Test.make ~count:10_000 ~name:"prop_eq is reflexive on generated props"
-    Gen.prop_gen
-    (fun p -> prop_eq p p)
+  QCheck2.Test.make ~count:10_000
+    ~name:"prop_eq is reflexive on generated props" Gen.prop_gen (fun p ->
+      prop_eq p p)
 
 let term_reflexivity =
-  QCheck2.Test.make ~count:10_000 ~name:"term_eq is reflexive on generated terms"
-    Gen.term_gen
-    (fun t -> term_eq t t)
+  QCheck2.Test.make ~count:10_000
+    ~name:"term_eq is reflexive on generated terms" Gen.term_gen (fun t ->
+      term_eq t t)
 
 let () =
   coverage ();
-  exit (QCheck_base_runner.run_tests ~verbose:true [ reflexivity; term_reflexivity ])
+  exit
+    (QCheck_base_runner.run_tests ~verbose:true
+       [ reflexivity; term_reflexivity ])

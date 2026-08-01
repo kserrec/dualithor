@@ -22,6 +22,7 @@ let cap = 300_000
 (* ── (a) Anchors ────────────────────────────────────────────────────────── *)
 
 let props = List.map parse_proposition
+
 let entails premises conclusion =
   Semantics.entails ~max_n ~cap (props premises) (parse_proposition conclusion)
 
@@ -40,7 +41,13 @@ let anchors () =
       check (not (entails [ "−A+B" ] "−B+A")) "A-conversion is invalid");
   test "the empty domain is a model" (fun () ->
       let empty : Semantics.model =
-        { n = 0; full = 0; singular = []; unary = [ ("A", 0); ("B", 0) ]; rels = [] }
+        {
+          n = 0;
+          full = 0;
+          singular = [];
+          unary = [ ("A", 0); ("B", 0) ];
+          rels = [];
+        }
       in
       check
         (Semantics.eval_prop (parse_proposition "−A+B") empty)
@@ -82,7 +89,11 @@ let anchors () =
 
 let shim = Shim_client.start ~shim_path:(Shim_client.default_path ())
 
-type tally = { mutable compared : int; mutable entailed : int; mutable skipped : int }
+type tally = {
+  mutable compared : int;
+  mutable entailed : int;
+  mutable skipped : int;
+}
 
 let new_tally () = { compared = 0; entailed = 0; skipped = 0 }
 
@@ -101,8 +112,7 @@ let model_to_json (m : Semantics.model) : Yojson.Safe.t =
                  `List
                    (List.map
                       (fun t ->
-                        `List
-                          (Array.to_list (Array.map (fun x -> `Int x) t)))
+                        `List (Array.to_list (Array.map (fun x -> `Int x) t)))
                       tuples) ))
              m.rels) );
     ]
@@ -125,8 +135,8 @@ let vocab_to_json (v : Semantics.vocab) : Yojson.Safe.t =
 (* Vocabulary agreement first: it decides which models exist at all, so a
    divergence here would silently weaken every entailment comparison. *)
 let diff_vocab =
-  Harness.gate "differential: vocabOf agrees (names, kinds, order)"
-    ~count:5_000 ~print:print_proposition
+  Harness.gate "differential: vocabOf agrees (names, kinds, order)" ~count:5_000
+    ~print:print_proposition
     (G.oneof
        [
          Gen.sem_categorical_prop [ "A"; "B"; "C" ];
@@ -171,12 +181,12 @@ let model_of (p : Tfl.Ast.prop) : Semantics.model G.t =
     in
     go v.rels
   in
-  return
-    ({ n; full = (1 lsl n) - 1; singular; unary; rels } : Semantics.model)
+  return ({ n; full = (1 lsl n) - 1; singular; unary; rels } : Semantics.model)
 
 let diff_eval =
   Harness.gate "differential: evalProp agrees model by model" ~count:10_000
-    ~print:(fun (p, m) -> print_proposition p ^ "  @  " ^ Semantics.show_model m)
+    ~print:(fun (p, m) ->
+      print_proposition p ^ "  @  " ^ Semantics.show_model m)
     (let open G in
      let* p =
        oneof
@@ -243,7 +253,8 @@ let diff_relational =
    nothing. Darapti is semantically invalid here (no existential import), so
    claiming entailment has to come back as a disagreement. *)
 let negative_control () =
-  let premises = props [ "−M+P"; "−M+S" ] and conclusion = parse_proposition "+S+P" in
+  let premises = props [ "−M+P"; "−M+S" ]
+  and conclusion = parse_proposition "+S+P" in
   match
     expect_json "oracleEntails"
       [
@@ -256,7 +267,8 @@ let negative_control () =
   | Some _ -> true
   | None ->
       prerr_endline
-        "✗ negative control: harness failed to detect a wrong entailment verdict";
+        "✗ negative control: harness failed to detect a wrong entailment \
+         verdict";
       false
 
 let report label t =

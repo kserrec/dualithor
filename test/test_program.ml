@@ -5,15 +5,16 @@
 
 open Tfl.Notation
 open Tfl.Program
-
 open Harness
-
 
 (* The paper's Socrates/Fido program (Castro-Manzano et al. 2018 §6). *)
 let fido =
   List.map p
     [
-      "±Socrates*+Man"; "±Fido*+Dog"; "−Man+Animal"; "−Dog+Animal";
+      "±Socrates*+Man";
+      "±Fido*+Dog";
+      "−Man+Animal";
+      "−Dog+Animal";
       "−Man+Mortal";
     ]
 
@@ -26,7 +27,8 @@ let () =
       check (List.length r.errors = 0) "no error expected";
       check (List.length r.propositions = 1) "the line should yield one prop";
       match r.propositions with
-      | [ e ] -> check_eq (Tfl.Notation.print_proposition e.prop) "+\"well--known\"+P"
+      | [ e ] ->
+          check_eq (Tfl.Notation.print_proposition e.prop) "+\"well--known\"+P"
       | _ -> failwith "expected exactly one proposition");
   test "a comment after a quoted term still works" (fun () ->
       let r = parse_program "+\"well-known\"+P -- a comment" in
@@ -78,15 +80,14 @@ let () =
         query_term fido (parse_term "Fido*")
         |> List.map snd |> List.sort String.compare
       in
-      check (answers = [ "±Fido*+Animal"; "±Fido*+Dog" ])
+      check
+        (answers = [ "±Fido*+Animal"; "±Fido*+Dog" ])
         (String.concat " | " answers));
   test "? term drops tautologies from the answer set" (fun () ->
       let answers = query_term fido (parse_term "Man") |> List.map snd in
       check
         (not
-           (List.exists
-              (fun t -> t = "−Man+Man" || t = "−Man−(−Man)")
-              answers))
+           (List.exists (fun t -> t = "−Man+Man" || t = "−Man−(−Man)") answers))
         "no tautologies");
 
   (* ? proposition *)
@@ -94,9 +95,11 @@ let () =
       check
         ((query_prop fido (p "±Socrates*+Mortal")).q_verdict = Q_yes)
         "proven";
-      check ((query_prop fido (p "±Socrates*−Animal")).q_verdict = Q_no)
+      check
+        ((query_prop fido (p "±Socrates*−Animal")).q_verdict = Q_no)
         "refuted";
-      check ((query_prop fido (p "±Fido*+Mortal")).q_verdict = Q_unknown)
+      check
+        ((query_prop fido (p "±Fido*+Mortal")).q_verdict = Q_unknown)
         "open world");
   test "? proposition: the paper's query carries a proof" (fun () ->
       let r = query_prop fido (p "±Socrates*+Mortal") in
@@ -106,8 +109,7 @@ let () =
   (* Program consistency *)
   test "a consistent program reports consistent" (fun () ->
       check (check_program_consistency fido).consistent "consistent");
-  test "an inconsistent program returns the contradiction derivation"
-    (fun () ->
+  test "an inconsistent program returns the contradiction derivation" (fun () ->
       let bad =
         List.map p [ "±Socrates*+Man"; "−Man+Mortal"; "±Socrates*−Mortal" ]
       in
@@ -127,9 +129,7 @@ let () =
       let texts = List.map (fun e -> e.eq_text) eq in
       check ((List.hd eq).eq_rule = "given") "first is given";
       check
-        (List.mem
-           (print_proposition (Tfl.Infer.obverse (p "−S+P")))
-           texts)
+        (List.mem (print_proposition (Tfl.Infer.obverse (p "−S+P"))) texts)
         "obverse present";
       (match Tfl.Infer.contrapositive (p "−S+P") with
       | Some c -> check (List.mem (print_proposition c) texts) "contrapositive"
@@ -147,7 +147,8 @@ let () =
       check (r.e_method = "rewrite") "method";
       check r.equivalent "equivalent";
       match r.e_path with
-      | Some path -> check (List.mem "contrapositive" path) "path mentions contrap"
+      | Some path ->
+          check (List.mem "contrapositive" path) "path mentions contrap"
       | None -> failwith "no path");
   test "?= propositional pair decided by the DNF fingerprint" (fun () ->
       let r = decide_equivalence (p "−p+q") (p "−(−q)+(−p)") in
@@ -170,9 +171,11 @@ let () =
       check (r.e_method = "dnf") "method";
       check r.equivalent "equivalent");
   test "?= reports genuine non-equivalence" (fun () ->
-      check (not (decide_equivalence (p "−p+q") (p "+p+q")).equivalent)
+      check
+        (not (decide_equivalence (p "−p+q") (p "+p+q")).equivalent)
         "different forms";
-      check (not (decide_equivalence (p "−S+P") (p "−P+S")).equivalent)
+      check
+        (not (decide_equivalence (p "−S+P") (p "−P+S")).equivalent)
         "no A-conversion");
 
   (* statement_model *)

@@ -32,16 +32,21 @@ let safe_on (src : string) : string option =
     slowest := elapsed;
     slowest_input := src);
   if elapsed > 1.0 then
-    Some (Printf.sprintf "took %.3fs on a %d-byte input" elapsed (String.length src))
+    Some
+      (Printf.sprintf "took %.3fs on a %d-byte input" elapsed
+         (String.length src))
   else
     match outcome with
     | Ok _ -> None
     | Error { kind = Tfl.Safe.Internal; message; _ } ->
         Some (Printf.sprintf "Internal failure (%s)" message)
     | Error { pos = Some p; _ } when p < 0 || p > String.length src ->
-        Some (Printf.sprintf "position %d outside a %d-byte source" p (String.length src))
+        Some
+          (Printf.sprintf "position %d outside a %d-byte source" p
+             (String.length src))
     | Error { kind = Tfl.Safe.Outside_fragment; pos = Some p; _ } ->
-        Some (Printf.sprintf "a fragment refusal carried a source position (%d)" p)
+        Some
+          (Printf.sprintf "a fragment refusal carried a source position (%d)" p)
     | Error _ -> None
 
 let gate = Harness.gate
@@ -77,7 +82,9 @@ let deep_nesting =
   return
     (String.concat "" (List.init depth (fun _ -> opening))
     ^ core
-    ^ if balanced then String.concat "" (List.init depth (fun _ -> closing)) else "")
+    ^
+    if balanced then String.concat "" (List.init depth (fun _ -> closing))
+    else "")
 
 (* Pathological lengths: one enormous name, or an enormous run of tokens. *)
 let pathological =
@@ -118,7 +125,9 @@ let fuzz_pathological =
    came from, and a refusal must never surface as a verdict. *)
 let fuzz_check =
   gate "safe: check over garbage premises and conclusions" ~count:10_000
-    ~print:(fun (ps, c) -> String.concat " ; " (List.map String.escaped ps) ^ " ⊢ " ^ String.escaped c)
+    ~print:(fun (ps, c) ->
+      String.concat " ; " (List.map String.escaped ps)
+      ^ " ⊢ " ^ String.escaped c)
     (let open G in
      let src = oneof [ random_bytes; Gen.token_string_gen; truncated ] in
      let* n = int_range 1 3 in
@@ -158,7 +167,8 @@ let unit_checks () =
       check (kind_of "+A" = "syntactic") "a proposition needs two signed terms";
       check (kind_of "+A+(B" = "syntactic") "an unclosed group is syntactic";
       check (kind_of "+A+B+C" = "syntactic") "trailing input is syntactic");
-  test "a parsed proposition the fragment refuses is outside_fragment" (fun () ->
+  test "a parsed proposition the fragment refuses is outside_fragment"
+    (fun () ->
       (* ± on a general subject parses fine and validation rejects it. *)
       check
         (match Tfl.Safe.check ~premises:[ "±A+B" ] ~conclusion:"−S+P" with
@@ -175,10 +185,15 @@ let unit_checks () =
         | _ -> false)
         "a levelled non-categorical argument is a fragment refusal");
   test "the depth cap admits legitimate nesting and refuses the rest" (fun () ->
-      let nest d = String.concat "" (List.init d (fun _ -> "(")) ^ "A"
-                   ^ String.concat "" (List.init d (fun _ -> ")")) in
+      let nest d =
+        String.concat "" (List.init d (fun _ -> "("))
+        ^ "A"
+        ^ String.concat "" (List.init d (fun _ -> ")"))
+      in
       check (kind_of ("+" ^ nest 60 ^ "+B") = "ok") "60 levels still parses";
-      check (kind_of ("+" ^ nest 200 ^ "+B") = "syntactic") "200 levels is refused");
+      check
+        (kind_of ("+" ^ nest 200 ^ "+B") = "syntactic")
+        "200 levels is refused");
   test "failures name the input they came from" (fun () ->
       match Tfl.Safe.check ~premises:[ "−S+P"; "!!" ] ~conclusion:"−S+P" with
       | Error { where = Some w; _ } -> check_eq w "premise 2"
@@ -194,8 +209,7 @@ let cancellation_probe () =
   let open Harness in
   let props u =
     List.map Tfl.Notation.parse_proposition
-      ([ "+A+B"; "−B−B" ]
-      @ List.init u (fun i -> Printf.sprintf "−J%d+K%d" i i))
+      ([ "+A+B"; "−B−B" ] @ List.init u (fun i -> Printf.sprintf "−J%d+K%d" i i))
   in
   test "the cancellation search is capped (20 junk universals, <1s)" (fun () ->
       let t0 = Unix.gettimeofday () in
@@ -229,7 +243,11 @@ let () =
   let failures =
     QCheck_base_runner.run_tests ~verbose:true
       [
-        fuzz_bytes; fuzz_tokens; fuzz_truncations; fuzz_deep; fuzz_pathological;
+        fuzz_bytes;
+        fuzz_tokens;
+        fuzz_truncations;
+        fuzz_deep;
+        fuzz_pathological;
         fuzz_check;
       ]
   in

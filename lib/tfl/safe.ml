@@ -9,7 +9,7 @@ type failure_kind =
   | Syntactic (* legal tokens that do not form a proposition *)
   | Outside_fragment (* a well-formed AST the inference layer refuses *)
   | Internal
-      (* an exception that should be unreachable. Not one of the three router
+(* an exception that should be unreachable. Not one of the three router
          classes: it classifies the engine, not the input, and it means a bug
          to fix rather than an escalation to make. It exists so the API can be
          total without a crash ever being reported as an expected outcome. *)

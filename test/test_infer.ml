@@ -6,7 +6,6 @@
 
 open Tfl.Notation
 open Tfl.Infer
-
 open Harness
 
 let eq_up_to a b = prop_eq_up_to (p a) (p b)
@@ -34,9 +33,7 @@ let () =
         (fun a ->
           List.iter
             (fun b ->
-              check
-                (eq_up_to a b = (a = b))
-                (Printf.sprintf "%s vs %s" a b))
+              check (eq_up_to a b = (a = b)) (Printf.sprintf "%s vs %s" a b))
             forms)
         forms);
   test "identity pairing subscripts are canonical noise" (fun () ->
@@ -82,9 +79,7 @@ let () =
       check (contrapositive (p "+S+P") = None) "I contrap";
       check (contrapositive (p "−S−P") = None) "E contrap");
   test "tautology is the safe A-form −T+T" (fun () ->
-      check
-        (prop_eq_up_to (tautology (parse_term "Dog")) (p "−Dog+Dog"))
-        "It");
+      check (prop_eq_up_to (tautology (parse_term "Dog")) (p "−Dog+Dog")) "It");
 
   (* Engine guards *)
   test "wild quantity requires a singular term" (fun () ->

@@ -554,3 +554,5 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   engine-logic change — but because engine files are touched at all, it lands only
   after the full post-1.12 gate: unit suite + paper-cases + 20k oracle + mass
   differential, all green on the reformatted tree.
+  Result: quick suite green; mass differential `success (ran 18 tests)`, zero
+  disagreements; oracle clean at 20k across all six suites, 1,486s. Committed.

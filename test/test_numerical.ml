@@ -6,9 +6,7 @@
 
 open Tfl.Notation
 open Tfl.Decide
-
 open Harness
-
 
 let conditions (r : result) =
   match r.decision with
@@ -36,8 +34,9 @@ let () =
   test "Table 13 — ekg-2 is valid" (fun () ->
       check ((arg [ "-F-C"; "+V^2+C" ] "+V^1-F").verdict = Valid) "ekg-2");
 
-  test "a most-conclusion is fine when a most-premise on its subject licenses \
-        it" (fun () ->
+  test
+    "a most-conclusion is fine when a most-premise on its subject licenses it"
+    (fun () ->
       check ((arg [ "-M+P"; "+S^2+M" ] "+S^2+P").verdict = Valid) "att-1");
 
   test "any nonzero level routes to the decision method" (fun () ->
@@ -89,14 +88,17 @@ let () =
       check d.n_valid "valid";
       check (d.conclusion_level = 0) "conclusion level 0");
 
-  test "condition (iii) is term-matched: an intermediate quantity rides its \
-        own term" (fun () ->
+  test
+    "condition (iii) is term-matched: an intermediate quantity rides its own \
+     term" (fun () ->
       let r = arg [ "-B+A"; "+B^2+H" ] "+H^2+A" in
       check (r.verdict = Invalid) "att-3 shape invalid";
       check (conditions r = (true, true, false)) "level fails alone";
-      check ((arg [ "-B+A"; "+B^2+H" ] "+H+A").verdict = Valid)
+      check
+        ((arg [ "-B+A"; "+B^2+H" ] "+H+A").verdict = Valid)
         "the some-conclusion follows";
-      check ((arg [ "-M+P"; "+S^2+M" ] "+S^2+P").verdict = Valid)
+      check
+        ((arg [ "-M+P"; "+S^2+M" ] "+S^2+P").verdict = Valid)
         "att-1 carries");
 
   finish "numerical unit tests"

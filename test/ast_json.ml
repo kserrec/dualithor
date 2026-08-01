@@ -60,7 +60,9 @@ let rec json_equal (a : Yojson.Safe.t) (b : Yojson.Safe.t) : bool =
       let sort = List.sort (fun (k1, _) (k2, _) -> compare k1 k2) in
       let xs = sort xs and ys = sort ys in
       List.length xs = List.length ys
-      && List.for_all2 (fun (k1, v1) (k2, v2) -> k1 = k2 && json_equal v1 v2) xs ys
+      && List.for_all2
+           (fun (k1, v1) (k2, v2) -> k1 = k2 && json_equal v1 v2)
+           xs ys
   | `List xs, `List ys ->
       List.length xs = List.length ys && List.for_all2 json_equal xs ys
   | `Int i, `Float f | `Float f, `Int i -> float_of_int i = f

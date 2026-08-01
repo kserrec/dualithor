@@ -48,11 +48,13 @@ let replace_at (p : prop) (side : Infer.side) (steps : Infer.occ_step list)
   match side with
   | Infer.On_subject ->
       let sign =
-        if steps = [] && p.subject.sign = Wild then fix_sign
-        else p.subject.sign
+        if steps = [] && p.subject.sign = Wild then fix_sign else p.subject.sign
       in
       Infer.canon_prop
-        { subject = Infer.st sign (sub p.subject.term steps); predicate = p.predicate }
+        {
+          subject = Infer.st sign (sub p.subject.term steps);
+          predicate = p.predicate;
+        }
   | Infer.On_predicate ->
       Infer.canon_prop
         {
@@ -86,9 +88,7 @@ let apply_don (donor : prop) (host : prop) : prop list =
       else
         List.filter_map
           (fun (occ : Infer.occurrence) ->
-            if
-              Infer.can_be_plus occ && Infer.term_key occ.occ_term = m_key
-            then
+            if Infer.can_be_plus occ && Infer.term_key occ.occ_term = m_key then
               Some
                 (replace_at host occ.side occ.steps d
                    (if occ.occ_sign = 1 then Plus else Minus))
@@ -129,15 +129,16 @@ let apply_simp (p : prop) : prop list =
             predicate = Infer.st Plus p.subject.term;
           };
       ]
-    @ (if p.predicate.sign = Plus then
-         [
-           Infer.canon_prop
-             {
-               subject = Infer.st Plus p.predicate.term;
-               predicate = Infer.st Plus p.predicate.term;
-             };
-         ]
-       else [])
+    @
+    if p.predicate.sign = Plus then
+      [
+        Infer.canon_prop
+          {
+            subject = Infer.st Plus p.predicate.term;
+            predicate = Infer.st Plus p.predicate.term;
+          };
+      ]
+    else []
   else drops
 
 (* ── Add ────────────────────────────────────────────────────────────────── *)

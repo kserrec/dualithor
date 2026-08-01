@@ -29,8 +29,9 @@ let expect_not_valid premises conclusion msg =
   let r = arg premises conclusion in
   check
     (verdict_name r <> "valid")
-    (Printf.sprintf "%s: engine certified an argument the books call invalid (%s)"
-       msg (verdict_name r))
+    (Printf.sprintf
+       "%s: engine certified an argument the books call invalid (%s)" msg
+       (verdict_name r))
 
 let valid premises conclusion name =
   test name (fun () -> expect_verdict premises conclusion "valid" name)
@@ -84,7 +85,8 @@ let () =
   invalid [ "−P+M"; "−S+M" ] "−S+P" "undistributed middle (AAA-2)";
   invalid [ "−M+P"; "−S−M" ] "−S−P" "illicit major (AEE-1)";
   invalid [ "+M+P"; "−S+M" ] "+S+P" "IAI-1 is invalid";
-  invalid [ "−M+P"; "+S−M" ] "+S−P" "illicit process from a negative premise (AOO-1)"
+  invalid [ "−M+P"; "+S−M" ] "+S−P"
+    "illicit process from a negative premise (AOO-1)"
 
 (* ── D. Immediate inferences ────────────────────────────────────────────────
    Conversion is valid for I and E only; A converts only per accidens (which
@@ -116,8 +118,9 @@ let () =
 let () =
   valid [ "−Horse+Animal" ] "−(Head+Horse)+(Head+Animal)"
     "De Morgan: every head of a horse is a head of an animal";
-  valid [ "−Man+(Lov+Woman)"; "−Woman+Human" ] "−Man+(Lov+Human)"
-    "dictum inside a relational object";
+  valid
+    [ "−Man+(Lov+Woman)"; "−Woman+Human" ]
+    "−Man+(Lov+Human)" "dictum inside a relational object";
   valid
     [ "−Boy+(Lov+Girl)"; "−Girl+(Adm−Teacher)" ]
     "−Boy+(Lov+(Adm−Teacher))" "chained relational complexes";

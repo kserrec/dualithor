@@ -6,7 +6,6 @@
 
 open Tfl.Notation
 open Tfl.Render
-
 open Harness
 
 let t = parse_term
@@ -22,8 +21,7 @@ let () =
       check_eq (read_prop (p "±Socrates*+Man")) "Socrates is a man";
       check_eq (read_prop (p "±Socrates*−Man")) "Socrates is not a man";
       check_eq (read_prop (p "±Ada*+Animal")) "Ada is an animal");
-  test "readProp orients a converted singular back to the individual"
-    (fun () ->
+  test "readProp orients a converted singular back to the individual" (fun () ->
       check_eq
         (read_prop (Tfl.Infer.canon_prop (p "±Socrates*+Man")))
         "Socrates is a man");
@@ -53,13 +51,12 @@ let () =
   test "explainProof: direct derivation (Barbara)" (fun () ->
       let proof = Tfl.Derive.derive [ p "−M+P"; p "−S+M" ] (p "−S+P") in
       match explain_proof proof with
-      | Some s -> check_eq s "Because every m is p, and every s is m, every s is p."
+      | Some s ->
+          check_eq s "Because every m is p, and every s is m, every s is p."
       | None -> failwith "no explanation");
   test "explainProof: indirect proof ends in the impossibility clause"
     (fun () ->
-      let proof =
-        Tfl.Derive.indirect_proof [ p "−A+B"; p "−B+C" ] (p "−A+C")
-      in
+      let proof = Tfl.Derive.indirect_proof [ p "−A+B"; p "−B+C" ] (p "−A+C") in
       match explain_proof proof with
       | Some s ->
           check_eq s

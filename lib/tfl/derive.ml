@@ -7,7 +7,12 @@
 open Ast
 
 (* A line on the saturation board. *)
-type sat_line = { s_prop : prop; key : string; rule : string; parents : int list }
+type sat_line = {
+  s_prop : prop;
+  key : string;
+  rule : string;
+  parents : int list;
+}
 
 (* A line of an extracted proof; [l_prop] is None only for the synthetic ⊥
    closing line of a refutation (PLAN 1.6). *)
@@ -76,13 +81,14 @@ let saturate ?(max_lines = 400) ?rules ~size_cap
       @ (if allow "Simp" then
            List.map (fun p -> (p, "Simp")) (Rules.apply_simp li.s_prop)
          else [])
-      @ (if allow "Pass" then
-           List.filter_map
-             (fun (r : Relational.passive) ->
-               if r.equivalent then Some (Infer.canon_prop r.p_prop, "Pass")
-               else None)
-             (Relational.passives li.s_prop)
-         else [])
+      @
+      if allow "Pass" then
+        List.filter_map
+          (fun (r : Relational.passive) ->
+            if r.equivalent then Some (Infer.canon_prop r.p_prop, "Pass")
+            else None)
+          (Relational.passives li.s_prop)
+      else []
     in
     List.iter
       (fun (p, rule) -> if !hit = None then ignore (push p rule [ !i ]))
@@ -114,9 +120,10 @@ let saturate ?(max_lines = 400) ?rules ~size_cap
     done;
     incr i
   done;
-  (Array.map (function Some l -> l | None -> assert false)
-     (Array.sub !lines 0 !count),
-   !hit)
+  ( Array.map
+      (function Some l -> l | None -> assert false)
+      (Array.sub !lines 0 !count),
+    !hit )
 
 (* ── Tautology seeding ──────────────────────────────────────────────────── *)
 
@@ -245,8 +252,7 @@ let refute_set ?max_lines ?(slack = 8) (entries : entry list) : proof =
                 let parents = match idx with Some i -> [ i ] | None -> [] in
                 ignore (push (Infer.canon_prop pr_prop) "Pron" parents);
                 List.iter
-                  (fun a ->
-                    ignore (push (Infer.canon_prop a) "Anchor" parents))
+                  (fun a -> ignore (push (Infer.canon_prop a) "Anchor" parents))
                   anchors)
           entries idxs;
         List.iter

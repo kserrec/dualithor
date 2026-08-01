@@ -97,8 +97,7 @@ let passives (p : prop) : passive list =
             if not (Hashtbl.mem seen key) then (
               Hashtbl.add seen key ();
               out :=
-                { p_prop = prop; equivalent = !equivalent; swapped = k }
-                :: !out)
+                { p_prop = prop; equivalent = !equivalent; swapped = k } :: !out)
           done
       | _ -> ())
     (orientations p);
@@ -137,7 +136,7 @@ let pronominalize (p : prop) (used : (string, unit) Hashtbl.t) :
   collect_names p used;
   let attempt q =
     if q.subject.sign = Minus then None
-    else (
+    else
       let anchors = ref [] in
       let names = ref [] in
       let fresh base =
@@ -185,8 +184,7 @@ let pronominalize (p : prop) (used : (string, unit) Hashtbl.t) :
           Infer.st Wild (mark q.subject.term)
         else
           match (q.subject.sign, q.subject.term) with
-          | Plus, Rel { head; objects } ->
-              Infer.st Plus (walk_rel head objects)
+          | Plus, Rel { head; objects } -> Infer.st Plus (walk_rel head objects)
           | _ -> q.subject
       in
       let predicate =
@@ -195,7 +193,7 @@ let pronominalize (p : prop) (used : (string, unit) Hashtbl.t) :
         | _ -> q.predicate
       in
       if !anchors = [] then None
-      else Some ({ subject; predicate }, !anchors, !names))
+      else Some ({ subject; predicate }, !anchors, !names)
   in
   let results = List.filter_map attempt (orientations p) in
   match results with

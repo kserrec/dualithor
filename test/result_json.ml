@@ -47,8 +47,7 @@ let line_to_json (l : Tfl.Derive.line) : Yojson.Safe.t =
     [
       ("n", `Int l.n);
       ( "prop",
-        match l.l_prop with Some p -> Ast_json.prop_to_json p | None -> `Null
-      );
+        match l.l_prop with Some p -> Ast_json.prop_to_json p | None -> `Null );
       ("text", `String l.text);
       ("rule", `String l.rule);
       ("parents", `List (List.map (fun i -> `Int i) l.parents));
@@ -88,8 +87,8 @@ let certificate_to_json (c : Tfl.Decide.certificate) : Yojson.Safe.t =
         | None -> `Null );
     ]
 
-let decision_record_to_json (d : Tfl.Decide.numerical_decision) :
-    Yojson.Safe.t =
+let decision_record_to_json (d : Tfl.Decide.numerical_decision) : Yojson.Safe.t
+    =
   `Assoc
     [
       ("valid", `Bool d.n_valid);
@@ -199,21 +198,21 @@ let consistency_to_json (r : Tfl.Program.consistency) : Yojson.Safe.t =
   `Assoc
     ([ ("consistent", `Bool r.consistent); ("complete", `Bool r.complete) ]
     @ (if r.numerical then [ ("numerical", `Bool true) ] else [])
-    @ (match r.certificate with
-      | Some c ->
-          [
-            ("certificate", certificate_to_json c);
-            ( "proof",
-              match r.c_proof with Some p -> proof_to_json p | None -> `Null
-            );
-          ]
-      | None -> (
-          match r.c_proof with
-          | Some p -> [ ("proof", proof_to_json p) ]
-          | None -> [])))
+    @
+    match r.certificate with
+    | Some c ->
+        [
+          ("certificate", certificate_to_json c);
+          ( "proof",
+            match r.c_proof with Some p -> proof_to_json p | None -> `Null );
+        ]
+    | None -> (
+        match r.c_proof with
+        | Some p -> [ ("proof", proof_to_json p) ]
+        | None -> []))
 
-let equivalents_to_json (es : Tfl.Program.equivalent_entry list) :
-    Yojson.Safe.t =
+let equivalents_to_json (es : Tfl.Program.equivalent_entry list) : Yojson.Safe.t
+    =
   `List
     (List.map
        (fun (e : Tfl.Program.equivalent_entry) ->
@@ -229,12 +228,9 @@ let equivalents_to_json (es : Tfl.Program.equivalent_entry list) :
 
 let decision_to_json (r : Tfl.Program.equivalence_decision) : Yojson.Safe.t =
   `Assoc
-    ([
-       ("equivalent", `Bool r.equivalent); ("method", `String r.e_method);
-     ]
+    ([ ("equivalent", `Bool r.equivalent); ("method", `String r.e_method) ]
     @ (match r.atoms with
-      | Some atoms ->
-          [ ("atoms", `List (List.map (fun s -> `String s) atoms)) ]
+      | Some atoms -> [ ("atoms", `List (List.map (fun s -> `String s) atoms)) ]
       | None -> [])
     @ (match r.dnf with
       | Some rows -> [ ("dnf", `List (List.map (fun s -> `String s) rows)) ]

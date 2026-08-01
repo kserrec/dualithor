@@ -41,7 +41,8 @@ let call t (fn : string) (args : Yojson.Safe.t list) :
         | _ -> None
       in
       Error { name = str "name"; message = str "message"; pos }
-  | other -> failwith ("shim: unexpected response " ^ Yojson.Safe.to_string other)
+  | other ->
+      failwith ("shim: unexpected response " ^ Yojson.Safe.to_string other)
 
 (* Compare an OCaml-side value against the reference's answer for the same
    call: None when they agree, Some description when they do not. The

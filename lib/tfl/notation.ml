@@ -68,9 +68,7 @@ let is_whitespace c =
 let is_name_start c = is_ascii_letter c
 
 let is_name_char c =
-  is_ascii_letter c || is_ascii_digit c
-  || c = 0x5F (* _ *)
-  || c = 0x27 (* ' *)
+  is_ascii_letter c || is_ascii_digit c || c = 0x5F (* _ *) || c = 0x27 (* ' *)
   || is_subscript_digit c
 
 (* A printed name needs quotes unless it's a bare identifier. *)
@@ -286,7 +284,7 @@ and parse_term_inner st =
   | Tok_lparen ->
       ignore (advance st);
       parse_group st t
-  | Tok_lbracket ->
+  | Tok_lbracket -> (
       ignore (advance st);
       let inner =
         if is_sign (peek st) then
@@ -301,12 +299,12 @@ and parse_term_inner st =
           | _ ->
               fail_at st
                 (Printf.sprintf
-                   "Expected a proposition or statement term inside [ ], \
-                    found %s"
+                   "Expected a proposition or statement term inside [ ], found \
+                    %s"
                    (token_text (peek st)))
                 None
       in
-      (match (peek st).kind with
+      match (peek st).kind with
       | Tok_rbracket ->
           ignore (advance st);
           PropTerm inner
@@ -335,11 +333,11 @@ and parse_group st open_tok =
     done;
     close_paren ();
     match List.rev !elements with
-    | [ { sign; term; level } ] ->
+    | [ { sign; term; level } ] -> (
         if level <> 0 then
           fail_at st "A quantity level cannot attach inside a bare signed group"
             (Some open_tok);
-        (match sign with
+        match sign with
         | Minus -> Neg term
         | Plus -> term (* (+T) is just T *)
         | Wild ->
@@ -363,8 +361,8 @@ and parse_group st open_tok =
         if !objects = [] then
           fail_at st
             (Printf.sprintf
-               "Expected a signed object or ')' after the relation term, \
-                found %s"
+               "Expected a signed object or ')' after the relation term, found \
+                %s"
                (token_text (peek st)))
             None;
         close_paren ();
@@ -406,6 +404,7 @@ let parse_signed_term src =
    parse (print x) is structurally equal to x for every parser-producible x. *)
 
 let print_sign = function Plus -> "+" | Minus -> "−" | Wild -> "±"
+
 let superscripts = [| "⁰"; "¹"; "²"; "³"; "⁴"; "⁵"; "⁶"; "⁷"; "⁸"; "⁹" |]
 
 let print_level n =

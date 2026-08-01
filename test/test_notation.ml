@@ -41,7 +41,8 @@ let fails_with ?(parser = fun s -> ignore (parse_proposition s)) src msg_part =
   | () -> failwith (Printf.sprintf "%S should have raised Parse_error" src)
   | exception Parse_error { message; pos } ->
       check (pos >= 0) "Parse_error should carry a position";
-      check (contains message msg_part)
+      check
+        (contains message msg_part)
         (Printf.sprintf "message %S should include %S" message msg_part)
   | exception e ->
       failwith
@@ -53,18 +54,43 @@ let as_signed s = ignore (parse_signed_term s)
 
 let corpus =
   [
-    "−S+P"; "−S−P"; "+S+P"; "+S−P";
-    "−Mammal+Mortal"; "+Philosopher+Wise"; "+Student−Diligent";
-    "−(−Mammal)+(−Dog)"; "+(−P)−(−S)"; "−(−p)−(−q)"; "−(−p)+q";
-    "±Socrates*+Wise"; "±MarkTwain*+SamuelClemens*"; "+Twain*+Humorist";
-    "−Man+(Lov+Woman)"; "−Man+(Lov±Mary*)"; "±John*+(Lov±Mary*)";
-    "+Man−(Lov+Woman)"; "−Boy+(Lov+(Adm−Teacher))";
-    "−(Head+Horse)+(Head+Horse)"; "−Student+(Reads+Book)";
-    "+Philosopher+(Admires±Socrates*)"; "±Caesar*+(Conquered±Gaul*)";
-    "±Boy'+(Lov±Girl')"; "±Boy'+Boy"; "±Girl'+Coward";
-    "+[+A''+B]+[+A''+C]"; "−[+A'+B]+[+A'+C]"; "+[p]+[q]";
-    "−(+White+Horse)+Gentle"; "+\"non-smoker\"+P"; "−\"head of a horse\"+Thing";
-    "+V^2+C^0"; "+V²+C⁰"; "−B'₁+S₁₂"; "+p+q"; "−p−q";
+    "−S+P";
+    "−S−P";
+    "+S+P";
+    "+S−P";
+    "−Mammal+Mortal";
+    "+Philosopher+Wise";
+    "+Student−Diligent";
+    "−(−Mammal)+(−Dog)";
+    "+(−P)−(−S)";
+    "−(−p)−(−q)";
+    "−(−p)+q";
+    "±Socrates*+Wise";
+    "±MarkTwain*+SamuelClemens*";
+    "+Twain*+Humorist";
+    "−Man+(Lov+Woman)";
+    "−Man+(Lov±Mary*)";
+    "±John*+(Lov±Mary*)";
+    "+Man−(Lov+Woman)";
+    "−Boy+(Lov+(Adm−Teacher))";
+    "−(Head+Horse)+(Head+Horse)";
+    "−Student+(Reads+Book)";
+    "+Philosopher+(Admires±Socrates*)";
+    "±Caesar*+(Conquered±Gaul*)";
+    "±Boy'+(Lov±Girl')";
+    "±Boy'+Boy";
+    "±Girl'+Coward";
+    "+[+A''+B]+[+A''+C]";
+    "−[+A'+B]+[+A'+C]";
+    "+[p]+[q]";
+    "−(+White+Horse)+Gentle";
+    "+\"non-smoker\"+P";
+    "−\"head of a horse\"+Thing";
+    "+V^2+C^0";
+    "+V²+C⁰";
+    "−B'₁+S₁₂";
+    "+p+q";
+    "−p−q";
   ]
 
 (* ── Ported unit tests ──────────────────────────────────────────────────── *)
@@ -93,7 +119,9 @@ let run_unit_tests () =
         "-S+P should equal −S+P");
   test "wild quantity sign" (fun () ->
       prop_to "±Socrates*+Wise"
-        (prop (st Wild (atom ~singular:true "Socrates")) (st Plus (atom "Wise"))));
+        (prop
+           (st Wild (atom ~singular:true "Socrates"))
+           (st Plus (atom "Wise"))));
   test "+- is the ASCII alias for ±" (fun () ->
       check
         (prop_eq
@@ -111,7 +139,8 @@ let run_unit_tests () =
       (* O *));
 
   (* Singulars and proterms *)
-  test "singular star" (fun () -> term_to "Twain*" (atom ~singular:true "Twain"));
+  test "singular star" (fun () ->
+      term_to "Twain*" (atom ~singular:true "Twain"));
   test "identity statement with two singulars" (fun () ->
       prop_to "+Twain*+Clemens*"
         (prop
@@ -172,7 +201,8 @@ let run_unit_tests () =
   test "compound conjunctive term" (fun () ->
       prop_to "−(+White+Horse)+Gentle"
         (prop
-           (st Minus (Compound [ st Plus (atom "White"); st Plus (atom "Horse") ]))
+           (st Minus
+              (Compound [ st Plus (atom "White"); st Plus (atom "Horse") ]))
            (st Plus (atom "Gentle"))));
   test "compound may mix signs" (fun () ->
       term_to "(+Rich−Happy)"
@@ -183,18 +213,21 @@ let run_unit_tests () =
   (* Relational complexes *)
   test "basic relational complex" (fun () ->
       prop_to "−Man+(Lov+Woman)"
-        (prop (st Minus (atom "Man"))
+        (prop
+           (st Minus (atom "Man"))
            (st Plus (rel (atom "Lov") [ st Plus (atom "Woman") ]))));
   test "relational with wild singular object" (fun () ->
       prop_to "−Man+(Lov±Mary*)"
-        (prop (st Minus (atom "Man"))
+        (prop
+           (st Minus (atom "Man"))
            (st Plus (rel (atom "Lov") [ st Wild (atom ~singular:true "Mary") ]))));
   test "n-ary relational complex" (fun () ->
       term_to "(Gave+Rose+Girl)"
         (rel (atom "Gave") [ st Plus (atom "Rose"); st Plus (atom "Girl") ]));
   test "nested relational complex" (fun () ->
       prop_to "−Boy+(Lov+(Adm−Teacher))"
-        (prop (st Minus (atom "Boy"))
+        (prop
+           (st Minus (atom "Boy"))
            (st Plus
               (rel (atom "Lov")
                  [ st Plus (rel (atom "Adm") [ st Minus (atom "Teacher") ]) ]))));
@@ -205,7 +238,8 @@ let run_unit_tests () =
            (st Plus (rel (atom "Head") [ st Plus (atom "Horse") ]))));
   test "negative quality on a relational predicate" (fun () ->
       prop_to "+Man−(Lov+Woman)"
-        (prop (st Plus (atom "Man"))
+        (prop
+           (st Plus (atom "Man"))
            (st Minus (rel (atom "Lov") [ st Plus (atom "Woman") ]))));
   test "relation head may itself be a negative term" (fun () ->
       term_to "((−Lov)+Woman)"
@@ -216,7 +250,8 @@ let run_unit_tests () =
       term_to "[p]" (PropTerm (Inner_term (atom "p"))));
   test "propositional term with full proposition" (fun () ->
       term_to "[+A''+B]"
-        (PropTerm (Inner_prop (prop (st Plus (atom "A''")) (st Plus (atom "B"))))));
+        (PropTerm
+           (Inner_prop (prop (st Plus (atom "A''")) (st Plus (atom "B"))))));
   test "conjunction of propositional terms" (fun () ->
       prop_to "+[+A''+B]+[+A''+C]"
         (prop
@@ -253,7 +288,8 @@ let run_unit_tests () =
       check
         (print_proposition (parse_proposition "+V^2+C^0") = "+V²+C")
         "should print +V²+C";
-      check (print_proposition (parse_proposition "+V+C") = "+V+C")
+      check
+        (print_proposition (parse_proposition "+V+C") = "+V+C")
         "should print +V+C");
   test "bare ^ without digits" (fun () ->
       fails_with "+V^+C" "Expected digits after '^'");
@@ -273,7 +309,8 @@ let run_unit_tests () =
   test "missing predicate" (fun () -> fails_with "−S" "Expected a sign");
   test "term alone is not a proposition" (fun () ->
       fails_with "Dog" "Expected a sign");
-  test "trailing garbage" (fun () -> fails_with "−S+P+Q" "Expected end of input");
+  test "trailing garbage" (fun () ->
+      fails_with "−S+P+Q" "Expected end of input");
   test "unclosed paren" (fun () -> fails_with "−Man+(Lov+Woman" "Expected ')'");
   test "star cannot attach to a group" (fun () ->
       fails_with "+(Lov+Girl)*+P" "Unexpected character");

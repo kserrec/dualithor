@@ -37,7 +37,9 @@ let strip_comment (cps : int array) : int array =
     then end_of_name (j + 1)
     else j
   in
-  let rec end_of_quote j = if j >= n || cps.(j) = 0x22 then j + 1 else end_of_quote (j + 1) in
+  let rec end_of_quote j =
+    if j >= n || cps.(j) = 0x22 then j + 1 else end_of_quote (j + 1)
+  in
   let rec scan i =
     if i >= n then None
     else if Notation.is_name_start cps.(i) then scan (end_of_name (i + 1))
@@ -51,9 +53,13 @@ let strip_comment (cps : int array) : int array =
 let trim_cps (cps : int array) : int array =
   let n = Array.length cps in
   let s = ref 0 in
-  while !s < n && Notation.is_whitespace cps.(!s) do incr s done;
+  while !s < n && Notation.is_whitespace cps.(!s) do
+    incr s
+  done;
   let e = ref n in
-  while !e > !s && Notation.is_whitespace cps.(!e - 1) do decr e done;
+  while !e > !s && Notation.is_whitespace cps.(!e - 1) do
+    decr e
+  done;
   Array.sub cps !s (!e - !s)
 
 let cps_to_string (cps : int array) : string =
@@ -145,7 +151,7 @@ let query_term ?max_lines ?(slack = 6) (program : prop list) (term : term) :
   let implies a b =
     let b_key = Notation.print_proposition (Infer.canon_prop b) in
     if Notation.print_proposition (Infer.canon_prop a) = b_key then true
-    else (
+    else
       let cap = max (Infer.prop_nodes a) (Infer.prop_nodes b) + 2 in
       let _, hit =
         Derive.saturate ~max_lines:60
@@ -154,7 +160,7 @@ let query_term ?max_lines ?(slack = 6) (program : prop list) (term : term) :
           (fun push -> ignore (push (Infer.canon_prop a) "a" []))
           (fun _ l _ -> if l.key = b_key then Some () else None)
       in
-      hit <> None)
+      hit <> None
   in
   let kept = ref [] in
   List.iter
@@ -178,7 +184,6 @@ let query_term ?max_lines ?(slack = 6) (program : prop list) (term : term) :
 (* ── ? proposition query: the three-way verdict ─────────────────────────── *)
 
 type query_verdict = Q_yes | Q_no | Q_unknown
-
 type prop_query = { q_verdict : query_verdict; support : Decide.result option }
 
 let query_prop ?max_lines ?slack (program : prop list) (query : prop) :
@@ -193,13 +198,13 @@ let query_prop ?max_lines ?slack (program : prop list) (query : prop) :
       (* Categorical 'invalid' means the query is not entailed; its
          contradictory may still be. (Relational 'unknown' already tried the
          contradictory inside check_argument.) *)
-      if yes.meth = PZ then (
+      if yes.meth = PZ then
         let no =
           Decide.check_argument ?max_lines ?slack program
             (Infer.contradictory query)
         in
         if no.verdict = Valid then { q_verdict = Q_no; support = Some no }
-        else { q_verdict = Q_unknown; support = None })
+        else { q_verdict = Q_unknown; support = None }
       else { q_verdict = Q_unknown; support = None }
 
 (* ── Program consistency ────────────────────────────────────────────────── *)
@@ -225,13 +230,11 @@ let check_program_consistency ?max_lines ?slack (program : prop list) :
       certificate = None;
       c_proof = None;
     }
-  else (
+  else
     let entries =
-      List.map
-        (fun prop -> { Derive.e_prop = prop; e_rule = "fact" })
-        program
+      List.map (fun prop -> { Derive.e_prop = prop; e_rule = "fact" }) program
     in
-    if Decide.is_atomic_categorical program then (
+    if Decide.is_atomic_categorical program then
       match Decide.check_inconsistent program with
       | None ->
           {
@@ -249,8 +252,8 @@ let check_program_consistency ?max_lines ?slack (program : prop list) :
             numerical = false;
             certificate = Some cert;
             c_proof = (if proof.found then Some proof else None);
-          })
-    else (
+          }
+    else
       let proof = Derive.refute_set ?max_lines ?slack entries in
       if proof.found then
         {
@@ -267,7 +270,7 @@ let check_program_consistency ?max_lines ?slack (program : prop list) :
           numerical = false;
           certificate = None;
           c_proof = None;
-        }))
+        }
 
 (* ── ?= equivalence neighbourhood ───────────────────────────────────────── *)
 
@@ -286,8 +289,8 @@ let equivalents ?(max_nodes = 64) (p : prop) : equivalent_entry list =
   Infer.validate_prop p;
   if Decide.has_level p then
     Infer.engine_error
-      "the immediate rules (obversion, contraposition) are defined at level \
-       0; a numerical quantifier has no equivalence neighbourhood here";
+      "the immediate rules (obversion, contraposition) are defined at level 0; \
+       a numerical quantifier has no equivalence neighbourhood here";
   let start = Infer.canon_prop p in
   let start_key = Notation.print_proposition start in
   let nodes : (string, prop * string list) Hashtbl.t = Hashtbl.create 16 in
@@ -324,7 +327,9 @@ let equivalents ?(max_nodes = 64) (p : prop) : equivalent_entry list =
         eq_prop = prop;
         eq_text = Notation.print_proposition prop;
         eq_rule =
-          (match path with [] -> "given" | _ -> List.nth path (List.length path - 1));
+          (match path with
+          | [] -> "given"
+          | _ -> List.nth path (List.length path - 1));
         reading =
           (match path with
           | [] -> "the statement itself"
@@ -364,7 +369,7 @@ let statement_model (p : prop) :
   scan_p p;
   let n = Hashtbl.length atoms in
   if (not !ok) || n = 0 || n > 16 then None
-  else (
+  else
     let rec eval_t t asg =
       match t with
       | Atom { name; _ } -> asg name
@@ -384,7 +389,7 @@ let statement_model (p : prop) :
       let qual = if q.predicate.sign = Plus then pv else not pv in
       if q.subject.sign = Minus then (not s) || qual else s && qual
     in
-    Some (List.rev !atom_order, eval_p p))
+    Some (List.rev !atom_order, eval_p p)
 
 (* ── ?= A, B: decide equivalence ────────────────────────────────────────── *)
 
@@ -396,8 +401,7 @@ type equivalence_decision = {
   e_path : string list option;
 }
 
-let decide_equivalence ?max_nodes (a : prop) (b : prop) : equivalence_decision
-    =
+let decide_equivalence ?max_nodes (a : prop) (b : prop) : equivalence_decision =
   Infer.validate_prop a;
   Infer.validate_prop b;
   if Decide.has_level a || Decide.has_level b then
@@ -406,9 +410,7 @@ let decide_equivalence ?max_nodes (a : prop) (b : prop) : equivalence_decision
        only through the decision method";
   match (statement_model a, statement_model b) with
   | Some (atoms_a, sat_a), Some (atoms_b, sat_b) ->
-      let atoms =
-        List.sort_uniq String.compare (atoms_a @ atoms_b)
-      in
+      let atoms = List.sort_uniq String.compare (atoms_a @ atoms_b) in
       let arr = Array.of_list atoms in
       let n = Array.length arr in
       let rows = ref [] in
@@ -420,7 +422,7 @@ let decide_equivalence ?max_nodes (a : prop) (b : prop) : equivalence_decision
         in
         let va = sat_a asg and vb = sat_b asg in
         if va <> vb then equal := false;
-        if va then (
+        if va then
           let true_atoms =
             List.filter (fun nm -> asg nm) atoms
             |> List.map (fun nm -> "+" ^ nm)
@@ -429,7 +431,7 @@ let decide_equivalence ?max_nodes (a : prop) (b : prop) : equivalence_decision
             List.filter (fun nm -> not (asg nm)) atoms
             |> List.map (fun nm -> "−" ^ nm)
           in
-          rows := String.concat "" (true_atoms @ false_atoms) :: !rows)
+          rows := String.concat "" (true_atoms @ false_atoms) :: !rows
       done;
       {
         equivalent = !equal;

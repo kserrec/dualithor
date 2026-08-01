@@ -1,6 +1,7 @@
 ; Modules shared by the test executables (generators, differential-harness
 ; plumbing) live in one unwrapped library — dune forbids a module in two
 ; stanzas.
+
 (library
  (name test_support)
  (wrapped false)
@@ -40,15 +41,20 @@
 ; The differential gate needs Node ≥18 (a dev-time requirement per PLAN) and
 ; the frozen JS reference; the deps are copied into _build so the test can
 ; spawn ../engine/shim.js from its own directory.
+
 (test
  (name test_differential)
  (modules test_differential)
  (libraries tfl test_support qcheck-core qcheck-core.runner yojson)
- (deps ../engine/tfl.js ../engine/tfl.test.js ../engine/oracle.js
-   ../engine/shim.js))
+ (deps
+  ../engine/tfl.js
+  ../engine/tfl.test.js
+  ../engine/oracle.js
+  ../engine/shim.js))
 
 ; The oracle port (1.10) compares against engine/oracle.js through the same
 ; shim, so it carries the same Node-side deps.
+
 (test
  (name test_semantics)
  (modules test_semantics)
@@ -68,6 +74,7 @@
 ; The oracle fuzz suites (1.11): engine vs the 1.10 semantics, no Node
 ; involved. Default 1,000 iterations under `dune test`; the 20k gate is run
 ; explicitly with `-n 20000`.
+
 (test
  (name test_oracle)
  (modules test_oracle)
@@ -75,6 +82,7 @@
 
 ; The curated paper-cases audit (1.13): expectations from the literature, not
 ; from the engine. Pure engine calls, no Node, no fuzzing.
+
 (test
  (name paper_cases)
  (modules paper_cases)
@@ -82,12 +90,14 @@
 
 ; Robustness (1.14): the total Safe API under adversarial input, plus the
 ; pinned find_cancellation work-cap probe. No Node involved.
+
 (test
  (name test_safe)
  (modules test_safe)
  (libraries tfl test_support qcheck-core qcheck-core.runner unix))
 
 ; The .env loader (2.1): key handling for the OpenRouter client.
+
 (test
  (name test_env)
  (modules test_env)

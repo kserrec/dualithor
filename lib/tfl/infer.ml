@@ -42,8 +42,8 @@ let rec validate_term (t : term) : unit =
                quality)";
           if el.level <> 0 then
             engine_error
-              "a quantity level attaches only to a categorical subject, not \
-               a compound element";
+              "a quantity level attaches only to a categorical subject, not a \
+               compound element";
           validate_term el.term)
         elements
   | Rel { head; objects } ->
@@ -52,8 +52,8 @@ let rec validate_term (t : term) : unit =
         (fun o ->
           if o.level <> 0 then
             engine_error
-              "a quantity level attaches only to a categorical subject, not \
-               a relational object";
+              "a quantity level attaches only to a categorical subject, not a \
+               relational object";
           if o.sign = Wild && not (is_fixed_ref o.term) then
             engine_error "wild quantity (±) requires a singular term or proterm";
           validate_term o.term)
@@ -98,7 +98,7 @@ let head_roles (name : string) (arity : int) : string * int list =
   done;
   let s = max !s 1 in
   let identity = List.init arity (fun i -> i + 1) in
-  if arity > 0 && n - s = arity then (
+  if arity > 0 && n - s = arity then
     let roles = List.init arity (fun i -> cps.(s + i) - 0x2080) in
     if List.sort compare roles = identity then (
       let b = Buffer.create n in
@@ -106,18 +106,18 @@ let head_roles (name : string) (arity : int) : string * int list =
         Buffer.add_utf_8_uchar b (Uchar.of_int cps.(k))
       done;
       (Buffer.contents b, roles))
-    else (name, identity))
+    else (name, identity)
   else (name, identity)
 
 let make_head_name (base : string) (roles : int list) : string =
   if List.mapi (fun i _ -> i + 1) roles = roles then base
-  else (
+  else
     let b = Buffer.create (String.length base + 8) in
     Buffer.add_string b base;
     List.iter
       (fun r -> Buffer.add_utf_8_uchar b (Uchar.of_int (0x2080 + r)))
       roles;
-    Buffer.contents b)
+    Buffer.contents b
 
 (* ── Canonical form (spec §6) ───────────────────────────────────────────── *)
 
@@ -181,7 +181,7 @@ and canon_prop (p : prop) : prop =
      fixed-reference subject joins in via whichever reading matches. *)
   let i_like = (s_sign = Plus || s_sign = Wild) && q_sign = Plus in
   let e_like = (s_sign = Minus || s_sign = Wild) && q_sign = Minus in
-  if i_like || e_like then (
+  if i_like || e_like then
     let base = if i_like then Plus else Minus in
     if Notation.print_term q_term < Notation.print_term s_term then
       {
@@ -192,7 +192,7 @@ and canon_prop (p : prop) : prop =
       {
         subject = st (if is_fixed_ref s_term then Wild else base) s_term;
         predicate = st q_sign q_term;
-      })
+      }
   else { subject = st s_sign s_term; predicate = st q_sign q_term }
 
 let prop_key p = Notation.print_proposition (canon_prop p)
@@ -246,10 +246,8 @@ let contrapositive (p : prop) : prop option =
     Some
       (canon_prop
          {
-           subject =
-             st (if a_form then Minus else Plus) (Neg p.predicate.term);
-           predicate =
-             st (if a_form then Plus else Minus) (Neg p.subject.term);
+           subject = st (if a_form then Minus else Plus) (Neg p.predicate.term);
+           predicate = st (if a_form then Plus else Minus) (Neg p.subject.term);
          })
 
 (* It — the tautology move: −T+T for any term ("every T is T"; safe with no
@@ -284,16 +282,14 @@ let occurrences (p : prop) : occurrence list =
     | Compound els ->
         List.iteri
           (fun i el ->
-            walk el.term side
-              (steps @ [ Occ_at i ])
+            walk el.term side (steps @ [ Occ_at i ])
               (if el.sign = Minus then -sign else sign)
               false)
           els
     | Rel { objects; _ } ->
         List.iteri
           (fun i o ->
-            walk o.term side
-              (steps @ [ Occ_at i ])
+            walk o.term side (steps @ [ Occ_at i ])
               (if o.sign = Minus then -sign else sign)
               (o.sign = Wild))
           objects

@@ -73,42 +73,45 @@ and read_prop (raw : prop) : string =
   let q_plus = p.predicate.sign = Plus in
   let pred = p.predicate.term in
   let rel_pred = match pred with Rel _ -> true | _ -> false in
-  if Infer.is_fixed_ref s_term then (
+  if Infer.is_fixed_ref s_term then
     (* Singular / proterm subject: a definite individual. A plain-noun
        predicate takes an article; a relation, negation or compound not. *)
     let who = read_term s_term in
-    if rel_pred then who ^ " " ^ (if q_plus then "" else "does not ") ^ read_term pred
-    else (
+    if rel_pred then
+      who ^ " " ^ (if q_plus then "" else "does not ") ^ read_term pred
+    else
       let plain =
         match pred with Atom { singular; _ } -> not singular | _ -> false
       in
       let reading = read_term pred in
       let art =
         if not plain then ""
-        else (
+        else
           match if reading = "" then None else Some reading.[0] with
           | Some ('a' | 'e' | 'i' | 'o' | 'u' | 'A' | 'E' | 'I' | 'O' | 'U') ->
               "an "
-          | _ -> "a ")
+          | _ -> "a "
       in
-      who ^ " " ^ (if q_plus then "is " else "is not ") ^ art ^ reading))
-  else (
+      who ^ " " ^ (if q_plus then "is " else "is not ") ^ art ^ reading
+  else
     let s = read_term s_term in
     if p.subject.sign = Minus then
       if q_plus then "every " ^ s ^ " " ^ rel_tail pred false
       else if rel_pred then "no " ^ s ^ " " ^ read_term pred
       else "no " ^ s ^ " is " ^ read_term pred
-    else (
+    else
       (* particular subject (+ or a stray ±). A nonzero level names an
          intermediate quantifier; "few" is the predominant complement, so it
          inverts the predicate polarity in English. *)
       let lvl = p.subject.level in
-      if lvl > 0 && not rel_pred then (
-        let word = if lvl = 1 then "many" else if lvl = 2 then "most" else "few" in
+      if lvl > 0 && not rel_pred then
+        let word =
+          if lvl = 1 then "many" else if lvl = 2 then "most" else "few"
+        in
         let affirmative = if lvl = 3 then not q_plus else q_plus in
-        word ^ " " ^ s ^ " " ^ rel_tail pred (not affirmative))
+        word ^ " " ^ s ^ " " ^ rel_tail pred (not affirmative)
       else if q_plus then "some " ^ s ^ " " ^ rel_tail pred false
-      else "some " ^ s ^ " " ^ rel_tail pred true))
+      else "some " ^ s ^ " " ^ rel_tail pred true
 
 (* ── Explanation of a derivation ────────────────────────────────────────── *)
 
@@ -120,7 +123,7 @@ let explain_proof (proof : Derive.proof) : string option =
      TypeErrors here — same accepted call as the side_coeff edge (LOG
      2026-07-30): unreachable input gets the saner answer, not a crash. *)
   if (not proof.found) || proof.lines = [] then None
-  else (
+  else
     let lines = proof.lines in
     let is_given r = r = "premise" || r = "fact" || r = "counterclaim" in
     let givens =
@@ -137,12 +140,11 @@ let explain_proof (proof : Derive.proof) : string option =
              match l.l_prop with Some p -> read_prop p | None -> "")
            givens)
     in
-    if closing then (
+    if closing then
       (* the two clashing lines make the impossibility vivid *)
       let clash =
         List.filter_map
-          (fun n ->
-            List.find_opt (fun (l : Derive.line) -> l.n = n) lines)
+          (fun n -> List.find_opt (fun (l : Derive.line) -> l.n = n) lines)
           last.parents
       in
       let pair =
@@ -153,10 +155,10 @@ let explain_proof (proof : Derive.proof) : string option =
       in
       Some
         ("Because " ^ because ^ ", it would follow that " ^ pair
-       ^ " \u{2014} which is impossible."))
+       ^ " \u{2014} which is impossible.")
     else
       match last.l_prop with
       | Some p -> Some ("Because " ^ because ^ ", " ^ read_prop p ^ ".")
       (* unreachable: only the synthetic ⊥ line lacks a prop, and the closing
          branch above already handled it *)
-      | None -> Some ("Because " ^ because ^ ", ."))
+      | None -> Some ("Because " ^ because ^ ", .")

@@ -6,11 +6,13 @@
    the quantity-level guard test arrives with 1.8. *)
 
 open Tfl.Decide
-
 open Harness
 
-let valid premises conclusion msg = expect_verdict premises conclusion "valid" msg
-let invalid premises conclusion msg = expect_verdict premises conclusion "invalid" msg
+let valid premises conclusion msg =
+  expect_verdict premises conclusion "valid" msg
+
+let invalid premises conclusion msg =
+  expect_verdict premises conclusion "invalid" msg
 
 let () =
   (* P/Z inconsistency *)
@@ -26,8 +28,7 @@ let () =
       check (check_inconsistent [ p "−A+B"; p "−B−A" ] = None) "universals");
 
   (* Categorical validity: the REGAL verdicts *)
-  test "Barbara is valid" (fun () ->
-      valid [ "−M+P"; "−S+M" ] "−S+P" "Barbara");
+  test "Barbara is valid" (fun () -> valid [ "−M+P"; "−S+M" ] "−S+P" "Barbara");
   test "Celarent is valid" (fun () ->
       valid [ "−M−P"; "−S+M" ] "−S−P" "Celarent");
   test "Darii and Ferio are valid" (fun () ->

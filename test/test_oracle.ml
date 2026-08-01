@@ -139,7 +139,8 @@ let fuzz_steps n =
                   fail bad ~limit:5
                     [
                       Printf.sprintf "  UNSOUND step: %s ⊢ %s"
-                        (String.concat " , " (List.map print_proposition parents))
+                        (String.concat " , "
+                           (List.map print_proposition parents))
                         (print_proposition p);
                     ])
               results)
@@ -172,9 +173,9 @@ let fuzz_relational_derivations n =
             | None -> ()
             | Some m ->
                 fail bad ~limit:3
-                  ((("  UNSOUND derivation (counter-model " ^ Semantics.show_model m
-                   ^ "):")
-                   :: premise_lines premises conclusion)
+                  (("  UNSOUND derivation (counter-model "
+                  ^ Semantics.show_model m ^ "):")
+                   :: premise_lines premises conclusion
                   @ proof_lines proof))
         | _ -> ())
   in
@@ -201,7 +202,8 @@ let scope_traps bad =
       let key = Tfl.Infer.prop_key q in
       match
         List.find_opt
-          (fun (r : Tfl.Relational.passive) -> Tfl.Infer.prop_key r.p_prop = key)
+          (fun (r : Tfl.Relational.passive) ->
+            Tfl.Infer.prop_key r.p_prop = key)
           (Tfl.Relational.passives a)
       with
       | Some { equivalent = false; _ } -> ()
@@ -234,8 +236,10 @@ let fuzz_passive_equivalence n =
                   (* maxN 2 keeps arity-3 relations enumerable; the ∀∃/∃∀ scope
                      separations all show up by two elements. *)
                   if
-                    (not (Semantics.entails ~max_n:2 ~cap:60_000 [ p ] r.p_prop))
-                    || not (Semantics.entails ~max_n:2 ~cap:60_000 [ r.p_prop ] p)
+                    (not
+                       (Semantics.entails ~max_n:2 ~cap:60_000 [ p ] r.p_prop))
+                    || not
+                         (Semantics.entails ~max_n:2 ~cap:60_000 [ r.p_prop ] p)
                   then
                     fail bad ~limit:5
                       [
@@ -262,7 +266,8 @@ let fuzz_indirect_proofs n =
         let premises = [ p1; p2 ] in
         let conclusion = rel () in
         match
-          try Some (Tfl.Derive.indirect_proof ~max_lines:150 premises conclusion)
+          try
+            Some (Tfl.Derive.indirect_proof ~max_lines:150 premises conclusion)
           with Tfl.Infer.Engine_error _ -> None
         with
         | Some proof when proof.found -> (
@@ -273,9 +278,9 @@ let fuzz_indirect_proofs n =
             | None -> ()
             | Some m ->
                 fail bad ~limit:3
-                  ((("  UNSOUND indirect proof (counter-model "
-                    ^ Semantics.show_model m ^ "):")
-                   :: premise_lines premises conclusion)
+                  (("  UNSOUND indirect proof (counter-model "
+                  ^ Semantics.show_model m ^ "):")
+                   :: premise_lines premises conclusion
                   @ proof_lines proof))
         | _ -> ())
   in
@@ -310,11 +315,13 @@ let fuzz_statement_model n =
         let a = gen1 Gen.statement_prop_gen in
         match Tfl.Program.statement_model a with
         | None -> ()
-        | Some (atoms_a, sat_a) ->
+        | Some (atoms_a, sat_a) -> (
             let arr = Array.of_list atoms_a in
             for bits = 0 to (1 lsl Array.length arr) - 1 do
               incr checked;
-              if sat_a (assignment arr bits) <> Semantics.eval_prop a (one_world arr bits)
+              if
+                sat_a (assignment arr bits)
+                <> Semantics.eval_prop a (one_world arr bits)
               then
                 fail bad ~limit:5
                   [
@@ -325,7 +332,7 @@ let fuzz_statement_model n =
             (* (ii) decide_equivalence's DNF verdict vs mutual one-world
                entailment. *)
             let b = gen1 Gen.statement_prop_gen in
-            (match Tfl.Program.statement_model b with
+            match Tfl.Program.statement_model b with
             | None -> ()
             | Some (atoms_b, _) ->
                 let dec = Tfl.Program.decide_equivalence a b in
