@@ -498,3 +498,31 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   the cancellation budget abandons only call-local state; `head_roles` on an
   all-subscript quoted name falls back to identity roles; level saturation on a huge `^`
   run is the documented §16.3 out-of-contract case.
+- **Security audit (second full pass; first was 2026-07-30).** New ground since the last
+  one: `Safe`, the semantics module, the oracle suites and the cancellation cap. Two real
+  findings, both proven by measurement, both **inherited from the frozen reference** and
+  both unreachable through `Tfl.Safe` today — deferred to **8.4**, where the CLI and
+  Python client first expose the library to callers who are not our own pipeline:
+  (a) `decide_equivalence` enumerates every assignment of the *union* of two propositions'
+  atoms, while the 16-atom cap is per proposition — so two 16-atom statements give 2³²
+  rows. Measured ×4 per two atoms: 0.80s at 2²¹, 3.59s at 2²³, 15.68s at 2²⁵, so ~33
+  minutes at the maximum, from roughly 160 bytes of input. That asymmetry is what makes it
+  a denial of service rather than mere slowness.
+  (b) the parser allocates ~120× the input size — `Notation.decode` builds a cons list of
+  every code point before converting to an array, and `Safe.parse` decodes twice. 20 MB in
+  → 2.4 GB allocated, 1.38 GB peak heap; time stays linear at ~0.35 s/MB, so this is
+  memory, not an algorithmic blowup. It also scopes the 1.14 "no case over one second"
+  claim: that held for the ≤20 KB fuzz corpus; 5 MB takes 1.5s.
+  **Fixed now:** `data/raw/`, `data/results/` and `data/eval/` are gitignored — CLAUDE.md
+  asserted that protection in the present tense and it did not exist, while `git add -A`
+  is this repo's habitual commit pattern and Phase 6 downloads licensed corpora into
+  exactly those paths. A licensing accident, not an attacker, but history is the part you
+  cannot take back. CI now fails if an ignore rule is dropped or a corpus file becomes
+  tracked. Created **SECURITY.md** with the known-trust-decisions the repo had nowhere to
+  record.
+  **Re-verified, unchanged:** no secrets in tree or history (sampled every commit), CI is
+  `on: push` with no `pull_request_target` and a `contents: read` token, four well-known
+  opam dependencies with no install scripts, zero npm dependencies, shim subprocess
+  quoted and dev-only. The `sat` search accepted as exponential-on-paper in the last audit
+  now has data: flat ~0.15s to 30 disjoint universals and a 25-long chain, and that 0.15s
+  is the cancellation budget, not the search.

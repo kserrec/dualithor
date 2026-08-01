@@ -220,6 +220,7 @@ Accept: complete draft; Kyle full pass.
 
 *8.4 Python client.*
 Pip-installable `tflverify` package: thin wrapper spawning the compiled OCaml binary (JSON-over-stdio CLI added here — `bin/tfl_cli.ml`), exposing `parse`, `check`, `verify_claim`. This is the adoption surface for ML researchers; the OCaml system never depends on it.
+**Land the two hardening items the 2026-08-01 audit deferred to here** — this step is where the library stops being called only by our own pipeline (SECURITY.md records both, with measurements): (a) cap the atom union in `decide_equivalence`, which today enumerates up to 2³² assignments because the 16-atom cap is per proposition and the union is unbounded — a ~160-byte input costs ~33 minutes; (b) decode into a pre-sized array in one pass and let `Safe.parse` reuse the tokens it already built, cutting the parser's ~120× memory amplification (20 MB in → 1.38 GB peak heap). Both are inherited from the frozen reference, so each lands as a documented deviation with the full engine gate.
 Accept: `pip install` from the repo works in a clean venv; README shows a 5-line Python quickstart.
 
 *8.5 Repo release.*

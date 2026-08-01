@@ -1,2 +1,9 @@
 _build/
 .env
+
+# Third-party benchmark corpora carry their own licences and must never enter
+# this MIT repo's history (CLAUDE.md; 2026-08-01 audit). Our own authored data
+# — data/policybench/ — is deliberately NOT ignored.
+data/raw/
+data/results/
+data/eval/

@@ -18,3 +18,17 @@ jobs:
       - run: opam install . --deps-only --with-test
       - run: opam exec -- dune build
       - run: opam exec -- dune test
+
+      # Licensed benchmark corpora must stay out of a public MIT repo's
+      # history, and history is the part you cannot take back (2026-08-01
+      # audit). Fails if an ignore rule is dropped or a corpus gets tracked.
+      - name: benchmark corpora stay untracked
+        run: |
+          for p in data/raw data/results data/eval; do
+            git check-ignore -q "$p/probe" \
+              || { echo "::error::$p is no longer gitignored"; exit 1; }
+          done
+          tracked=$(git ls-files data/raw data/results data/eval)
+          if [ -n "$tracked" ]; then
+            echo "::error::corpus files are tracked: $tracked"; exit 1
+          fi
