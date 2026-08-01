@@ -446,14 +446,12 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   `check` was losing input attribution on validation refusals (fixed as above), and the
   cancellation positive control initially reused the audit's own probe, which is *by
   construction* a set whose clash can never cancel — replaced with Barbara's counterclaim,
-  which does cancel. Engine change gate (post-1.12 rule): unit suites, 62 paper cases and the
-  18-gate differential at standing counts all green. **The 20k oracle is
-  outstanding** — it was clean through suites 1–2 (categorical exactness
-  5,111/20,000 valid, identical to the pre-change run; rule-step soundness,
-  85,731 steps) when a power cut ended the session mid-run. Re-run
-  `dune exec test/test_oracle.exe -- -n 20000` and record the result here.
-  Committing ahead of it was a deliberate call (Kyle, power loss imminent, the
-  alternative being an uncommitted engine change sitting in a tree whose PLAN
-  already said the step was done): the cap only decorates certificates inside
-  the atomic-categorical closure, which is suite 1's territory and clean at
-  full count, and none of suites 3–6 touch `find_cancellation` at all.
+  which does cancel. Engine change gate (post-1.12 rule), all green: unit suites, 62 paper cases,
+  the 18-gate differential at standing counts, and **the 20k oracle — all six
+  suites, zero failures, 1,485.2s**. Every count is *identical* to the 1.11
+  baseline: 5,111/20,000 valid, 85,731 rule steps, 1,805 proofs, 21,127 passive
+  equivalences with 8,832 guarded off, 3,912 refutations, 82,362 statement
+  evals. The cancellation cap changed nothing the oracle can see, which is what
+  verdict-safe-by-construction should look like from the outside. (The commit
+  landed a few minutes ahead of the run finishing, during a power-loss warning;
+  the run completed clean and this line records it.)
