@@ -599,3 +599,12 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   differential recorded below.
   Gate results for the 3.1 safe.ml change: mass differential `success (ran 18 tests)`,
   zero disagreements; oracle clean at 20k across all six suites, 2,236s.
+- **3.2 done — the verification suite.** `test/test_verify_cases.ml`: 35 arguments
+  through `Tfl_verify.check` end to end — 8 valid moods, the import traps and standard
+  fallacies, immediate inferences, 7 relational cases (De Morgan's head-of-a-horse, the
+  ∀∃/∃∀ scope trap under paper_cases' not-certified contract, the worked indirect proof),
+  3 numerical, and the API's own ground: empty conclusion, empty and whitespace-only
+  premises, invalid bytes (lexical), the wild-sign fragment refusal, the depth cap, and
+  an empty premise list (legal input — the conclusion alone decides, invalid). Verdict
+  expectations are shared with paper_cases so the engine surface and the public API can
+  never quietly disagree. Green.
