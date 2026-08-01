@@ -418,6 +418,48 @@ let sem_relational_prop (atoms : string list) (rel_name : string) : prop G.t =
   let* predicate = side true in
   return { subject; predicate }
 
+(* Compound-bearing categoricals, so Simp's conjunct-drops and Add's compound
+   intros face the semantics too (oracle suite 2). *)
+let sem_compound_prop (atoms : string list) : prop G.t =
+  let open G in
+  let compound =
+    let* k = int_range 2 3 in
+    let* elements =
+      list_size (return k)
+        (let* sign = oneof_weighted [ (2, return Plus); (1, return Minus) ] in
+         let* term = sem_atomic_term atoms in
+         return { sign; term; level = 0 })
+    in
+    return (Compound elements)
+  in
+  let side = G.oneof [ sem_signed compound; sem_signed (sem_atomic_term atoms) ] in
+  let* subject = side in
+  let* predicate = side in
+  return { subject; predicate }
+
+(* A plain subject and a relational predicate with 1–2 objects: the passive
+   transformation's own input shape, arity 3 included so the n-ary crossing
+   guard is exercised (oracle suite 4). *)
+let sem_passive_prop (atoms : string list) (rel_name : string) : prop G.t =
+  let open G in
+  let plain =
+    map (fun n -> Atom { name = n; singular = false }) (oneof_list atoms)
+  in
+  let slot = oneof_weighted [ (1, sem_wild); (2, sem_signed plain) ] in
+  let* k = int_range 1 2 in
+  let* objects = list_size (return k) slot in
+  let* subject = slot in
+  return
+    {
+      subject;
+      predicate =
+        {
+          sign = Plus;
+          term = Rel { head = Atom { name = rel_name; singular = false }; objects };
+          level = 0;
+        };
+    }
+
 let sem_argument (prop : prop G.t) ~(max_premises : int) :
     (prop list * prop) G.t =
   let open G in

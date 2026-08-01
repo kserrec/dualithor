@@ -64,3 +64,11 @@
  (name test_render)
  (modules test_render)
  (libraries tfl test_support qcheck-core qcheck-core.runner))
+
+; The oracle fuzz suites (1.11): engine vs the 1.10 semantics, no Node
+; involved. Default 1,000 iterations under `dune test`; the 20k gate is run
+; explicitly with `-n 20000`.
+(test
+ (name test_oracle)
+ (modules test_oracle)
+ (libraries tfl test_support qcheck-core unix))

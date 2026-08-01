@@ -329,3 +329,33 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   gained `oracleEntails`/`oracleEvalProp`/`oracleVocab` (harness code; `oracle.js`
   itself untouched and now a dep of both shim-backed suites). `Harness.gate` extracted
   on its second use. Next: 1.11, the six fuzz suites in QCheck.
+- **1.11 done — oracle port B, the six fuzz suites** (`test/test_oracle.ml`), clean at 20k
+  iterations, all six, zero failures. CLI mirrors the reference's:
+  `dune exec test/test_oracle.exe -- -n N` ↔ `node engine/oracle.js -n N`; the default is
+  1,000 so `dune test` stays quick.
+
+  | suite | result | detail | OCaml 20k | JS 20k (0.2 table ÷5) | ratio |
+  |---|---|---|---|---|---|
+  | categorical exactness | 0 failures | 5,111/20,000 valid | 15.7s | 55.3s | 3.5× |
+  | rule-step soundness | 0 failures | 85,731 steps checked | 634.5s | 2,319.9s | 3.7× |
+  | relational derivation soundness | 0 failures | 1,805 proofs in 20,000 tries | 536.3s | 1,959.3s | 3.7× |
+  | passive equivalence | 0 failures | 21,127 equivalences, 8,832 guarded off | 124.4s | 596.1s | 4.8× |
+  | indirect-proof soundness | 0 failures | 3,912 refutations in 20,000 tries | 396.1s | 2,110.3s | 5.3× |
+  | statement-model agreement | 0 failures | 82,362 evals, 20,000 equivalences | 0.5s | 0.3s | 0.7× |
+  | **total** | | | **1,707.4s** | **7,041.3s** | **4.1×** |
+
+  Native OCaml is ~4× the reference's speed on identical work; the one suite the JS wins is
+  the trivial one (0.5s vs 0.3s — statement models never touch the model enumerator). The
+  JS column is the 0.2 100k run scaled linearly, same machine, single core. Direct
+  head-to-head spot check at n = 1,000 on an otherwise idle machine, same day: JS 262.3s
+  vs OCaml 69.4s — **3.8×**, confirming the scaled figure.
+  **Independent-confirmation note:** the per-suite *counts* land on the reference's rates
+  despite completely different generators (QCheck vs the oracle's LCG) — 25.6% valid vs
+  24.7%, 4.29 rule-steps per iteration vs 4.23, 21,127 passive equivalences vs 20,714
+  scaled, 8,832 guarded off vs 8,850. The proof-search suites run a little hotter (1,805
+  proofs vs 1,452 scaled; 3,912 refutations vs 3,488), i.e. our generators feed the search
+  slightly richer relationals — more coverage, not less.
+  Where a suite's model search is incomplete the failure is one-sided by construction: past
+  the cap the semantics samples, which can only miss a counter-model, never invent one.
+  Suite 1 is the exception (it compares verdicts for *equality*) and its vocabulary stays
+  under the cap at n = 4, so it always enumerates exhaustively.

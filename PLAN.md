@@ -80,7 +80,7 @@ Accept: ported tests green; differential string equality on corpus + random inpu
 OCaml module: models over domain {0..n−1} per the reference oracle's semantics (no existential import; singulars/proterms as singletons; relational denotations with left-to-right scope and subscript roles; propositional-term domain pun; ± as restricted-some). Entailment check by model enumeration up to size n.
 Accept: on ≥5k random (argument, small-n) instances, semantic entailment verdicts agree with the JS oracle's evaluator via the shim.
 
-*1.11 Oracle port B — the six fuzz suites in QCheck.*
+*1.11 Oracle port B — the six fuzz suites in QCheck.* ✅ DONE (2026-08-01 — `test/test_oracle.ml`; all six clean at 20k in 1,707s vs the JS reference's ~7,041s, a 4.1× speedup)
 Mirror `oracle.js`: categorical exactness, rule-step soundness, relational derivation soundness, passive equivalence (+ the two scope-trap counter-models), indirect-proof soundness, statement-model agreement.
 Accept: all six suites clean at 20k iterations; runtime logged (native speed should beat Node's — record the ratio for fun).
 
