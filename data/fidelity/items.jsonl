@@ -1,0 +1,86 @@
+{"_comment":"Fidelity gold set. One JSON object per line. kind = sentence | argument | decline. Every tfl string is verified to parse, and every argument's verdict is verified against the engine, by test/test_fidelity_set.ml. also_ok lists alternate formalizations judged equally faithful — recorded so scoring does not punish a defensible structural choice. See data/fidelity/README.md."}
+{"id":"a01","kind":"sentence","group":"A","nl":"Every trustee is a fiduciary.","tfl":"-Trustee+Fiduciary","tags":["A-form"]}
+{"id":"a02","kind":"sentence","group":"A","nl":"Every applicant is a resident.","tfl":"-Applicant+Resident","tags":["A-form"]}
+{"id":"a03","kind":"sentence","group":"A","nl":"All veterans are citizens.","tfl":"-Veteran+Citizen","tags":["A-form","plural-surface"]}
+{"id":"a04","kind":"sentence","group":"A","nl":"No minor is a shareholder.","tfl":"-Minor-Shareholder","tags":["E-form"]}
+{"id":"a05","kind":"sentence","group":"A","nl":"No volunteer is a creditor.","tfl":"-Volunteer-Creditor","tags":["E-form"]}
+{"id":"a06","kind":"sentence","group":"A","nl":"No tenant is an owner.","tfl":"-Tenant-Owner","tags":["E-form"]}
+{"id":"a07","kind":"sentence","group":"A","nl":"Some director is a shareholder.","tfl":"+Director+Shareholder","tags":["I-form"]}
+{"id":"a08","kind":"sentence","group":"A","nl":"Some claimant is a veteran.","tfl":"+Claimant+Veteran","tags":["I-form"]}
+{"id":"a09","kind":"sentence","group":"A","nl":"Some officer is not a director.","tfl":"+Officer-Director","tags":["O-form"]}
+{"id":"a10","kind":"sentence","group":"A","nl":"Some grant is not taxable.","tfl":"+Grant-Taxable","tags":["O-form","adjectival-predicate"]}
+{"id":"b01","kind":"sentence","group":"B","nl":"Maria is a trustee.","tfl":"+-Maria*+Trustee","tags":["singular"]}
+{"id":"b02","kind":"sentence","group":"B","nl":"Maria is not a shareholder.","tfl":"+-Maria*-Shareholder","tags":["singular","negative-copula"]}
+{"id":"b03","kind":"sentence","group":"B","nl":"Acme is a subsidiary.","tfl":"+-Acme*+Subsidiary","tags":["singular","organization"]}
+{"id":"b04","kind":"sentence","group":"B","nl":"The Secretary is an officer.","tfl":"+-Secretary*+Officer","tags":["singular","definite-description"],"note":"Definite description read as a singular term. The tradition has no dedicated treatment of definite descriptions (lit sweep 4, Q2), so this is our engineering convention, not a sourced one — flagged deliberately as a construction where models may reasonably differ."}
+{"id":"b05","kind":"sentence","group":"B","nl":"Kwame is a resident.","tfl":"+-Kwame*+Resident","tags":["singular"]}
+{"id":"b06","kind":"sentence","group":"B","nl":"Dr. Osei is not a volunteer.","tfl":"+-\"Dr. Osei\"*-Volunteer","tags":["singular","quoted-name","punctuation-in-name"]}
+{"id":"b07","kind":"sentence","group":"B","nl":"Building 4 is a facility.","tfl":"+-\"Building 4\"*+Facility","tags":["singular","quoted-name","digit-in-name"]}
+{"id":"b08","kind":"sentence","group":"B","nl":"Priya is both a director and a shareholder.","tfl":"+-Priya*+(+Director+Shareholder)","tags":["singular","compound-predicate"]}
+{"id":"c01","kind":"sentence","group":"C","nl":"Every non-resident is a taxpayer.","tfl":"-(-Resident)+Taxpayer","tags":["negative-term"],"also_ok":["-\"non-resident\"+Taxpayer"],"note":"Either the negative term or a quoted lexical item is defensible; the hyphen cannot be left bare, which is the point of the item."}
+{"id":"c02","kind":"sentence","group":"C","nl":"No non-member is eligible.","tfl":"-(-Member)-Eligible","tags":["negative-term","E-form"]}
+{"id":"c03","kind":"sentence","group":"C","nl":"Some non-citizen is a resident.","tfl":"+(-Citizen)+Resident","tags":["negative-term","I-form"]}
+{"id":"c04","kind":"sentence","group":"C","nl":"Every trustee is a non-beneficiary.","tfl":"-Trustee+(-Beneficiary)","tags":["negative-term","negative-predicate"]}
+{"id":"c05","kind":"sentence","group":"C","nl":"Some applicant is not a non-veteran.","tfl":"+Applicant-(-Veteran)","tags":["negative-term","double-negation"]}
+{"id":"c06","kind":"sentence","group":"C","nl":"No non-signatory is bound.","tfl":"-(-Signatory)-Bound","tags":["negative-term","E-form"]}
+{"id":"c07","kind":"sentence","group":"C","nl":"Every non-employee is a contractor.","tfl":"-(-Employee)+Contractor","tags":["negative-term"]}
+{"id":"c08","kind":"sentence","group":"C","nl":"Some record is not a non-disclosure.","tfl":"+Record-(-Disclosure)","tags":["negative-term","double-negation"]}
+{"id":"d01","kind":"sentence","group":"D","nl":"Some salaried director is a shareholder.","tfl":"+(+Salaried+Director)+Shareholder","tags":["compound-term"]}
+{"id":"d02","kind":"sentence","group":"D","nl":"No temporary contractor is a fiduciary.","tfl":"-(+Temporary+Contractor)-Fiduciary","tags":["compound-term","E-form"]}
+{"id":"d03","kind":"sentence","group":"D","nl":"Every registered voter is a citizen.","tfl":"-(+Registered+Voter)+Citizen","tags":["compound-term"]}
+{"id":"d04","kind":"sentence","group":"D","nl":"Some retired veteran is a claimant.","tfl":"+(+Retired+Veteran)+Claimant","tags":["compound-term"]}
+{"id":"d05","kind":"sentence","group":"D","nl":"Every written notice is a record.","tfl":"-(+Written+Notice)+Record","tags":["compound-term"]}
+{"id":"d06","kind":"sentence","group":"D","nl":"No verbal agreement is binding.","tfl":"-(+Verbal+Agreement)-Binding","tags":["compound-term","E-form"]}
+{"id":"d07","kind":"sentence","group":"D","nl":"Some certified auditor is an employee.","tfl":"+(+Certified+Auditor)+Employee","tags":["compound-term"]}
+{"id":"d08","kind":"sentence","group":"D","nl":"Every vacant seat is a position.","tfl":"-(+Vacant+Seat)+Position","tags":["compound-term"]}
+{"id":"e01","kind":"sentence","group":"E","nl":"Every head of household is a taxpayer.","tfl":"-\"head of household\"+Taxpayer","tags":["quoted-term","multiword"],"also_ok":["-(Head+Household)+Taxpayer"],"note":"'head of household' is a fixed legal term of art, so the quoted reading is preferred; the relational reading is structurally defensible and is not penalized."}
+{"id":"e02","kind":"sentence","group":"E","nl":"No person under eighteen is a shareholder.","tfl":"-\"person under eighteen\"-Shareholder","tags":["quoted-term","multiword"]}
+{"id":"e03","kind":"sentence","group":"E","nl":"Some self-employed worker is a claimant.","tfl":"+\"self-employed worker\"+Claimant","tags":["quoted-term","hyphen-trap"]}
+{"id":"e04","kind":"sentence","group":"E","nl":"Every long-term resident is eligible.","tfl":"-\"long-term resident\"+Eligible","tags":["quoted-term","hyphen-trap"]}
+{"id":"e05","kind":"sentence","group":"E","nl":"No out-of-state applicant is a resident.","tfl":"-\"out-of-state applicant\"-Resident","tags":["quoted-term","hyphen-trap","E-form"]}
+{"id":"e06","kind":"sentence","group":"E","nl":"Every duly authorized officer is a signatory.","tfl":"-\"duly authorized officer\"+Signatory","tags":["quoted-term","multiword"]}
+{"id":"e07","kind":"sentence","group":"E","nl":"Some first-time buyer is a non-resident.","tfl":"+\"first-time buyer\"+(-Resident)","tags":["quoted-term","hyphen-trap","negative-term"]}
+{"id":"e08","kind":"sentence","group":"E","nl":"Every co-signer is a debtor.","tfl":"-\"co-signer\"+Debtor","tags":["quoted-term","hyphen-trap"]}
+{"id":"f01","kind":"sentence","group":"F","nl":"Some auditor reviews a report.","tfl":"+Auditor+(Review+Report)","tags":["relational","particular-object"]}
+{"id":"f02","kind":"sentence","group":"F","nl":"Some trustee manages a fund.","tfl":"+Trustee+(Manage+Fund)","tags":["relational","particular-object"]}
+{"id":"f03","kind":"sentence","group":"F","nl":"Every employee reports to a manager.","tfl":"-Employee+(ReportTo+Manager)","tags":["relational","particular-object","phrasal-verb"]}
+{"id":"f04","kind":"sentence","group":"F","nl":"Every contractor serves a client.","tfl":"-Contractor+(Serve+Client)","tags":["relational","particular-object"]}
+{"id":"f05","kind":"sentence","group":"F","nl":"No volunteer receives a payment.","tfl":"-Volunteer-(Receive+Payment)","tags":["relational","E-form"]}
+{"id":"f06","kind":"sentence","group":"F","nl":"Some claimant owns a property.","tfl":"+Claimant+(Own+Property)","tags":["relational","particular-object"]}
+{"id":"f07","kind":"sentence","group":"F","nl":"Every subsidiary employs a worker.","tfl":"-Subsidiary+(Employ+Worker)","tags":["relational","particular-object"]}
+{"id":"f08","kind":"sentence","group":"F","nl":"Some officer signs a contract.","tfl":"+Officer+(Sign+Contract)","tags":["relational","particular-object"]}
+{"id":"g01","kind":"sentence","group":"G","nl":"Every auditor reviews every report.","tfl":"-Auditor+(Review-Report)","tags":["relational","universal-object"]}
+{"id":"g02","kind":"sentence","group":"G","nl":"Some trustee manages every fund.","tfl":"+Trustee+(Manage-Fund)","tags":["relational","universal-object","scope"]}
+{"id":"g03","kind":"sentence","group":"G","nl":"Every officer signs every contract.","tfl":"-Officer+(Sign-Contract)","tags":["relational","universal-object"]}
+{"id":"g04","kind":"sentence","group":"G","nl":"Some manager approves every request.","tfl":"+Manager+(Approve-Request)","tags":["relational","universal-object","scope"]}
+{"id":"g05","kind":"sentence","group":"G","nl":"No volunteer receives every benefit.","tfl":"-Volunteer-(Receive-Benefit)","tags":["relational","universal-object","E-form"]}
+{"id":"g06","kind":"sentence","group":"G","nl":"Every agency notifies every applicant.","tfl":"-Agency+(Notify-Applicant)","tags":["relational","universal-object"]}
+{"id":"h01","kind":"sentence","group":"H","nl":"Every report of a subsidiary is a record.","tfl":"-(Report+Subsidiary)+Record","tags":["relational-subject","nested"]}
+{"id":"h02","kind":"sentence","group":"H","nl":"Every manager of a department is an employee.","tfl":"-(Manager+Department)+Employee","tags":["relational-subject","nested"]}
+{"id":"h03","kind":"sentence","group":"H","nl":"Some auditor reviews a report of a subsidiary.","tfl":"+Auditor+(Review+(Report+Subsidiary))","tags":["relational","nested-object"]}
+{"id":"h04","kind":"sentence","group":"H","nl":"Every officer of a trustee is a fiduciary.","tfl":"-(Officer+Trustee)+Fiduciary","tags":["relational-subject","nested"]}
+{"id":"h05","kind":"sentence","group":"H","nl":"Some employee reports to a manager of a department.","tfl":"+Employee+(ReportTo+(Manager+Department))","tags":["relational","nested-object"]}
+{"id":"i01","kind":"sentence","group":"I","nl":"Most claimants are veterans.","tfl":"+Claimant^2+Veteran","tags":["numerical","level-2"]}
+{"id":"i02","kind":"sentence","group":"I","nl":"Most directors are shareholders.","tfl":"+Director^2+Shareholder","tags":["numerical","level-2"]}
+{"id":"i03","kind":"sentence","group":"I","nl":"Many applicants are residents.","tfl":"+Applicant^1+Resident","tags":["numerical","level-1"]}
+{"id":"i04","kind":"sentence","group":"I","nl":"Few volunteers are employees.","tfl":"+Volunteer^3+Employee","tags":["numerical","level-3"]}
+{"id":"i05","kind":"sentence","group":"I","nl":"Most tenants are not owners.","tfl":"+Tenant^2-Owner","tags":["numerical","level-2","O-form"]}
+{"id":"i06","kind":"sentence","group":"I","nl":"Many officers sign a contract.","tfl":"+Officer^1+(Sign+Contract)","tags":["numerical","level-1","relational"]}
+{"id":"j01","kind":"argument","group":"J","verdict":"valid","tags":["relational","relation-reuse","dictum"],"premises":[{"nl":"Every auditor reviews a report.","tfl":"-Auditor+(Review+Report)"},{"nl":"Every report is a record.","tfl":"-Report+Record"}],"conclusion":{"nl":"Every auditor reviews a record.","tfl":"-Auditor+(Review+Record)"}}
+{"id":"j02","kind":"argument","group":"J","verdict":"valid","tags":["relational","relation-reuse"],"premises":[{"nl":"Some trustee manages a fund.","tfl":"+Trustee+(Manage+Fund)"},{"nl":"Every fund is an asset.","tfl":"-Fund+Asset"}],"conclusion":{"nl":"Some trustee manages an asset.","tfl":"+Trustee+(Manage+Asset)"}}
+{"id":"j03","kind":"argument","group":"J","verdict":"valid","tags":["relational","relation-reuse","term-reuse"],"premises":[{"nl":"Every manager supervises an intern.","tfl":"-Manager+(Supervise+Intern)"},{"nl":"Some manager is a director.","tfl":"+Manager+Director"}],"conclusion":{"nl":"Some director supervises an intern.","tfl":"+Director+(Supervise+Intern)"}}
+{"id":"j04","kind":"argument","group":"J","verdict":"valid","tags":["categorical","term-reuse","Barbara"],"premises":[{"nl":"Every trustee is a fiduciary.","tfl":"-Trustee+Fiduciary"},{"nl":"Every fiduciary is an agent.","tfl":"-Fiduciary+Agent"}],"conclusion":{"nl":"Every trustee is an agent.","tfl":"-Trustee+Agent"}}
+{"id":"j05","kind":"argument","group":"J","verdict":"invalid","tags":["categorical","term-reuse","undistributed-middle"],"premises":[{"nl":"Every trustee is a fiduciary.","tfl":"-Trustee+Fiduciary"},{"nl":"Every agent is a fiduciary.","tfl":"-Agent+Fiduciary"}],"conclusion":{"nl":"Every trustee is an agent.","tfl":"-Trustee+Agent"}}
+{"id":"j06","kind":"argument","group":"J","verdict":"invalid","tags":["categorical","term-reuse","existential-import"],"premises":[{"nl":"Every applicant is a resident.","tfl":"-Applicant+Resident"},{"nl":"Every resident is a citizen.","tfl":"-Resident+Citizen"}],"conclusion":{"nl":"Some applicant is a citizen.","tfl":"+Applicant+Citizen"}}
+{"id":"j07","kind":"argument","group":"J","verdict":"valid","tags":["relational","relation-reuse"],"premises":[{"nl":"Every officer signs a contract.","tfl":"-Officer+(Sign+Contract)"},{"nl":"Every contract is a record.","tfl":"-Contract+Record"}],"conclusion":{"nl":"Every officer signs a record.","tfl":"-Officer+(Sign+Record)"}}
+{"id":"j08","kind":"argument","group":"J","verdict":"valid","tags":["numerical","term-reuse","level-2"],"premises":[{"nl":"Most claimants are veterans.","tfl":"+Claimant^2+Veteran"},{"nl":"Every veteran is a citizen.","tfl":"-Veteran+Citizen"}],"conclusion":{"nl":"Most claimants are citizens.","tfl":"+Claimant^2+Citizen"}}
+{"id":"k01","kind":"decline","group":"K","nl":"The application must be filed within thirty days of the notice.","reason":"temporal","tags":["out-of-fragment","deadline","deontic"]}
+{"id":"k02","kind":"decline","group":"K","nl":"If the claimant appeals, the agency must respond.","reason":"conditional between whole clauses","tags":["out-of-fragment","conditional","deontic"]}
+{"id":"k03","kind":"decline","group":"K","nl":"At least three directors approved the merger.","reason":"numeric threshold","tags":["out-of-fragment","counting"]}
+{"id":"k04","kind":"decline","group":"K","nl":"The board normally meets quarterly, but not in August.","reason":"default with an exception","tags":["out-of-fragment","defeasible"]}
+{"id":"k05","kind":"decline","group":"K","nl":"The applicant's income exceeded fifty thousand dollars.","reason":"arithmetic comparison over amounts","tags":["out-of-fragment","arithmetic"]}
+{"id":"k06","kind":"decline","group":"K","nl":"The trustee shall act in good faith.","reason":"deontic plus a vague standard","tags":["out-of-fragment","deontic","vagueness"]}
+{"id":"k07","kind":"decline","group":"K","nl":"The notice was mailed after the hearing concluded.","reason":"temporal ordering","tags":["out-of-fragment","tense"]}
+{"id":"k08","kind":"decline","group":"K","nl":"Fifty-one percent of shareholders approved the resolution.","reason":"proportional arithmetic, not a quantity level","tags":["out-of-fragment","arithmetic"]}
+{"id":"k09","kind":"decline","group":"K","nl":"The officer believes the claim is valid.","reason":"propositional attitude","tags":["out-of-fragment","attitude"]}
+{"id":"k10","kind":"decline","group":"K","nl":"Payment is due on the first day of each month.","reason":"recurring temporal obligation","tags":["out-of-fragment","temporal","deontic"]}

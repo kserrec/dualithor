@@ -142,3 +142,14 @@
  (name test_translator)
  (modules test_translator)
  (libraries tfl translate test_support))
+
+; The fidelity gold set: the measuring instrument for the translation
+; experiment. A wrong entry is worse than no measurement — every downstream
+; number still computes and the result is fiction. Guards unparseable gold,
+; wrong stated verdicts, and contamination from the few-shot prompt.
+
+(test
+ (name test_fidelity_set)
+ (modules test_fidelity_set)
+ (libraries tfl tfl_verify translate test_support yojson)
+ (deps ../data/fidelity/items.jsonl))

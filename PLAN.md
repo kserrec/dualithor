@@ -151,6 +151,14 @@ Accept: every few-shot TFL string parses via the engine.
 Accept: smoke test — 5 hand-written sentences × 3 models; results and parse rates printed.
 Four outcomes per sentence (`Translated | Unparseable | Declined | Absent`); `Absent` exists because a silently dropped sentence would otherwise shrink the denominator and flatter every rate. Matching is on a normalised key and refuses paraphrases — a formula paired with the wrong sentence is undetectable downstream. `translate/cache.ml` keys replies by a digest of the exact (model, system, user) triple, per the standing no-double-spend constraint; `data/cache/` gitignored with a CI guard.
 
+*4.5 Translation-fidelity gate.* — **pulled in front of 4.4 and Phase 5 on Kyle's instruction (2026-08-01).**
+The project's largest open risk, and the cheapest to settle: plus-minus notation is essentially absent from pretraining data where FOL is abundant (`scope-and-predictions.md` §1.3), and the second literature sweep found a neighbouring measurement — NL→TLA+ at 26.6% syntactic / 8.6% semantic, attributed to corpus scarcity. If TFL translation fidelity collapses, the thesis goes with it, so it is measured before any layer work or benchmark spend.
+*4.5a Gold set.* ✅ DONE (2026-08-01 — `data/fidelity/items.jsonl`, 85 items / 91 translatable sentences / 10 declines; `test/test_fidelity_set.ml`, 25 checks)
+Authored, engine-verified, contamination-guarded against the few-shot prompt. Group J reuses a relation across premises to test the naming-consistency threat the 4.3 smoke could not reach.
+*4.5b The run.* Four arms — bare few-shot, grammar prompting (ship the BNF; published evidence for low-resource formal languages), a matched **FOL arm** so the numbers mean something, and LLM→FOL→mechanical transduction (the sweep found no trace of anyone trying it). Scoring in layers: parses → structurally isomorphic to gold under consistent term renaming → semantically equivalent per the engine → faithful anyway. **Exact string match is deliberately not the primary metric** — term naming is arbitrary and the 4.3 smoke proved it (three models, three correct stems for one verb).
+Accept: all four arms run across three models; per-arm layer-by-layer scores reported; the naming-consistency question answered from group J.
+Known gap, to report as a limitation: the set is authored, not sampled from real statutes, so it is an upper bound. A real-text arm is still owed.
+
 *4.4 Back-translation fidelity check.*
 `translate/backcheck.ml`: render TFL back to English with the engine's own deterministic `readProp` first; one LLM call scores nl↔rendering semantic match 0–2. (Deterministic verbalization is a TFL-only advantage over FOL — note for the paper.)
 Accept: runs end-to-end on the 5 smoke sentences.

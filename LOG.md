@@ -765,3 +765,25 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   `Work_for` / `Work`) — harmless for one sentence, but two premises of one argument that
   name the same verb differently will not connect, so term-naming consistency across a
   multi-premise item is a threat the fidelity measurement must cover explicitly.
+- **4.5a done — the fidelity gold set.** `data/fidelity/items.jsonl`: 85 items, 91
+  translatable sentences, 8 arguments, 10 declines, across 51 construction tags. Ours,
+  authored, committed. `test/test_fidelity_set.ml` (25 checks) runs on every `dune test`
+  and guards the three ways a gold set silently becomes fiction: an unparseable gold
+  formula (the model gets charged for our typo), a wrong stated verdict (a faithful
+  translation scored as producing the wrong answer), and **contamination** — a test
+  sentence that also appears in the few-shot prompt measures copying, not translation,
+  and the contaminated items are exactly the ones that look like successes.
+  Group J exists because of a gap in the 4.3 smoke: relation naming diverged *across*
+  models (`Wrk`/`Work_for`/`Work`), which is harmless since we never mix models inside an
+  argument — but no smoke item reused a relation, so the failure mode that *would* matter,
+  one model naming a relation two ways across premises of one argument, went untested.
+  Every group J item reuses one.
+  **Scoring decision recorded here because it changes what the experiment means:** exact
+  string match against gold is the wrong primary metric. Term names are arbitrary — three
+  models wrote three different stems for one verb in the smoke and all three were right.
+  The primary metric is structural isomorphism to the gold under a *consistent* renaming
+  of terms, with the engine's own equivalence decision as the next layer down.
+  Honest limitation, recorded in `data/fidelity/README.md` rather than discovered later:
+  these sentences are authored, not sampled from statutes. Sentences written by someone
+  who knows the notation are biased toward being translatable, so this set yields an upper
+  bound and must be reported as one. A real-text arm is owed.
