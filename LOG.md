@@ -823,3 +823,35 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   **Bound on all of it:** the sentences are authored, not sampled from statutes, so this is
   an upper bound on well-formed input — not evidence that translation is solved on real
   regulatory text. The real-text arm is now the most valuable measurement remaining.
+- **PLAN rewritten from Phase 4 onward; `expressiveness-literature.md` corrected.** Kyle's
+  instruction was to take the *end-state* of the day's decisions, not the intermediate
+  positions — several of which were reversed once the sweeps landed. What changed:
+  **Dropped.** The input/output-logic deontic layer, on three independent counts: the
+  ground is occupied by the formalism's own authors (Horner/Mateis/Governatori/Ciabattoni,
+  arXiv:2506.08899, LLM→defeasible deontic logic on real regulatory text); the
+  "Ross's paradox is blocked in OUT₁/OUT₃" claim was **inverted** (all eight I/O logics
+  satisfy weakening of output, so Ross holds in every one); and constrained output — the
+  contrary-to-duty device — is at the second level of the polynomial hierarchy, not coNP.
+  Contrary-to-duty now goes through defeasible rule priorities instead, at linear cost.
+  **Deferred with reasons.** Metric time (STN): the one non-TFL component, and its headline
+  certificate is weaker than the survey claimed — the published algorithm detects a
+  negative cycle by a diagonal sign, yielding a yes/no plus a node, not the readable chain
+  of deadlines. Deadlines become terms for now. Grammar prompting: nothing left for it to
+  fix at a 100% parse rate. Murphree numerical: blocked behind the 5.3 soundness audit.
+  **Promoted.** Missing-premise suggestion to Phase 6.1 — it is an *unpublished* result
+  (`C − ΣPᵢ` over the free abelian group), has no FOL counterpart, and answers the
+  "why was I *not* found eligible?" question description logics need abduction for. 4.4's
+  back-check from nicety to correctness mechanism, with a pinned acceptance test: it must
+  catch GPT's `c02`/`c06` sign flip unaided. Phase 9 (the auditability study) created as
+  its own phase — per the sweeps it is the actual contribution, and three groups name it
+  open in print, Fuchs having designed the experiment and written that he never ran it.
+  **Added.** 4.6 real-text arm (coverage has replaced fidelity as the largest unknown),
+  4.7 matched FOL arm (core claim 1 is comparative and currently unsupported), 4.8 dev/eval
+  split before any prompt tuning, 5.2 anaphora-policy pin, 5.3 numerical soundness audit,
+  6.2 definitions layer using the 1.7 programs code nothing currently calls.
+  **Phases renumbered:** old 6→8, 7→10, 8→11; a mapping note sits at the end of PLAN.
+  `expressiveness-literature.md` now carries a READ-THIS-FIRST header and three inline
+  `⚠️ CORRECTED` blocks. The Castro-Manzano citation it warned against does not exist under
+  that title — the paper is "Remarks on the Idea of Non-monotonic (Diagrammatic)
+  Inference," *Open Insight* 8(14):243–263, 2017 — and its claim that no certified modal
+  extension of TFL exists is wrong (Englebretsen, NDJFL 29(3):381–395, 1988).

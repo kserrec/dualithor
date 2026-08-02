@@ -2,6 +2,32 @@
 
 *Written 2026-08-01. Research notes only — no PLAN step, no code implications acted on.*
 
+> **⚠️ READ THIS FIRST — corrections applied 2026-08-01, same day.** A second, adversarial
+> literature sweep (`docs/lit-sweep-2026-08-01/`, six reports, README synthesis) verified
+> this document's load-bearing claims against primary sources and found three errors, each
+> corrected inline below and marked `⚠️ CORRECTED`:
+>
+> 1. **§2.3(f) — the Ross's-paradox claim was inverted.** All input/output logics satisfy
+>    weakening of output; Ross's paradox holds in every one of them. The deontic layer this
+>    section proposed is **dropped** as a result.
+> 2. **§4.1 — a modal extension of TFL does exist** (Englebretsen, NDJFL 29(3), 1988), and
+>    a citation here named a paper that does not exist under that title.
+> 3. **§2.3(g) — the temporal certificate is weaker than described.** Dechter, Meiri &
+>    Pearl's algorithm detects a negative cycle by the sign of a diagonal entry: a yes/no
+>    plus a node, **not the cycle**. Extracting the readable chain of deadlines is
+>    unimplemented work and cannot be cited to that paper. Bellman–Ford, named here as an
+>    alternative, appears nowhere in it.
+>
+> **Why this happened, and what it means for everything else here.** Four of the six sweeps
+> independently caught the PDF-fetching summariser returning confident fabricated content —
+> in one case generated from undecodable binary noise. All four switched to `curl` +
+> `pdftotext`. That is almost certainly the origin of the Ross inversion. **Treat any claim
+> in this document not sourced from extracted primary text as unverified until it is.**
+> §5's caveat list is a floor, not a ceiling.
+>
+> One §5 item is now obsolete: Sun & Robaldo (2017) is *not* paywall-blocked — an author
+> copy is freely readable at ORBilu and has been read.
+
 This document records a literature survey on the expressiveness TFL currently lacks
 (defeasibility, deontic content, tense/metric time, modality, comparatives, proportional
 quantifiers) and on how far a decidable term/syllogistic logic can be pushed before it
@@ -384,14 +410,46 @@ object-language formulas, so the paradoxes are never inherited.
 > 30(2):155–185.
 >
 > **Ciabattoni, A. & Rozplokhas, D. (2023). "Streamlining Input/Output Logics with Sequent
-> Calculi."** Closes the complexity gap: **coNP-complete for all eight I/O logics**, with a
-> polynomial reduction to propositional (un)satisfiability. Completing Sun, X. & Robaldo,
-> L. (2017), "On the complexity of input/output logic," *J. Applied Logic* 25:69–88
-> (coNP-completeness for OUT₁, OUT₂, OUT₄).
+> Calculi." KR 2023, pp. 146–155, DOI 10.24963/kr.2023/15.** Corollary 1: coNP-complete
+> for the eight logics it covers — OUT₁–OUT₄ plus Bochman's four *causal* variants
+> OUT⊥₁–OUT⊥₄ — with a polynomial reduction to propositional (un)satisfiability.
+>
+> **Sun, X. & Robaldo, L. (2017), "On the complexity of input/output logic," *J. Applied
+> Logic* 25:69–88** proves coNP-completeness for a *different* eight: OUT₁–OUT₄ plus the
+> four **throughput** variants OUT₁⁺–OUT₄⁺, of which it settles six (1, 2, 4 and 1⁺, 2⁺,
+> 4⁺). An author copy is freely readable at ORBilu.
 
-So: one SAT call, sequent derivations as proofs, our engine deciding the atomic TFL
-entailments underneath. Ross's paradox is blocked by design (no output weakening in
-OUT₁/OUT₃); contrary-to-duty is handled via constrained output.
+> ⚠️ **CORRECTED 2026-08-01** (`docs/lit-sweep-2026-08-01/sweep-5-primary-source-verification.md`).
+> This section previously said the two results compose into "coNP-complete for all eight
+> I/O logics" and that **Ross's paradox is blocked by design in OUT₁/OUT₃ because they
+> lack output weakening**. Both were wrong, and the second was wrong in the dangerous
+> direction — confident, plausible, and inverted.
+>
+> - **The two "eights" are different families** (causal vs throughput), so they do not
+>   compose. OUT₃⁺ remains open in both papers.
+> - **Every input/output logic satisfies weakening of output (WO).** Ciabattoni &
+>   Rozplokhas's own rule table gives OUT₁ = {TOP, **WO**, SI, AND}; Sun & Robaldo state
+>   the same system independently; Parent & van der Torre (2019) put it flatly: "All the
+>   input/output logics of Makinson and van der Torre satisfy the rule WO." **Ross's
+>   paradox is a one-step instance of WO in every one of them.** Blocking it requires a
+>   WO-free variant (Stolpe 2015; Parent & van der Torre 2019), which lies **outside** the
+>   eight the coNP result covers — so paradox-blocking and the cheap complexity bound
+>   cannot be had from one system. (Likely origin of the inversion: Parent & van der Torre
+>   note Stolpe built WO-free variants and that "his focus is on out1 and out3.")
+> - **Constrained output — the contrary-to-duty device — is not coNP.** The bound above is
+>   for the *unconstrained, monotonic* logics. From Sun & Robaldo: maxfamily membership is
+>   BH₂-complete (Thm 3.16), credulous fulfilment NP^NP-complete (Thm 3.18), sceptical
+>   coNP^NP-complete (Thm 3.19) — the **second level of the polynomial hierarchy**, and one
+>   SAT call no longer suffices.
+>
+> **Consequence for this project (decided 2026-08-01): a deontic layer on input/output
+> logic is dropped, not deferred.** Both technical arguments for it were wrong, and the
+> ground is occupied besides — Horner, Mateis, Governatori & Ciabattoni, "Toward Robust
+> Legal Text Formalization into Defeasible Deontic Logic using LLMs" (arXiv:2506.08899),
+> is LLM formalization of real regulatory text into defeasible deontic logic by the
+> formalism's own authors. Contrary-to-duty is handled instead by **rule priorities in the
+> defeasible layer** (§2.3e), at linear cost — which is why Governatori's own line of work
+> is called defeasible *deontic* logic rather than treating the two as separate systems.
 
 Other routes, weaker for us: dyadic deontic logic (Hansson, *Noûs* 3(4):373–398, 1969;
 Åqvist systems E/F/G) handles CTD but **no decidability/complexity theorem was found** —
@@ -591,14 +649,31 @@ Negative findings. Several are opportunities rather than disappointments.
 
 ### 4.1 The term-logic tradition has no rigorous extensions of its own
 
-**No tense extension, no deontic extension, and no semantically certified modal extension**
-in the Sommers/Englebretsen plus-minus line. Modal work exists inside the tradition
-(Englebretsen; Castro-Manzano's recent papers) but was found to lack proved metatheory — no
-soundness/completeness against a semantics, no decidability result.
+No tense extension and no deontic extension in the Sommers/Englebretsen plus-minus line.
 
-**Do not cite** Castro-Manzano, J. M. (2022), "Traditional Logic for Non-Traditional
-Reasoning," *Research in Computing Science* 151(5):115–127, **as a defeasible term logic**.
-"Non-traditional" there means modality, numeracy and relevance — not defeasibility.
+> ⚠️ **CORRECTED 2026-08-01** (`docs/lit-sweep-2026-08-01/sweep-4-tfl-full-scope.md`).
+> This section previously said there was **no semantically certified modal extension**
+> either. There is one, inside the tradition:
+>
+> **Englebretsen, G. (1988). "Preliminary notes on a new modal syllogistic." *Notre Dame
+> Journal of Formal Logic* 29(3):381–395** — `◊ = −□−`, two de dicto and two de re axioms;
+> open access on Project Euclid. A tableaux method follows in Castro-Manzano,
+> *Open Insight* 11(23):165–180, 2020.
+>
+> Consequence: **the paper must not claim "no modal or temporal extension of TFL exists."**
+> Pratt-Hartmann's own fragment program also has a temporal member ("Temporal prepositions
+> and their logic," *Artificial Intelligence* 166, 2005, NEXPTIME-complete). What survives
+> as open territory is narrower and is stated in sweep 6: the **complexity of deontic or
+> temporal extensions of the numerically definite relational syllogistic** — DBLP returns
+> zero hits for `syllogistic temporal` and `syllogistic deontic`.
+
+> ⚠️ **CITATION CORRECTED 2026-08-01.** This section previously warned against citing
+> Castro-Manzano, J. M. (2022), "Traditional Logic for Non-Traditional Reasoning,"
+> *Research in Computing Science* 151(5):115–127. **No Crossref work exists under that
+> title.** The paper meant is "Remarks on the Idea of Non-monotonic (Diagrammatic)
+> Inference," *Open Insight* 8(14):243–263, 2017 — and the original warning still applies
+> to it: it is not a defeasible term logic. Also flagged: his 2026 ICAART "Computational
+> Political Philosophy" is multi-agent simulation, **not** term logic.
 
 ### 4.2 The one certified modal syllogistic sits outside the plus-minus tradition
 
