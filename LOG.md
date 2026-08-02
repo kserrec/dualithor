@@ -677,3 +677,15 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   deviation from the frozen reference plus the full engine gate, and Kyle has not been
   asked to spend that — it stays a named open item in `docs/trace-samples.md` rather than
   a quiet acceptance.
+- **4.1 done — the translation contract.** `translate/schema.ml`: the strict JSON shape a
+  translator model may answer with, validated for *shape only* — whether a `tfl` string is
+  a real proposition is 4.3's question, so the `translate` library stays independent of the
+  engine and a malformed wrapper is never confused with an unparseable formula. Two
+  deliberate leniencies, both to stop a formatting habit being scored as a translation
+  failure: an absent array reads as empty (a model with nothing to decline routinely omits
+  `untranslatable`, and rejecting the payload would discard real translations *and*
+  corrupt the parse-rate metric), and one markdown code fence is stripped. An empty object
+  is still a refusal — "neither array is present". Rejections carry the path to the
+  offending value (`translations[2].confidence`), because that reason is the only evidence
+  we get when a model's rate collapses mid-run. `test/test_schema.ml`, 26 checks, paired
+  accept/refuse cases plus an assertion that each refusal names the *right* index.

@@ -118,3 +118,10 @@
  (name test_env)
  (modules test_env)
  (libraries translate unix))
+
+; The translation contract (4.1): the validator against good and bad payloads.
+
+(test
+ (name test_schema)
+ (modules test_schema)
+ (libraries translate test_support yojson))

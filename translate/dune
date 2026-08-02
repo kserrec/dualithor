@@ -1,6 +1,6 @@
 (library
  (name translate)
- (modules env config llm_client)
+ (modules env config llm_client schema)
  (libraries yojson lwt lwt.unix cohttp cohttp-lwt cohttp-lwt-unix))
 
 ; The 2.2 live smoke test: spends real (tiny) money, needs the key — run by
