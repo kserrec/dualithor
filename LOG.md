@@ -787,3 +787,39 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   these sentences are authored, not sampled from statutes. Sentences written by someone
   who knows the notation are biased toward being translatable, so this set yields an upper
   bound and must be reported as one. A real-text arm is owed.
+- **4.5b done (bare few-shot arm) — the fidelity risk is measured, and it did not
+  materialise.** Full write-up: `docs/fidelity-report-2026-08-01.md`. 45 calls, $0.44.
+  Kimi 100% (91/91), Sonnet 99% (90/91), GPT 96% (87/91) faithful; **273 formulas, zero
+  unparseable**; 30/30 out-of-fragment sentences declined with correct reasons and no
+  over-declining; 24/24 argument verdicts reproduced end-to-end.
+  **Genuine model errors across all three models: two**, both GPT-5.6-terra, both the same
+  bug — it flips the quality sign on an E-form with a negative subject, writing
+  `-(-Member)+Eligible` for "No non-member is eligible", which asserts the opposite. Two
+  for two on that construction. It is also exactly the error class this pipeline exists to
+  catch: parses, reads plausibly, means the reverse.
+  **The out-of-distribution fear is refuted for syntax.** The sweep's calibration point
+  (NL→TLA+ at 26.6% syntactic, attributed to corpus scarcity) does not transfer. Best
+  explanation: TFL's structural simplicity — four parts, no variables, no quantifier scope
+  — outweighs its absence from training data. That countervailing force was named before
+  the run but could not be sized.
+  **Naming consistency is a non-issue.** Group J existed solely to catch a model naming one
+  relation two ways across premises of one argument. It caught nothing, 24/24.
+  **Prediction check, recorded rather than quietly updated:** the pre-registered threshold
+  was ≥70% structural accuracy for viability. Actual 96–100%. Wrong by a wide margin, in
+  the good direction. `scope-and-predictions.md` §1.3's "parse rates possibly no better
+  than FOL, plausibly worse" also looks wrong here, but stays open — there is no matched
+  FOL arm yet.
+  **Instrument defects, disclosed.** (a) Post-hoc: group D accepted both the compound and
+  quoted readings of an intersective adjective+noun — decided *before* the run — and group
+  E, the same construction, did not. Models read "long-term resident" as long-term ∧
+  resident, correctly; my gold called it wrong. Five items patched and flagged
+  `"scoring":"disputed"`. Raw pre-correction numbers (94.5 / 97.8 / 91.2) are reported
+  alongside the corrected ones, because the fix came after seeing data. (b) Post-hoc: name
+  anchoring used subsequence matching, which handles a dropped letter (Wrk/Work) but not a
+  substituted one (Notifi/Notify); added a 4-character common-prefix rule. (c) Two scorer
+  bugs caught *pre-run* by its own tests — canonicalising before comparison made the scorer
+  blind to quantity levels (`Infer.st` sets level 0), and also commuted I/E forms so a
+  conversion scored as structurally identical. Both fixed by comparing raw trees.
+  **Bound on all of it:** the sentences are authored, not sampled from statutes, so this is
+  an upper bound on well-formed input — not evidence that translation is solved on real
+  regulatory text. The real-text arm is now the most valuable measurement remaining.

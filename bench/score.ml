@@ -37,12 +37,26 @@ let is_subsequence (short : string) (long : string) : bool =
   let rec go i j = i >= n || (j < m && if short.[i] = long.[j] then go (i + 1) (j + 1) else go i (j + 1)) in
   go 0 0
 
+let common_prefix (a : string) (b : string) : int =
+  let n = min (String.length a) (String.length b) in
+  let rec go i = if i < n && a.[i] = b.[i] then go (i + 1) else i in
+  go 0
+
 let names_compatible (a : string) (b : string) : bool =
   let a = normalise a and b = normalise b in
   if a = b then true
   else if String.length a < 3 || String.length b < 3 then false
-  else if String.length a <= String.length b then is_subsequence a b
-  else is_subsequence b a
+  else if (if String.length a <= String.length b then is_subsequence a b
+           else is_subsequence b a)
+  then true
+  else
+    (* Subsequence handles dropped letters (Wrk / Work) but not a *substituted*
+       one, which is how truncated stems actually come back: a model wrote
+       "Notifi" for "Notify", differing only in the final character. Four
+       shared leading characters is enough to call it the same root, and far
+       more than any pair the anchor must keep apart — Trustee and Fiduciary
+       share none. *)
+    common_prefix a b >= 4
 
 (* ── Structural isomorphism ────────────────────────────────────────────────
    The binding is threaded functionally rather than mutated, because compound
