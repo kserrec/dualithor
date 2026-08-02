@@ -1,2 +1,13 @@
 (library
- (name bench))
+ (name bench)
+ (modules score)
+ (libraries tfl tfl_verify))
+
+; The 4.5b fidelity run: sends the gold set through every model and grades it.
+; Spends real money on a cache miss; run by hand from the repo root with
+; `dune exec bench/run_fidelity.exe`, never wired into `dune test`.
+
+(executable
+ (name run_fidelity)
+ (modules run_fidelity)
+ (libraries bench tfl tfl_verify translate yojson lwt lwt.unix))

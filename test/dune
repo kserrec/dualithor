@@ -153,3 +153,12 @@
  (modules test_fidelity_set)
  (libraries tfl tfl_verify translate test_support yojson)
  (deps ../data/fidelity/items.jsonl))
+
+; The fidelity scorer (4.5b). It decides the headline number, so both failure
+; directions are pinned: too strict punishes an arbitrary stem choice, too
+; loose lets a converted A-form score as correct.
+
+(test
+ (name test_score)
+ (modules test_score)
+ (libraries tfl bench test_support))
