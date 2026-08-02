@@ -156,6 +156,16 @@ Worse at arity 3: `Sat(DTV+Rel+RA)` is **undecidable even under the restricted p
 pinned? This is a question about existing code, not a hypothetical. It has not been
 checked; this document does not answer it.
 
+> **Answered 2026-08-02 (PLAN 5.2) — `docs/engine-surface.md`, "The anaphora resolution
+> policy"; pinned by `test/test_anaphora.ml`.** Neither RA nor GA: the engine implements
+> **no resolution at all.** A primed name is a constant denoting a singleton, related to
+> nothing — the prime only makes the atom a fixed reference, as `*` does for a singular.
+> That places us strictly *below* both rows of the knife-edge rather than between them,
+> because the ingredient Thm 16 needs (a pronoun co-varying with a quantified antecedent)
+> is inexpressible. The decidability claim survives; the coverage cost is real and belongs
+> in the limitations. The engine's `pronominalize` is Skolemization for indirect proof, not
+> anaphora resolution — it *creates* constants rather than binding pronouns.
+
 ### 1.4 Where our engine sits on the map
 
 Satisfiability complexity, from the handbook chapter. Fragment tags: `Syl` = classical

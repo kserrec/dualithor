@@ -1147,3 +1147,47 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   - No OCaml engine logic touched (changes are in `translate/`, `bench/`,
     `test/`), so the 20k oracle and mass differential gates are not triggered.
     `dune test` green.
+
+- **5.2 done — and the answer is a third option nobody wrote down: the engine
+  implements *no* anaphora resolution at all.**
+  The question mattered because Pratt-Hartmann Thm 15/16 put a knife-edge on
+  the same syntax — restricted anaphora NEXPTIME-complete, general anaphora
+  **undecidable** — and the paper claims our fragment is decidable where ACE is
+  not. The plan expected RA or GA. It is neither.
+  - **A primed name is a constant.** `Boy′` denotes one individual and is
+    related to nothing: not to `Boy`, not to any antecedent, not by proximity
+    and not by co-indexing. The prime's entire effect is `Infer.is_fixed_ref`,
+    the same predicate `*` satisfies, and the 1.10 semantics assigns proterms
+    single domain elements in the same table as singulars.
+  - **Two independent proofs that nothing is resolved.** `±Boy′+Boy` — "that boy
+    is a boy" — is not valid, and has a one-element countermodel. And
+    `pronominalize` records an explicit `±T′+T` anchor for every witness it
+    introduces; nothing would need anchoring if the reference resolved itself.
+    That function turned out to be **Skolemization for indirect proof**, running
+    in the opposite direction from anaphora resolution: it creates constants for
+    existential witnesses rather than consuming a pronoun and finding its
+    antecedent. The name is what made this look like a live risk.
+  - **Not a stop-and-report, but the paper's justification changes.** We sit
+    strictly *below* both RA and GA rather than between them: Thm 16's tiling
+    encoding needs a pronoun co-varying with a quantified antecedent, and that
+    is inexpressible here. So the sentence must be **"our fragment has no
+    anaphora"** — never "restricted anaphora", which would claim Thm 15's
+    NEXPTIME expressiveness we do not have. PLAN's Phase 11 claim list is
+    corrected accordingly and §1.3 of `expressiveness-literature.md` now points
+    at the answer instead of asking the question.
+  - **The same fact is a coverage cost.** Pratt-Hartmann's witness sentence —
+    "Every artist who admires a beekeeper hates every carpenter who despises
+    him" — cannot be translated at all: `him` is either a general term (does not
+    co-refer) or a proterm (one fixed individual for the whole formula). 4.6
+    should expect back-references among the `Outside_fragment` reasons, and it
+    belongs in the limitations. Decidability and coverage are the same fact from
+    either side, which is the project's thesis stated in miniature.
+  - **Method note worth keeping.** Every *negative* in the test is carried by an
+    exhibited countermodel from the 1.10 semantics, never by an engine verdict:
+    outside the categorical fragment the engine answers `Unknown` where the
+    truth is "invalid", so a verdict can never establish a negative. The
+    discriminating pair — a proterm object does not co-vary, a general-term
+    object does — would have been unprovable from verdicts alone, since the
+    control comes back `Unknown`. That `Unknown` is now pinned too.
+  - No engine logic touched: this step is a test and two documents. `dune test`
+    green, 18 new checks.

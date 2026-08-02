@@ -181,3 +181,15 @@
  (name test_backcheck)
  (modules test_backcheck)
  (libraries tfl tfl_verify translate test_support))
+
+; The anaphora resolution policy (5.2). Pratt-Hartmann Thm 15/16: restricted
+; anaphora is NEXPTIME-complete and general anaphora is UNDECIDABLE on the
+; same syntax — so the paper's "our fragment is decidable" sentence turns on
+; which policy the engine implements. It implements neither: a primed name is
+; a constant. Negatives are carried by exhibited countermodels, because the
+; engine answers Unknown outside the categorical fragment.
+
+(test
+ (name test_anaphora)
+ (modules test_anaphora)
+ (libraries tfl tfl_verify test_support))

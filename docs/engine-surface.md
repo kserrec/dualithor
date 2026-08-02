@@ -204,3 +204,80 @@ one-second bound — the slowest was a 39KB input. Eight contract checks cover t
 classification boundaries directly, including the depth cap admitting 60 levels and
 refusing 200, and the capped cancellation search returning in under a second on the audit's
 20-universal probe while still decorating an ordinary three-premise certificate.
+
+---
+
+## The anaphora resolution policy
+
+*Settled 2026-08-02 (PLAN 5.2). Pinned by `test/test_anaphora.ml`, 18 checks.*
+
+### Why the question is load-bearing
+
+Pratt-Hartmann's handbook chapter puts a knife-edge inside the fragment this engine
+occupies (`expressiveness-literature.md` §1.3):
+
+| Fragment | Satisfiability | Thm |
+|---|---|---|
+| `TV+Rel+RA` — *restricted* anaphora: every pronoun bound to its **closest** permissible antecedent | NEXPTIME-complete | 15 |
+| `TV+Rel+GA` — *general* anaphora: free co-indexing, subject only to binding theory | **UNDECIDABLE** | 16 |
+
+Same sentences, same syntax; **only a different disambiguation policy.** The
+undecidability proof is a grid/tiling encoding in six sentences, and its essential
+ingredient is a co-indexed pronoun reaching back *past an intervening quantifier* — which
+RA forbids and GA permits. Witness sentence: *"Every artist who admires a beekeeper hates
+every carpenter who despises him."*
+
+The engine has something called pronominalization, and the paper claims our fragment is
+decidable where ACE is not. If that machinery implemented GA, the claim would be false and
+the router claim's substrate — *TFL is a small decidable fragment, so parse failure is a
+meaningful signal* — would go with it.
+
+### The answer: no resolution policy at all
+
+Neither RA nor GA. **A primed name is a constant.** `Boy′` denotes a single individual and
+is related to nothing whatsoever — not to `Boy`, not to any antecedent, not by proximity
+and not by co-indexing. The prime is a spelling convention that makes the atom a *fixed
+reference* (`Infer.is_fixed_ref`), exactly as `*` does for a singular term, and that is its
+entire effect: on a singleton denotation the all/some distinction collapses, so `±` is
+admissible there and `+`/`−` mean the same thing. In the 1.10 model semantics a proterm is
+assigned one domain element, in the same table as singulars.
+
+Two independent pieces of evidence that no resolution is happening:
+
+- **A proterm inherits nothing from the term it was primed from.** `±Boy′+Boy` — "that boy
+  is a boy" — is not valid, and has a one-element countermodel where `Boy′` denotes element
+  0 and `Boy` is empty. Any resolution policy would have linked them.
+- **`pronominalize` records an explicit anchor.** Every witness it introduces comes with a
+  stated `±T′+T` (port-spec §9). Nothing would need anchoring if the engine resolved the
+  reference itself. That function is Skolemization for indirect proof — it *creates*
+  constants for existential witnesses — and runs in the opposite direction from anaphora
+  resolution, which consumes a pronoun and finds its antecedent.
+
+### What follows, in both directions
+
+**The decidability claim survives, but its justification changes.** We are strictly *below*
+both RA and GA rather than between them: the ingredient the undecidability proof needs — a
+pronoun whose referent co-varies with a quantified antecedent — is inexpressible. The
+discriminating pair is pinned in the test: from "every artist admires that beekeeper" and
+"that beekeeper is nice" it follows that every artist admires something nice, because there
+is one beekeeper; from "every artist admires a beekeeper" and "some beekeeper is nice" it
+does not, and the test exhibits the countermodel. The paper must therefore say **"our
+fragment has no anaphora"**, never "we implement restricted anaphora" — the latter would
+claim Thm 15's NEXPTIME expressiveness we do not have.
+
+**And it is a coverage cost, to be reported as a limitation.** These are the same fact seen
+from either side. Pratt-Hartmann's witness sentence cannot be translated faithfully at all:
+to write *him* you need a term, and any term you write is either a general term (wrong — it
+does not co-refer) or a proterm (wrong — it is one fixed individual for the whole formula).
+Real regulatory text is full of such back-references, so 4.6 should expect them among the
+`Outside_fragment` reasons and they belong in the paper's limitations beside the fragment's
+other gaps.
+
+### Evidence
+
+`test/test_anaphora.ml`: 18 checks. Positives are carried by the engine's own verdicts where
+the case is inside the categorical fragment and decisive; **every negative is carried by an
+exhibited countermodel** from the 1.10 semantics, because outside the categorical fragment
+the engine answers `Unknown` where the truth is "invalid" — an `Unknown` can never establish
+a negative. The test pins that `Unknown`, too, so the incompleteness cannot quietly become a
+verdict.
