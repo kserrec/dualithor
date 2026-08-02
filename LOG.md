@@ -703,3 +703,38 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   the set keeps alive, a check that the passive example's subscripts really read as
   pairing roles rather than degrading into a relation named "Lov₂₁", and an assertion that
   no verdict vocabulary leaked into the prompt text.
+- **Second literature sweep (Kyle's redirect toward expressiveness and real-world impact).**
+  Six parallel sweeps, archived verbatim in `docs/lit-sweep-2026-08-01/` with a README
+  carrying the synthesis. Not a PLAN step; no plan was rewritten on the basis of it.
+  **Three things it killed:** a deontic layer on input/output logic (Governatori and
+  Ciabattoni — the formalism's own authors — already published LLM→defeasible deontic logic
+  on real regulatory text, arXiv:2506.08899; the "Ross's paradox is blocked in OUT₁/OUT₃"
+  claim in `expressiveness-literature.md` §2.3(f) is **inverted**, since all eight I/O
+  logics satisfy weakening of output; and constrained output, the contrary-to-duty device,
+  sits at the second level of the polynomial hierarchy rather than coNP). Deterministic
+  back-rendering as *our* differentiator (prior art in ACE since 2008, plus PENG and GF).
+  And the claim that no modal/temporal extension of TFL exists (Englebretsen, NDJFL 29(3),
+  1988).
+  **What it found instead:** missing-premise suggestion is an *unpublished* result, not a
+  port — TFL's first validity condition is an equation over a free abelian group on signed
+  terms, so the missing premise is `C − ΣPᵢ`, no search, on the fragment where P/Z decides;
+  it also answers the "why was I *not* found eligible?" question that description logics
+  need abduction for. Murphree's numerical term logic (NDJFL 39(3), 1998) is a strict
+  superset of our TFL⁺ levels. Nute-style defeasible logic beats ASPIC+/ABA for our case
+  because the superiority relation is free inside the linear algorithm, where adding
+  preferences to ABA lifts grounded reasoning from P to Δ₂ᴾ.
+  **Two cautions.** The audit gap is real and named in print by three independent groups —
+  Fuchs (CNL 2018), ACE's own author, designed this exact experiment and wrote "For lack of
+  resources I did not do the experiment" — but Alrabbaa et al. (RuleML+RR 2022) measured
+  laypeople on logic proofs at a mean of 2.36/12, so a logic-based trace is not
+  automatically comprehensible. And the systems with real production footprints use the
+  *least* expressive formalisms; the richest logics have the weakest deployment records.
+  **Method finding that reaches backwards.** Four of six sweeps independently caught the
+  PDF summariser fabricating content, in one case from undecodable binary noise; all four
+  switched to `curl` + `pdftotext`. That is almost certainly the origin of the inverted
+  Ross claim. Any citation in this project not sourced from extracted primary text should
+  be treated as unverified until it is — including much of the earlier survey.
+  **Left untouched deliberately:** `scope-and-predictions.md` §1 (pre-registered
+  predictions — rewriting them after the fact would destroy the only reason they exist)
+  and the two known errors in `expressiveness-literature.md`, both recorded in the new
+  README instead. Kyle's call.
