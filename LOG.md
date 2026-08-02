@@ -1006,3 +1006,102 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   $0.05, but 4.6 is a bigger run and will hit this again.
   Also noted: `CLAUDE.md` says "the cost ceiling in config is enforced in code."
   There is no ceiling in `translate/config.ml` and none enforced anywhere.
+
+- **Scope amendment — PLAN rewritten from Phase 4 onward. No code changed.**
+  Kyle's framing: a lot of the plan was spending effort on things that already
+  exist and are done better elsewhere, which produces no real-world value.
+  Redirect onto what only the term-logic approach makes possible. The amendment
+  block sits at the head of PLAN with the execution order; the per-step changes
+  are recorded in place. Four findings drove it, three of which corrected Kyle's
+  own starting position:
+  1. **The back-check's round trip is occupied prior art.** Amrollahi, Lopez &
+     Barrett (arXiv:2604.25031, 2026) do formalize → back-translate → re-formalize
+     → check equivalence, on Texas statutes. Lit sweep 1 §11b/§15 already ranked it
+     the second-largest novelty threat and said our claim must pin to the
+     human-facing rendering. Our 4.4 is also machine-consumed (an LLM judge reads
+     the rendering), so on that axis we are currently in the same bucket. What
+     survives: the verbalizer is a **total deterministic function** rather than a
+     second language model, and Phase 9 puts it in front of a person. **Consequence
+     for the plan: Phase 9 is the centrepiece, not the epilogue** — without it,
+     capability 1 reduces to "our English generator is deterministic."
+  2. **The missing-premise feature is a build, not a port, and "subtraction" is
+     too simple.** `engine/tfl.js:1863`/`:1909` is bounded brute force — enumerate
+     every two-term proposition over ≤8 term names and test each — i.e. guess-and-
+     check, which is exactly what abduction has always been. Porting it buys zero
+     novelty. And P/Z permits **re-using universal premises** (`tfl.js:389–396`), so
+     the closed form solves a small integer equation with unknown multiplicities,
+     not `C − ΣPᵢ` literally. The reference's own comment knew it. Claim wording
+     fixed everywhere: "closed form where others must search", never "no FOL
+     counterpart."
+  3. **The renderer is load-bearing under three keepers and had no PLAN step.**
+     New step **5.0**. `lib/tfl/render.ml` — our OCaml — drops quantity words when
+     the predicate is a relational complex (line 107 gates on `not rel_pred`) and
+     reads compound terms as conjunctions. Those two are the *only* remaining 4.4
+     false positives (true rate against a correct renderer: 0/88), and each would
+     put wrong English in front of a Phase 9 participant, making the study measure
+     our bug. Verdict-safe by construction, so the frozen-reference rule does not
+     block it.
+  4. **The pronoun-policy check was about to be dropped and protects a headline
+     claim.** If our pronominalization implements general anaphora the fragment is
+     undecidable, and the paper's "decidable where ACE is not" sentence is false —
+     taking the router claim's substrate with it. One session. Kept, and moved to
+     the front of Phase 5.
+- **Decisions Kyle made in the same conversation.**
+  - **The JS reference's authority is split.** Frozen forever and *never edited* —
+    a reference you may edit becomes a mirror, and the day someone "fixes" it to
+    match an OCaml bug the gate goes silent. Authoritative on **verdicts** forever
+    (two independent implementations agreeing on 884k inputs is real evidence);
+    **no authority at all** over English rendering, where it is one earlier draft
+    with two proven bugs. Rendering deviations exempt only the constructions
+    actually changed and **report the exempted count**, the same pattern
+    `diff_parse_program` already uses for the comment stripper. Nothing is lost
+    that was worth having. (Kyle's question — "should we update both?" — answered
+    no, for that reason.)
+  - **Phase 9 item sourcing.** The faithful half is easy (88 correct translations
+    exist); the unfaithful half is the design's weakest joint, because the entire
+    4.5b study produced **two** meaning-changing errors and they are the same error
+    twice. Decision: real errors first, harvested from the 4.6 real-text run;
+    hand-made items only to fill the gap; every item labelled which kind it is and
+    the two reported separately. Mix fixed in writing before the first participant.
+    **4.6 now owes an error-collection deliverable it did not have.**
+  - **Phase 9 runs as a pilot with ~10 friends and colleagues first**, explicitly
+    labelled a pilot before it runs, then a decision on a paid panel. Recorded with
+    what n≈10 cannot buy (at that size, 55%–90% are indistinguishable) and the fact
+    that friends are not non-experts *about this project*. The label matters: a
+    pilot may change its design freely; an unlabelled run scaled up after an
+    encouraging number is contaminated.
+- **Cuts, deferrals and one reshape.**
+  - **Phase 7 (defeasible) deferred outright**, and **8.3 (DeonticBench) with it** —
+    DeonticBench exists to evaluate Phase 7, so it is one decision. The proposed
+    reopening trigger ("only if coverage starves Phase 9") was **withdrawn as
+    unfireable**: the study needs ~40 items and 4.5b alone supplies 91. Replaced by
+    the real trigger — §1B.1 predicts multi-clause structure and cross-reference
+    dominate the refusals, in which case the cheap coverage lever is **sentence
+    splitting before translation**, which is nowhere in the plan and costs a
+    fraction of a defeasible engine.
+  - **6.3 (Murphree) cut**, not deferred: it widens the fragment, which runs against
+    this project's own thesis that the narrowness is the product.
+  - **6.2 (definitions layer) kept as a tool feature, cut from the paper.** Ported in
+    1.7 and nothing calls it; it is the difference between an argument checker and
+    something you can point at a policy document, and Kyle's first priority is the
+    tool.
+  - **4.7 reshaped, not kept as written.** Building a FOL parser + structural
+    comparator was the largest remaining build and the largest remaining chunk of
+    reimplementing others' work — to confirm a tie §1B.4 already predicts (within 5
+    points). Now three parts: a cheap accuracy number off an existing prover, the
+    **head-to-head moved into Phase 9 as a control arm** (participants audit our
+    rendering vs a raw FOL formula — the experiment that actually supports claim 1),
+    and the FOL→TFL transduction arm, which nobody has run.
+  - **Phase 8 trimmed** to policybench + the syllogism set. The syllogism set is kept
+    for a **corrected reason**: belief bias is precisely SemEval-2026 Task 11's
+    subject with dozens of published systems, so it is the most crowded ground left,
+    not our clearest win — but after the trim it is the only public benchmark in the
+    plan and the only external comparability point a reviewer can be pointed at.
+  - **New step 4.9**: the empty-200-body retry bug (22 sentences silently vanished
+    last run; the log had already warned 4.6 would hit it again) and the cost ceiling
+    `CLAUDE.md` claims exists and does not. Both run before the real-text measurement.
+  - **CLI moved earlier** out of 11.4 — 4.6 and 6.1 both want it.
+- **Predictions affected, recorded rather than dropped.** Block A §1.5 (FOLIO
+  coverage) and Block B §1B.6 (defeasible coverage) become unmeasurable and are
+  marked *not run*. Block A §1.6 (selective accuracy ≥98%) **survives** the Phase 8
+  trim: policybench alone still yields the (coverage, accuracy-given-coverage) pair.

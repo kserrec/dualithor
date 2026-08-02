@@ -6,6 +6,72 @@
 1. *Fidelity claim:* NL→TFL translation is more faithful and more human-auditable than NL→FOL translation, because TFL's variable-free plus-minus syntax mirrors natural-language surface form.
 2. *Router claim:* TFL fragment membership (does the sentence parse into TFL at all?) is a clean, mechanical escalation signal — parse success → verify cheaply; parse failure → flag/escalate. FOL pipelines have no equivalent signal.
 
+---
+
+## Scope amendment — 2026-08-02
+
+**The principle: stop building what established tools already do better, and concentrate the
+remaining effort on the things only the term-logic approach makes possible.** General
+"verify LLM output with a symbolic engine" is occupied — SemEval-2026 Task 11 is an entire
+ACL shared task on it and ARc (arXiv:2511.09008) is a deployed AWS service — and both are
+FOL + general solvers. We do not compete there. Everything below is scoped to what is ours.
+
+**The three capabilities that are ours, with their honest novelty status.**
+
+1. **The back-check** — render the model's TFL back to English with the engine's own
+   deterministic reading and compare it to the source sentence. **Proven** (step 4.4: caught
+   GPT's two meaning-inverting sign flips unaided, 2% false positives, both of those being
+   defects in *our* renderer rather than judge errors). **But the round trip itself is
+   occupied prior art**: Amrollahi, Lopez & Barrett, *Faithful Autoformalization via
+   Roundtrip Verification and Repair* (arXiv:2604.25031, 2026) formalize → back-translate →
+   re-formalize → check equivalence, on Texas statutes; lit sweep 1 §11b/§15 ranks it the
+   second-largest threat to our novelty and states that our claim must be pinned to the
+   *human-facing* rendering, not the round trip. Our back-check is also machine-consumed
+   today (an LLM judge reads the rendering). **What is actually ours: the verbalizer is a
+   total deterministic function rather than a second language model** — Vernie & Grabmair
+   flag their own LLM-generated verbalization as an unverified artifact inside the audit
+   path — **and putting that rendering in front of a person, which is Phase 9.** Never write
+   "FOL structurally cannot do this."
+2. **Missing-premise / enthymeme completion** (Phase 6.1) — the sharpest pure novelty, and
+   **a build, not a port**; see the rewritten step for why the reference engine's version is
+   not the novel one and why the algebra is not plain subtraction.
+3. **Fragment routing** (Phase 5.1) — real, thinnest of the three, and its value is gated by
+   the unrun real-text coverage measurement (step 4.6).
+
+**Phase 9 is the centrepiece, not an epilogue.** Without a human in the loop, capability 1
+reduces to "our English generator is deterministic" — a true and worthwhile paragraph, not a
+paper. The auditability study is what converts it into a contribution.
+
+**Cut or deferred, with reasons.** Phase 7 (the defeasible/"unless" layer) — **deferred**:
+non-novel (Governatori and Ciabattoni, the formalism's own authors, did LLM→defeasible
+deontic logic on real regulation a year ahead) and someone else's ground. Step 6.3 (Murphree
+numerical term logic) — **cut**: blocked behind an open soundness question, and it widens the
+fragment, which cuts against this project's own thesis that the narrowness is the product.
+Phase 8 — **trimmed** to policybench plus the syllogism set; the broad accuracy sweep,
+DeonticBench and the legal-benchmark pick all go (DeonticBench exists to evaluate Phase 7,
+so it leaves with it).
+
+**Three things this amendment adds that were not in the plan at all:** a step to fix the
+English renderer (Phase 5.0 — it is load-bearing under three of the four keepers and has two
+proven bugs), a plumbing step before the real-text run (step 4.9 — a retry bug that silently
+dropped 22 sentences from the last run, and the cost ceiling this project's docs claim exists
+and does not), and a corrected trigger for the deferred defeasible layer.
+
+**Execution order.** Doc order below is thematic; this is the order the work runs in:
+
+> 4.9 plumbing → 5.2 pronoun policy → **5.0 renderer** → 4.6 real-text coverage (with
+> hand-labelled in/out answer key) → 5.1 router + 5.3 numerical audit → 6.1 missing premise →
+> 4.7 FOL arm (reshaped) → Phase 9 study (pilot, then decide on a panel) → Phase 8 trimmed →
+> Phase 10 analysis → Phase 11 write-up and release.
+
+**Predictions that become unmeasurable under this amendment** (`scope-and-predictions.md`):
+Block A §1.5 (FOLIO coverage) and Block B §1B.6 (defeasible-layer coverage). They are recorded
+as *not run* in the scorecard, never deleted — reporting how a pre-registered prediction fared
+is the whole reason to write one down. Block A §1.6 (selective accuracy ≥98%) **survives** the
+trim: policybench alone still yields the (coverage, accuracy-given-coverage) pair.
+
+---
+
 *Prior art to cite (read abstracts in Phase 2):* Logic-LM (Pan et al. 2023), LINC (Olausson et al. 2023), natural logic / NatLog (MacCartney & Manning), NaturalLI (Angeli & Manning), Sommers & Englebretsen's TFL, Castro-Manzano's TFL programming/Aristotelian databases work.
 
 *Translator models under test (via OpenRouter unless noted):* a current Claude model, GPT-5.6, Kimi (current K-series). Look up current OpenRouter model slugs at runtime — do not hardcode from memory.
@@ -18,6 +84,23 @@
 - `engine/oracle.js` — finite-model semantics + six fuzz suites checking the engine's syntactic verdicts against semantic truth (`node engine/oracle.js -n 20000`).
 
 **The JS engine is the executable specification for the OCaml port.** It is never extended, only consulted. The OCaml engine becomes authoritative only after the differential gate (1.12) passes. `guides` is a separate, untouched project; this copy is the maintained one.
+
+**Its authority is split, as of 2026-08-02 (Kyle's decision).** Nothing JavaScript ships or
+runs in this project; the OCaml engine has been authoritative since the 884k-input differential
+gate passed. The reference stays **frozen forever and is never edited** — a reference you are
+allowed to edit stops being an independent check and becomes a mirror, and the day someone
+"fixes" it to match an OCaml bug the gate goes silent. But:
+- **On verdicts it stays authoritative and the comparison runs forever.** Two independent
+  implementations agreeing on 884,000 inputs is real evidence, and a wrong verdict is the one
+  thing that must never happen.
+- **On English rendering it has no authority at all.** It is not a specification of correct
+  English — it is one earlier draft of an English generator, and two of its outputs are proven
+  wrong (Phase 5.0). Deferring to it there means pinning our audit surface to a known-broken
+  draft.
+Deliberate rendering deviations are handled the way the comment-stripper deviation already is:
+the harness runs both sides, **exempts only the specific constructions we changed, and reports
+the exempted count** so the exemption can never silently grow. Everything else keeps being
+compared byte-for-byte.
 
 *Ground rules for every step below:* each step is sized for Claude (Fable/Opus) to execute in a single pass, end to end, with its acceptance check passing at the end. If a step feels ambiguous or too large mid-execution, stop and ask Kyle rather than guessing. Commit after each completed step with the step id in the message (`1.4: …`). Keep a running LOG.md noting decisions and surprises — this becomes paper material. **After 1.12, any change touching OCaml engine logic must end with the OCaml test suite, the OCaml oracle (20k), and the curated paper-cases suite green; a red oracle is a stop-everything event.**
 
@@ -166,7 +249,35 @@ Known gap, to report as a limitation: the set is authored, not sampled from real
 - **Fidelity on messy input** — same four-tier scoring as 4.5b, gold hand-written and engine-verified.
 - **Coverage** — what fraction of real regulatory sentences land inside the fragment at all. *After 4.5b, coverage has replaced fidelity as the project's largest unknown:* translation works, but a tool that refuses 80% of real sentences is a demonstration, not a system.
 Report `Outside_fragment` reasons by category (tense, arithmetic, cross-reference, defeasible, multi-clause) — that distribution is what tells us which layer to build next, and it is paper material either way.
-Accept: coverage and fidelity reported with the refusal-reason breakdown; sentences and gold committed to `data/fidelity/real/`; spend logged.
+**Three additions from the 2026-08-02 amendment, all cheap now and expensive later:**
+- **Hand-label every sampled sentence in-fragment or out-of-fragment *before* running
+  anything.** That answer key is the only thing that makes the router measurable — "the router
+  said this was outside the fragment; was it right?" needs human ground truth to score
+  against (Block A §1.4 says so). Once Phase 8 is trimmed, this is the *only* remaining source
+  of those labels; skipping it means a separate labelling pass later.
+- **Harvest every genuine translation error this run produces and keep it.** Phase 9 needs
+  roughly fifteen items where the rendering genuinely disagrees with the source, and the entire
+  4.5b study yielded **two** (`c02`/`c06`, and they are the same error twice). Real messy text
+  is where the rest are expected to come from.
+- **Fill the two eval coverage holes** recorded in `data/fidelity/README.md`: no negative-term
+  E-form and no quantity level 3 survive on the eval side after the burn rule.
+Runs *after* 4.9 (plumbing) and 5.0 (renderer) — a dropped-response bug would corrupt the
+counts and a broken renderer would corrupt the fidelity scoring.
+Accept: coverage and fidelity reported with the refusal-reason breakdown; in/out answer key
+committed with the sample; observed translation errors collected for Phase 9; sentences and
+gold committed to `data/fidelity/real/`; spend logged.
+
+*4.9 Plumbing before the real-text run.* — **small, and it runs first.**
+Two defects recorded 2026-08-02 and unactioned, both of which bite a larger run:
+- `llm_client.ml` classifies an **empty 200 body** as `Llm_error` rather than `Retryable`, so
+  it does not retry. Two Kimi batches hit it mid-run and **22 sentence slots vanished**, while
+  the reported percentages still looked healthy because `attempted` excludes missing. LOG's own
+  words: "4.6 is a bigger run and will hit this again."
+- **There is no cost ceiling anywhere**, though `CLAUDE.md` asserts one is enforced in code.
+  4.6, 4.7 and Phase 8 are where the money goes.
+Accept: empty-body responses retried (with a test that fails on the old classification); a
+ceiling in `translate/config.ml` enforced in code and checked before each run; `CLAUDE.md`'s
+claim is either true or reworded.
 
 *4.4 Back-translation fidelity check.* ✅ DONE (2026-08-01; **re-measured 2026-08-02** on the corrected run — `translate/backcheck.ml`, `test/test_backcheck.ml` 14 checks, `translate/smoke_backcheck.ml`) — **promoted: this is the correctness mechanism, not a nicety.**
 **Acceptance PASSED, twice.** Both `c02` and `c06` flagged unaided, with accurate diagnoses ("quality reversed: no vs every"). False positives **2/88 = 2%** on the corrected run, against a pre-registered 5–20% and a 20% abandon threshold. Both remaining "false positives" are real defects in **our** renderer, not judge errors (`i06` — quantity level dropped when the predicate is a relational complex; `d03` — a compound term read back as "registered and voter"), so the true rate against a correct renderer is 0/88. The third false positive from the first measurement was `i04`, and it was not a false positive at all: it found the wrong gold that forced the 4.5b re-run. **The renderer defect is still open** and now matters more, because the rendering is an audit surface.
@@ -175,11 +286,15 @@ Accept: coverage and fidelity reported with the refusal-reason breakdown; senten
 Division of labour to hold onto: prompt patching buys *coverage*; the back-check buys *correctness*. Never rely on a prompt for soundness.
 Accept: runs end-to-end on the 4.5b and 4.6 sets; catches c02/c06 unaided; false-positive rate on correct translations reported.
 
-*4.7 Matched FOL arm.* — **required before core claim 1 can be stated at all.**
-Claim 1 says TFL translation is *more* faithful than FOL. 4.5b shows TFL works well; it shows nothing comparative. Same sentences, same models, translated to FOL and scored equivalently. Needs FOL scoring infrastructure we do not have — minimally a parser and a structural comparator; an off-the-shelf prover for equivalence is acceptable here since nothing in the FOL arm is load-bearing for our own verdicts.
-Also run the arm the 2026-08-01 novelty sweep found no trace of anyone trying: **LLM→FOL→mechanical transduction into TFL**, versus direct TFL emission. Models know FOL; the transduction is deterministic code.
+*4.7 Matched FOL arm.* — **required before core claim 1 can be stated at all. Reshaped 2026-08-02: do not build a FOL scoring system.**
+Claim 1 says TFL translation is *more* faithful and *more auditable* than FOL. 4.5b shows TFL works well; it shows nothing comparative.
+**Why the original scope is cut.** As written this step meant a FOL parser plus a structural comparator — the largest remaining build in the plan, and the largest remaining chunk of reimplementing what other tools already do better. And our own pre-registered §1B.4 predicts NL→FOL and NL→TFL land **within 5 points of each other**, with TFL's advantage appearing only where FOL has no counterpart. Building a large scorer to confirm a tie we already expect is exactly the effort this amendment exists to redirect.
+**Three parts instead:**
+- **(a) A cheap accuracy number.** Models emit FOL; equivalence against gold decided by an off-the-shelf prover, with a judge for the residue. Nothing in the FOL arm is load-bearing for our own verdicts, so leaning on someone else's tool is correct here. Enough to state parity or to withdraw the accuracy half of claim 1 honestly.
+- **(b) The comparison that matters moves into Phase 9 as a control arm.** One group of participants audits our English rendering against the source sentence; another audits a raw FOL formula against the same sentence. **That is the experiment that actually supports claim 1's auditability half**, it is the empty slot lit sweep 1 §14 names, and it costs a study arm rather than a scoring system.
+- **(c) Keep the transduction arm** the 2026-08-01 novelty sweep found no trace of anyone trying: **LLM→FOL→mechanical transduction into TFL**, versus direct TFL emission. Models know FOL; the transduction is deterministic code. Cheap and genuinely unclaimed.
 *Grammar prompting* (ship the BNF) is **dropped from the near term** — published evidence supports it for low-resource formal languages, but at a 100% parse rate there is nothing left for it to fix. Revisit only if 4.6 shows syntax failures on real text.
-Accept: FOL arm scored on the same items; the comparative claim is either supported with numbers or withdrawn.
+Accept: (a) a FOL accuracy number on the same items, supporting or withdrawing the accuracy claim; (c) transduction scored against direct emission; (b) carried into the Phase 9 design rather than scored here.
 
 *4.8 Dev/eval split.* ✅ DONE (2026-08-02 — `data/fidelity/items.jsonl` `split` field, 42 dev / 43 eval; `test/test_fidelity_set.ml`, 29 checks)
 The moment a prompt is changed in response to an observed error, the items that revealed it stop being evaluation data. Split now, while nothing has been tuned: a development set we may inspect freely, and an evaluation set touched once. Record which items are which in the data files.
@@ -188,45 +303,70 @@ Every item already implicated in an observed error is forced to dev (`c02`/`c06`
 
 ---
 
-## Phase 5 — Router, and the two engine debts
+## Phase 5 — Router, and the three engine debts
 
-*5.1 Router logic.*
+Execution order inside this phase is **5.2 → 5.0 → 5.1 → 5.3**. The pronoun check is one
+session and protects a headline claim; the renderer unlocks three of the four things the
+amendment keeps; the router is not measurable until 4.6 supplies its answer key.
+
+*5.0 The renderer as audit surface.* — **new 2026-08-02; the highest-value unscheduled work in the project, and it runs before anything human-facing.**
+`lib/tfl/render.ml` — **our OCaml, not the JavaScript** — turns a TFL formula into English. Four things depend on it and nothing else does the job: the back-check (4.4), the missing premise's English output (6.1), the proof traces (3.3/3.4), and the Phase 9 study, where the rendering *is* the thing a participant reads. It has two proven bugs and two open cosmetic defects:
+- **Quantity words are dropped when the predicate is a relational complex.** `render.ml:107` gates the quantifier word on `not rel_pred`, so `+Officer^1+(Sign+Contract)`, `^2` and `^3` all read "some officer sign some contract" — identical to level 0. A reader auditing a levelled proposition is shown "some" where the formula says "many", and the back-check is correspondingly blind there (`i06`).
+- **Compound terms read as conjunctions** — "registered voter", one term, comes back as "registered **and** voter" (`d03`).
+- Carried from 3.3/3.4: the frozen `explain_proof` sentence still renders relational subjects the old way, so it reads inconsistently with the trace lines directly above it; and A-form relational subjects ("every head some horse head some animal") have no readable form at all.
+**Why this ranks first.** Those two bugs are the *only* two remaining false positives in the 4.4 back-check — LOG 2026-08-02: "true false-positive rate against a correct renderer: 0/88." Fixing them improves the project's best existing result. And each would put demonstrably wrong English in front of a Phase 9 participant, on precisely the task the study measures: the study would then be measuring our bug rather than our idea.
+**Why it is safe, and why the frozen-reference rule does not block it.** The rule protects *verdicts*. **The renderer produces no verdicts** — changing how a formula reads in English cannot change whether an argument is valid. This is a smaller deviation than the two already approved (the `find_cancellation` work cap, the quote-aware comment stripper), both of which sit closer to decisions.
+**Method.** Change the OCaml; never touch the JavaScript. Narrow the rendering differential to **exempt only the constructions actually changed**, with the exempted count reported — the `diff_parse_program` pattern already used for the comment stripper. Everything else keeps being compared byte-for-byte. Pin the new English in an OCaml golden test Kyle can read and approve, since a golden file can say "this is *right*" where a comparison can only say "this matches the old thing".
+Accept: both bugs fixed with pinned readings; rendering differential narrowed with its exemption count reported and asserted; **every verdict gate green** — unit suites, 62 paper cases, the 18-gate differential, the 20k oracle; Kyle approves the new readings as he did the 3.3 samples.
+
+*5.1 Router logic.* — *not startable until 4.6 supplies the hand-labelled in/out answer key.*
 `router/route.ml`: attempt translation + parse + check. Outcomes: `Verified_valid`, `Verified_invalid`, `Outside_fragment` (translation refused or parse failed), `Translation_suspect` (parsed, back-check disagrees), `Unknown` (checked, engine returned unknown). No external solver in v1 — `Outside_fragment` is terminal. Stub `router/escalate.ml` documenting the future Prolog/Z3 hook.
 Paper framing found 2026-08-01, worth building toward: fragment membership as *works* vs *does not run* — on 294,469 SNOMED concepts, ELK 6.2 s, FaCT++ 408.9 s, HermiT timed out at 30 min, Pellet ran out of memory (ORE 2012).
 Accept: unit tests cover all five outcomes with mocked components.
 
-*5.2 Pin the anaphora resolution policy.* — **a live correctness question about existing code.**
+*5.2 Pin the anaphora resolution policy.* — **a live correctness question about existing code, and it runs first in this phase.**
+**Kept explicitly against a proposal to drop it (2026-08-02), because it protects a headline claim for the cost of one session.** The paper's stated differentiator (§"What the paper actually claims") is that *our fragment is decidable where ACE is not*. If our pronominalization implements general anaphora, that sentence is **false** — and the router claim's whole substrate, "TFL is a small decidable fragment so parse failure is a meaningful signal", goes with it. Read the code, name the policy, pin it, document it. Cheapest insurance in the plan.
 `expressiveness-literature.md` §1.3: `Sat(TV+Rel+RA)` (restricted anaphora — every pronoun bound to its *closest* permissible antecedent) is NEXPTIME-complete; `Sat(TV+Rel+GA)` (general anaphora) is **undecidable**, by a tiling encoding in six sentences. Our engine has pronominalization and **nobody has checked which policy it implements.** Read the code, determine the policy, pin it with a test, document it in `docs/engine-surface.md`. Adjacent reading: Purdy, "A Variable-Free Logic for Anaphora," DOI 10.1007/978-94-011-1152-2_3, 1994.
 Accept: the policy is named, tested, and documented; if it is GA, that is a stop-and-report to Kyle.
 
 *5.3 Audit the TFL⁺ numerical layer.* — **the one place the engine may be unsound.**
 Pratt-Hartmann 2008 demonstrates the incompleteness of previously published proof systems for the numerically definite syllogistic; 2009 and 2013 prove no finite syllogistic rule set can be complete there. Our layer descends from that lineage and **we have already independently hit one such error** — the Murphree condition-(iii) correction in port-spec §12. `Sat(Syl+Num)` is only NP-complete, so the principled route is to decide it algorithmically (Presburger-style integer reasoning) rather than search for rules that provably do not exist.
-Accept: `numerical_decision` checked against Pratt-Hartmann's results; either confirmed sound on our fragment or the gap is characterised and reported to Kyle before any change. Blocks 6.3.
+**Kept 2026-08-02** on the correctness bar alone: this is possible unsoundness in code that already ships, independent of anything it used to gate (6.3 is now cut, so this no longer blocks anything — it stands on its own).
+Accept: `numerical_decision` checked against Pratt-Hartmann's results; either confirmed sound on our fragment or the gap is characterised and reported to Kyle before any change.
 
 ---
 
 ## Phase 6 — TFL-native capabilities (the "impact *with* TFL" phase)
 
-Everything here is pure term logic, adds no new formalism, and is available *because* the logic is algebraic. Prioritised above the defeasible layer on Kyle's clarification (2026-08-01) that the goal is impact **with TFL as the vehicle**, not impact generally.
+Everything here is pure term logic, adds no new formalism, and is available *because* the logic is algebraic. Prioritised above the defeasible layer on Kyle's clarification (2026-08-01) that the goal is impact **with TFL as the vehicle**, not impact generally — and after the 2026-08-02 amendment the defeasible layer is deferred outright, so this phase is where the project's own contributions live. 6.1 is the paper's; 6.2 is the tool's; 6.3 is cut.
 
-*6.1 Missing-premise suggestion — enthymeme completion.* — **a novel contribution, not a port.**
-TFL's first validity condition is an equation over a free abelian group on signed terms, so the missing premise of an incomplete argument is exactly `C − ΣPᵢ`, with the particular-count and level conditions as side constraints. **No publication states this** (lit sweep 4, Q3): Mozes 1989 lists "suggest missing rules" as a feature and is silent on method; two Castro-Manzano papers restate the idea and specify only the trigger. Constant time on the fragment where P/Z decides; unavailable outside it, where verdicts come from derivation search.
-Two reasons this ranks first in the phase: there is **no FOL counterpart** — you cannot subtract two first-order formulas and get the missing hypothesis — and it answers the question description logics need abduction for. Sweep 3: OWL justifications explain *why yes* and cannot explain *why not*, and **"why was I not found eligible?" is the primary question in eligibility determination.** The suggested premise comes back rendered in English by machinery we already have.
-Accept: implemented for the categorical fragment; returns `None` (never a guess) outside it; suggestions verified by re-running the completed argument to `Valid`; rendered in English; property test over generated arguments.
+*6.1 Missing-premise suggestion — enthymeme completion.* — **a novel contribution, and genuinely a build. Corrected 2026-08-02: it is not a port, and the algebra is not plain subtraction.**
+TFL's first validity condition is an equation over a free abelian group on signed terms, so the missing premise of an incomplete argument is `C − ΣPᵢ`, with the particular-count and level conditions as side constraints. **No publication states this** (lit sweep 4, Q3): Mozes 1989 lists "suggest missing rules" as a feature and is silent on method; two Castro-Manzano papers restate the idea and specify only the trigger.
+**Two corrections that change what this step costs and how it may be claimed.**
+1. **The reference engine's version is not the novel one.** `engine/tfl.js:1863` (`suggestMissingPremise`) delegates to `tacitCandidates` at `:1909`, which is bounded **brute force**: collect the argument's atomic term names (bail out above 8), enumerate every two-term proposition over them, and keep the candidates that are not already entailed, keep the base consistent, and make the query follow. That is guess-and-check, and guess-and-check *is* what abduction has always been — abductive logic programming, Poole's Theorist, ILP. Porting it is cheap and buys **zero novelty**. The closed-form version is implemented nowhere, including here.
+2. **"Subtraction" understates the problem.** The engine's own statement of P/Z (`tfl.js:389–396`) is that a set is inconsistent iff some way of resolving the wilds **and re-using universal premises** leaves exactly one particular and an algebraic sum of zero. Re-use means unknown multiplicities: you are solving a small integer equation with unknown coefficients under two side conditions, not doing arithmetic. The reference's own comment already knows it — *"in an isolated argument the algebra pins it down uniquely; in a fact base several rules may bridge the gap."*
+**How the claim must be worded.** "Computed in closed form where others must search." **Never "there is no FOL counterpart"** — FOL does this by search, and a reviewer who knows abductive logic programming would kill that sentence in one line. Lit sweep 3's own phrasing ("description logics need *separate abduction*") concedes abduction exists. What survives, and is worth the paper: OWL justifications explain *why yes* and cannot explain *why not*, and **"why was I not found eligible?" is the primary question in eligibility determination** — and our answer comes back rendered in English by machinery we already have (which is why 5.0 precedes this).
+Accept: the closed-form computation implemented for the categorical fragment, with its multiplicity handling stated and tested; returns `None` (never a guess) outside it; suggestions verified by re-running the completed argument to `Valid`; rendered in English; property test over generated arguments; a documented comparison against the reference's search on the cases where both apply.
 
-*6.2 Definitions layer.* — capability we already own and do not use.
-The programs/queries layer (`parse_program`, `query_prop`, `check_program_consistency`) was ported in 1.7 and nothing calls it. A legal definitions section — *"'Qualified Person' means…"* — is a symbol table, and asking whether an entity falls under a defined term is exactly `query_prop`. This is also the natural home for **use case (b)**: auditing whether a rule set is self-consistent, which the engine already decides. Load programs only through `Safe.parse_program` (3.1).
+*6.2 Definitions layer.* — **kept 2026-08-02 as a *tool* feature; cut from the paper.**
+The programs/queries layer (`parse_program`, `query_prop`, `check_program_consistency`) was ported in 1.7 and **nothing calls it**. A legal definitions section — *"'Qualified Person' means…"* — is a symbol table, and asking whether an entity falls under a defined term is exactly `query_prop`. This is also the natural home for **use case (b)**: auditing whether a rule set is self-consistent, which the engine already decides. Load programs only through `Safe.parse_program` (3.1).
+It has no novelty and contributes nothing to the paper — but Kyle's stated first priority is a genuinely useful open-source tool, and this is the difference between "a program that checks arguments" and "a program you can point at a policy document." The code exists; this step is wiring and a worked example.
 Accept: a worked definitions example end to end; an inconsistent rule set detected with a readable trace.
 
-*6.3 Murphree numerical term logic.* — **blocked behind 5.3.**
-Murphree, *NDJFL* 39(3):346–362, 1998 — exact-*n*, fractional, and numerically quantified relational complexes. A **strict superset** of what we have: A/E/I/O are the n∈{0,1} case and our TFL⁺ levels are its "subjective" special case; composable with our relational layer. Ranked the highest-value unimplemented capability by lit sweep 4. Not started until 5.3 clears, because it extends the one part of the engine with an open soundness question.
-Accept: differential-clean against the frozen reference where they overlap; full engine gate green.
+*6.3 Murphree numerical term logic.* — ~~blocked behind 5.3~~ **CUT 2026-08-02.**
+Murphree, *NDJFL* 39(3):346–362, 1998 — exact-*n*, fractional, and numerically quantified relational complexes; a strict superset of our TFL⁺ levels, ranked the highest-value unimplemented capability by lit sweep 4. **Cut for two reasons.** It is blocked behind the open soundness question in the layer it extends (5.3), and it is a *capability*, not a contribution — it makes the fragment **wider**, which runs directly against this project's own thesis that "the narrowness is the product" (`scope-and-predictions.md` §3): a wider fragment means parse failure carries less information, which weakens the router claim. Recorded, not scheduled.
 
 ---
 
-## Phase 7 — Defeasible layer
+## Phase 7 — Defeasible layer — **DEFERRED 2026-08-02. Not scheduled. Do not start.**
 
-The one structural addition that survived the 2026-08-01 sweeps. It clears the obstacle — "unless", "except as provided in" — that today keeps TFL out of policy text entirely, and it does so **without touching the engine**: rules are TFL propositions, the layer is a control layer over them.
+**Why.** It is not novel and it is someone else's ground: Horner, Mateis, Governatori & Ciabattoni (arXiv:2506.08899) — *the formalism's own authors* — published LLM formalization of real regulatory text into defeasible deontic logic a year ahead of us, and the prior-art note below already conceded "this layer is not novel." It buys **coverage, not novelty**, and the coverage is occupied territory. Step 8.3 (DeonticBench) exists specifically to evaluate this layer, so it is deferred alongside — one decision, not two.
+
+**The trigger this was originally given, and why it is withdrawn.** The proposed condition was "build it only if real-text coverage is so low we lack in-fragment material for the Phase 9 study." That will not fire: the study needs roughly 40 items and 4.5b alone already supplies 91 authored sentences. Coverage starvation is not a realistic Phase 9 risk, and leaving that trigger in place would keep a settled decision open.
+
+**What to watch instead, from 4.6's refusal-reason distribution.** §1B.1 predicts the dominant refusal reasons will be **multi-clause structure and cross-reference** — regulation packing three conditions into one sentence and referring to other sections by number — *not* defeasibility. If that is what comes back, the cheap coverage lever is **splitting long sentences into short ones before translation**, which is nowhere in this plan and costs a fraction of a defeasible engine. **That** is the conditional build worth pre-authorizing; add it as a step if 4.6 supports it. Phase 7 reopens only if 4.6 shows defeasibility dominating the refusals *and* a reason emerges to prefer our substrate over the incumbents'.
+
+**Everything below is retained as research notes for that unlikely reopening, not as scheduled work.**
 
 **Prior art, stated up front so the paper does not overclaim.** Horner, Mateis, Governatori & Ciabattoni, "Toward Robust Legal Text Formalization into Defeasible Deontic Logic using LLMs" (arXiv:2506.08899, 2025) does LLM formalization of real regulatory text into defeasible deontic logic, by the formalism's own authors. Fang et al., *LLM-ASPIC+*, ECAI 2025. **This layer is not novel.** What differentiates ours is the atomic layer beneath it: term logic with deterministic English rendering and a mechanical fragment boundary.
 
@@ -251,9 +391,15 @@ Accept: Kyle reviews and approves the format, as with 3.3.
 
 ---
 
-## Phase 8 — Evaluation data
+## Phase 8 — Evaluation data — **trimmed 2026-08-02 to policybench + the syllogism set**
 
 Reshaped by the 2026-08-01 sweeps: the original ProofWriter/FOLIO/LogicBench set is FOL-shaped academic data with no exceptions, deadlines, or norms. It becomes a **narrow baseline for the term-logic core**, not the centrepiece.
+
+**The 2026-08-02 trim, and what survives it.** Keep **8.1/8.2 (policybench)**, **8.5 (the syllogism set)** and enough of **8.6/8.7** to run them. Cut **8.3 (DeonticBench)** — it exists to evaluate the deferred Phase 7 — **8.4 (the legal-benchmark pick)**, and the broad accuracy sweep across many datasets. That sweep is the most occupied ground in the project: an entire ACL shared task plus a deployed AWS service already do "LLM → symbolic → deterministic validator", and we lose that comparison.
+
+**Two consequences, both to be stated rather than absorbed.** (a) Block A §1.5 and Block B §1B.6 become unmeasurable — recorded as *not run* in the scorecard, never deleted. (b) Block A §1.6 (selective accuracy ≥98%) **survives**: policybench alone still yields the (coverage, accuracy-given-coverage) pair, which is the headline selective-trust number.
+
+**Correction to why the syllogism set is kept.** It was retained as "the clearest predicted win" (§1.2, belief bias). It is not: belief bias — judging an argument by whether the conclusion sounds true rather than whether it follows — is *precisely* SemEval-2026 Task 11's subject ("Disentangling Content and Formal Reasoning in Large Language Models"), with dozens of published systems. It is the **most crowded** ground left, not our best result. **Keep it anyway for a different reason: after this trim it is the only public benchmark left in the plan**, and a reviewer will ask how we compare to the existing systems. Present it as a calibration check that the engine performs competently on measured ground — not as a headline.
 
 *8.1 Policybench — authoring batch 1.* 35 policy/eligibility items with premises, conclusion, gold label, and in/out-of-fragment tag; ~70% in-fragment. Every in-fragment item's intended TFL machine-verified before presenting. Now also tagged for **defeasibility** (does it need an exception rule?), since that is what Phase 7 is evaluated on.
 Accept: Kyle signs off batch 1.
@@ -261,19 +407,17 @@ Accept: Kyle signs off batch 1.
 *8.2 Policybench — batch 2, freeze, run.* 35 more, no structural duplicates; sign-off; freeze; run baseline + pipeline under the cost ceiling.
 Accept: sign-off; results written.
 
-*8.3 DeonticBench.* arXiv:2604.04443 (2026): 6,232 tasks with **reference Prolog released for every instance** and explicit program traces. Found by sweep 1; usable evaluation data rather than a competitor, and it pre-empts any claim to be the first benchmark pairing rule text with symbolic targets.
-Accept: loader test green; counts logged.
+*8.3 DeonticBench.* — **CUT 2026-08-02**, with the Phase 7 deferral it exists to evaluate. (arXiv:2604.04443, 6,232 tasks with reference Prolog per instance. Recorded so it is findable if Phase 7 ever reopens; also still worth *citing* in related work, since it pre-empts any claim to be the first benchmark pairing rule text with symbolic targets.)
 
-*8.4 Legal NLP benchmarks — pick one.* Candidates from sweep 1: **LegalBench**, **CUAD**, **LexGLUE**, **SARA** (statutory reasoning). Choose by fit to subsumption/eligibility, justify in LOG.
-Accept: loader test green; choice and counts logged.
+*8.4 Legal NLP benchmarks — pick one.* — **CUT 2026-08-02.** Part of the broad accuracy sweep this amendment drops. (Candidates were LegalBench, CUAD, LexGLUE, SARA.)
 
-*8.5 Syllogism set — NeuBAROCO or kin.* Retained from the original plan: bias annotations enable the "does the pipeline neutralise belief bias?" cut, which remains the cleanest predicted win (`scope-and-predictions.md` §1.2).
+*8.5 Syllogism set — NeuBAROCO or kin.* **Kept — as the project's only remaining public benchmark and external comparability point**, not as the headline win; see the phase header for the correction. Bias annotations still enable the belief-bias cut (`scope-and-predictions.md` §1.2).
 Accept: loader test green.
 
-*8.6 Baseline and pipeline runners.* Direct LLM answering vs the pipeline, per model per set, all calls cached, `--limit`, hard cost ceiling from config. The 4.3 cache already enforces never re-spending on an identical call.
+*8.6 Baseline and pipeline runners.* Direct LLM answering vs the pipeline, per model per set, all calls cached, `--limit`, hard cost ceiling from config (**built in 4.9** — it does not exist today). The 4.3 cache already enforces never re-spending on an identical call.
 Accept: 20-item slice ×3 models; per-item records in `data/results/`.
 
-*8.7 Full runs — one dataset per step.* Policybench → DeonticBench → legal set → syllogism set. Spend checked and logged before each.
+*8.7 Full runs.* Policybench → syllogism set. Spend checked and logged before each.
 Accept (each): complete for that dataset × 3 models; spend logged.
 
 ---
@@ -288,10 +432,30 @@ Accept (each): complete for that dataset × 3 models; spend logged.
 
 And it is unoccupied for a structural reason: verbalization systems generate *from* an ontology, so there is no original English source to audit a formalization *against*. The task only becomes meaningful once a machine translates from free English — the LLM setting, which did not exist when that field was built.
 
-*9.1 Study design.* Non-experts judge whether a rendered gloss matches a source sentence, against ground truth, on items where the translation is faithful and items where it is not (4.5b's `c02`/`c06` are real, naturally occurring wrong translations — use them). Pre-register the design and the hypothesis before running. Methodological ancestor: Kuhn's ontograph experiments (n=64; ACE 91.4% vs Manchester-like 86.3%) — but that task is statement-vs-depicted-situation, and ours is formalization-vs-source-sentence.
-Accept: design and pre-registration written; Kyle approves before any participant sees anything.
+**Blocked on 5.0.** The rendering *is* the audit surface, and two of its readings are provably wrong; running this first would measure our renderer bug rather than the idea.
 
-*9.2 Run and analyse.* Accept: results reported as measured, including a null result.
+**The task, stated concretely so the design is unambiguous.** The participant is shown two things side by side and **never sees TFL at all**:
+
+> **Original:** No non-member is eligible.
+> **System's reading:** every non-member is eligible
+> *Do these say the same thing?*  ☐ Yes ☐ No
+
+The pipeline behind that item is: source sentence → LLM → `−(−Member)+Eligible` → our renderer → "every non-member is eligible". The correct answer is **No**; the model flipped the quality sign and the renderer faithfully read the wrong formula back, which is how the error becomes visible to someone who cannot read the notation.
+
+*9.1 Study design.* Non-experts judge whether a rendered reading matches a source sentence, against ground truth, on a balanced set of roughly 30 items — half faithful, half not. Pre-register the design and the hypothesis before running. Methodological ancestor: Kuhn's ontograph experiments (n=64; ACE 91.4% vs Manchester-like 86.3%) — but that task is statement-vs-depicted-situation, and ours is formalization-vs-source-sentence.
+
+**Item sourcing — the design's weakest joint, settled 2026-08-02 (Kyle).** The faithful half is easy: 88 correct translations already exist. The unfaithful half is the problem — **the entire 4.5b study produced exactly two** meaning-changing errors (`c02`/`c06`, and they are the same error twice). Decision: **real errors first, hand-made items only to fill the gap, every item labelled which kind it is, and the two categories reported separately** so anyone can see whether participants did worse on the manufactured ones. The real half comes from the 4.6 real-text run, which is expected to be messier than authored sentences and is being run anyway — hence 4.6 must **collect and keep** every genuine error it produces. Hand-made items are correct formulas deliberately broken (sign flip, term swap, quantity change), which also allows difficulty to be varied on purpose. **The mix is fixed and written down before the first participant sees anything** — choosing it after seeing how people scored is what would invalidate the result.
+
+**The FOL control arm (moved here from 4.7).** One group audits our English rendering against the source; another audits a **raw FOL formula** against the same source. This is the comparison that actually supports core claim 1's auditability half, and it is the position lit sweep 1 §14 names as unoccupied. Optionally a third arm of verbalized description logic, to meet the Power & Third contrast head-on.
+
+*9.2 Pilot — ~10 friends and colleagues, labelled a pilot before it runs.* — **Kyle's decision, 2026-08-02.**
+**What it buys:** whether the task is coherent at all — do people understand what is being asked, does the English read as intelligible, is the item count right, are the items too easy or impossible. Nearly every way a design fails, ten people expose.
+**What it cannot buy, and must not be reported as if it does:** a defensible number. At n≈10, anything from roughly 55% to 90% accuracy is consistent with the same underlying truth. And friends and colleagues are not non-experts *about this project* — they read charitably and may guess the hoped-for answer. Fine for testing the instrument, not for measuring the population.
+**The condition:** it is called a pilot in the plan and in the paper **before** it runs. A pilot may freely change the design on what it learns; an unlabelled run that produces an encouraging number and *then* gets scaled up is contaminated, and a reviewer will say so.
+Accept: design and pre-registration written; Kyle approves before any participant sees anything; pilot run and reported as a pilot.
+
+*9.3 Panel run — decided after the pilot.* A paid crowd panel (n≈60) is the version where a negative result is still publishable, and this study is now the paper's centrepiece. Recommended, and deferred to Kyle's call once the pilot has shaped the instrument. Note for the write-up: independent work without IRB review is standard for this venue class, but the consent text and the absence of institutional review should be stated rather than omitted.
+Accept: results reported as measured, including a null result.
 
 **Contrast arm the paper must address head-on:** Power & Third (COLING 2010, `C10-2116`) show over 600,000 axioms across ~200 ontologies where the axiom↔sentence mapping is empirically transparent *even for description logic* — an attack on the premise that surface-closeness is needed at all.
 
@@ -318,7 +482,11 @@ Accept: figures render and are referenced.
 - ~~"no modal or temporal extension of TFL exists"~~ — Englebretsen, NDJFL 29(3), 1988.
 - The **GDPR Article 22** framing is also out: 22(3)'s contest right is scoped to decisions based on contract and consent, **not** statutory authorisation, which is the basis for most government eligibility decisions.
 
-**What the paper actually claims:** in the LLM-formalization setting there is, for the first time, an original source sentence to audit a machine's formalization *against*; TFL preserves that sentence's structure where controlled English reintroduces variables (ACE's robust paraphrase shatters one sentence into several and emits `X1 X2 X3`; its structure-preserving mode is documented "experimental"); the fragment is decidable where ACE is not (Fuchs, CNL 2010 §6: *"This means that ACE is undecidable"*); the algebra yields the missing premise for free; and fragment membership is a mechanical abstention signal nobody else has.
+**What the paper actually claims:** in the LLM-formalization setting there is, for the first time, an original source sentence to audit a machine's formalization *against*; TFL preserves that sentence's structure where controlled English reintroduces variables (ACE's robust paraphrase shatters one sentence into several and emits `X1 X2 X3`; its structure-preserving mode is documented "experimental"); the fragment is decidable where ACE is not (Fuchs, CNL 2010 §6: *"This means that ACE is undecidable"* — **conditional on step 5.2 confirming our pronoun policy**); the algebra yields the missing premise in closed form where others must search; and fragment membership is a mechanical abstention signal nobody else has.
+
+**Two further framings retired 2026-08-02, added to the dead list above.**
+- ~~"the back-translation round trip is ours"~~ — Amrollahi, Lopez & Barrett (arXiv:2604.25031, 2026) formalize → back-translate → re-formalize → check equivalence, on Texas statutes. **The mechanism is occupied.** Our claim is the *conjunction*: a **deterministic** verbalizer rather than a second language model (Vernie & Grabmair flag their own LLM verbalization as an unverified artifact inside the audit path), **shown to a person** (Phase 9). Never "FOL structurally cannot do this."
+- ~~"missing-premise suggestion has no FOL counterpart"~~ — FOL does it by search; that is what abduction is (abductive logic programming, Poole's Theorist, ILP). The claim is **closed form versus search**, plus the fact that it answers "why was I *not* found eligible", which OWL justifications cannot.
 
 *11.1 Skeleton + background.* TFL primer with a worked engine trace; related work from `docs/related-work-notes.md` **and** `docs/lit-sweep-2026-08-01/`. Must-cite and differentiate: Vernie & Grabmair 2026, Amrollahi/Lopez/Barrett 2026 (roundtrip verification — difference: their back-translation is machine-consumed, never shown to a person), Lorenzo et al. NLLP 2025 (NL→Catala, surface metrics only), Horner et al. 2025, Blawx, Catala, OpenFisca.
 Strongest supporting citation, to sit in the motivation: **López & Hildebrandt (arXiv:2410.10906)**, systematic review of 46 studies — **89.13% of works treat regulatory formalization as manual effort; only 13.4% report operational deployment**; section titled *"Where are the lawyers?"*
@@ -330,7 +498,8 @@ Accept: numerically consistent with `analysis/report.md`.
 *11.3 Intro, abstract, limitations.* Limitations explicitly: fragment narrowness and measured coverage; `Unknown` on relational search misses; **the authored-vs-real-text ceiling on 4.5b**; single-notation dependence; no treatment of definite descriptions anywhere in the tradition (lit sweep 4, Q2) so ours is an engineering convention; no treatment of adverbial modification at all; and the finding that cuts against us — **the systems with real production footprints use the least expressive formalisms**, while the richest logics have the weakest deployment records.
 Accept: complete draft; Kyle full pass.
 
-*11.4 Python client.* Pip-installable `tflverify` wrapping the compiled binary via a JSON-over-stdio CLI (`bin/tfl_cli.ml`). Land the two hardening items the 2026-08-01 audit deferred here — cap the atom union in `decide_equivalence` (currently up to 2³² assignments; a ~160-byte input costs ~33 minutes), and single-pass decoding so `Safe.parse` reuses its tokens (20 MB in → 1.38 GB peak heap). Both are inherited from the frozen reference; each lands as a documented deviation with the full engine gate.
+*11.4 Python client.* — **the CLI half moves earlier (2026-08-02): build `bin/tfl_cli.ml` before the real-text run and the missing-premise work, both of which want it anyway.** The pip packaging stays here.
+Pip-installable `tflverify` wrapping the compiled binary via a JSON-over-stdio CLI (`bin/tfl_cli.ml`). Land the two hardening items the 2026-08-01 audit deferred here — cap the atom union in `decide_equivalence` (currently up to 2³² assignments; a ~160-byte input costs ~33 minutes), and single-pass decoding so `Safe.parse` reuses its tokens (20 MB in → 1.38 GB peak heap). Both are inherited from the frozen reference; each lands as a documented deviation with the full engine gate.
 Accept: `pip install` works in a clean venv; 5-line quickstart in the README.
 
 *11.5 Repo release.* README quickstart, architecture diagram, example trace, MIT licence in place, `CITATION.cff`, scrub keys, pin opam deps.
@@ -351,7 +520,8 @@ The redirect inserted two phases. Old references in LOG.md and commit messages m
 - All LLM calls cached to disk; never re-spend on identical calls.
 - Cost ceiling enforced in code (8.6), reported after every run.
 - After 1.12: OCaml engine changes require test suite + 20k oracle + paper-cases green before commit; verdict semantics never change silently. Before 1.12: every port step ends differential-clean against the JS reference.
-- The JS reference engine is frozen — never extended, only consulted.
+- The JS reference engine is frozen — never extended, never edited, only consulted. **Its authority is split (2026-08-02): authoritative on verdicts forever; no authority whatsoever over English rendering.** Rendering deviations exempt only the constructions actually changed, and the exempted count is reported so it cannot silently grow.
+- **Renderer changes are verdict-safe by construction** and are not blocked by the frozen-reference rule — English readings decide nothing. Every verdict gate must still be green.
 - Any deviation from this plan gets logged in LOG.md with a one-line rationale.
 - When results contradict the core claims, report them as-is. Negative results go in the paper's limitations, not in the trash.
 - **After the 2026-08-01 sweeps:** any citation not sourced from *extracted primary text* is unverified until it is. Four of six sweeps independently caught the PDF summariser fabricating content, one of them from undecodable binary noise; that is the documented origin of the inverted Ross's-paradox claim in `expressiveness-literature.md`.
