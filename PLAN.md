@@ -179,9 +179,10 @@ Also run the arm the 2026-08-01 novelty sweep found no trace of anyone trying: *
 *Grammar prompting* (ship the BNF) is **dropped from the near term** — published evidence supports it for low-resource formal languages, but at a 100% parse rate there is nothing left for it to fix. Revisit only if 4.6 shows syntax failures on real text.
 Accept: FOL arm scored on the same items; the comparative claim is either supported with numbers or withdrawn.
 
-*4.8 Dev/eval split.* — **before any prompt is tuned, ever.**
+*4.8 Dev/eval split.* ✅ DONE (2026-08-02 — `data/fidelity/items.jsonl` `split` field, 42 dev / 43 eval; `test/test_fidelity_set.ml`, 29 checks)
 The moment a prompt is changed in response to an observed error, the items that revealed it stop being evaluation data. Split now, while nothing has been tuned: a development set we may inspect freely, and an evaluation set touched once. Record which items are which in the data files.
 Accept: split committed; `test_fidelity_set.ml` enforces that no eval item's sentence or formula appears in the prompt.
+Every item already implicated in an observed error is forced to dev (`c02`/`c06` the sign flip, `i04` the `few` inversion, `i06` the renderer level-drop, `b04` the definite-description convention); the rest is stratified so both halves carry the same constructions. Three guards, not one: the eval-contamination check, a **pinned eval id list in the test** so relabelling a failed item is a reviewable code change rather than a data edit, and a **no-shared-sentence-or-formula** check across the split. That third guard is the one that earned its keep — group J's arguments are built from the same material as groups A, F and I, and the first cut had three collisions, so promoting dev item `a01` into the prompt would have silently contaminated eval item `j04`. Item *content* is unchanged, so the 4.5b run stays reproducible and re-cuts by split off cache. Two eval coverage holes follow from the burn rule and are recorded in `data/fidelity/README.md`: no negative-term E-form and no quantity level 3 (its only item is `i04`, whose gold is wrong). 4.6 should fill both.
 
 ---
 

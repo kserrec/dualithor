@@ -42,6 +42,56 @@ Group K is the router measurement. A model that translates these anyway has
 failed the half of the contract the escalation claim depends on, and a lossy
 formula that parses is worse than a refusal.
 
+## The dev/eval split (PLAN 4.8)
+
+Every item carries `"split": "dev"` or `"split": "eval"`. **42 dev, 43 eval.**
+
+The reason for it is narrow and worth stating exactly. The moment a prompt is
+changed in response to an observed error, the items that revealed that error
+stop being evaluation data — a score over them is now partly a score of our own
+tuning. Nothing has been tuned yet, so the split is drawn *now*, while the line
+is still clean:
+
+- **dev** may be read, argued over, and lifted verbatim into the few-shot
+  prompt. That is what it is for.
+- **eval** may never appear in the prompt, and may not be moved to dev after
+  its result is known.
+
+`test/test_fidelity_set.ml` enforces all three of the ways this goes wrong:
+
+1. No eval sentence or formula appears in the few-shot prompt.
+2. The eval id list is **pinned in the test file**, so relabelling an item that
+   came back wrong is a reviewable code change, never a quiet data edit.
+3. **No sentence or formula is shared across the split.** This one is not
+   theoretical: group J's arguments are assembled from the same material as
+   groups A, F and I, and the first cut of the split had three collisions
+   (`a01`/`j04`/`j05`, `a03`/`i01`/`j08` among them). Promoting `a01` into the
+   prompt would have contaminated eval item `j04` invisibly. Each collision
+   class now sits wholly on one side.
+
+Assignment is otherwise stratified within each group so both halves carry the
+same constructions, with one deliberate exception: **every item already
+implicated in an observed error is forced to dev**, because a prompt fix for it
+is foreseeable. Those are `c02` and `c06` (the E-form sign flip the 4.4
+back-check caught), `i04` (the `few`-inversion error in our own gold, which the
+4.2 prompt taught), `i06` (which exposed the renderer dropping quantity levels
+on relational predicates), and `b04` (our disputable definite-description
+convention).
+
+**Two coverage holes in the eval half follow directly from that rule, and both
+are real limitations of any eval-only number:**
+
+- *No negative-term E-form.* Both such items (`c02`, `c06`) are burned. Eval
+  still has E-forms from groups A, D, E and F.
+- *No quantity level 3.* `i04` is the only level-3 item in the set, and its gold
+  is wrong. Level 3 is currently unmeasurable on eval.
+
+4.6 should fill both when it adds real-text items.
+
+**The split changed no item's content.** `items.jsonl` is byte-identical to the
+version the 4.5b run graded, apart from the added `split` field, so that report
+stays exactly reproducible and can be re-cut by split without re-spending.
+
 ## Fields
 
 `kind` is `sentence`, `argument`, or `decline`.
@@ -53,6 +103,7 @@ formula that parses is worse than a refusal.
   gold is noise in the scorer).
 - `verdict` on an argument — verified to be what `Tfl_verify.check` returns.
 - `reason` on a decline — why the notation cannot carry the sentence.
+- `split` — `dev` or `eval`. See "The dev/eval split" above.
 - `note` — where our convention is an engineering decision rather than a
   sourced one. `b04` is the live example: definite descriptions have **no
   dedicated treatment anywhere in the tradition** (lit sweep 4, Q2), so reading

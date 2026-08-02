@@ -895,3 +895,59 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   coincidence: `prompts.ml` teaches "^3 few" with no mention of the inversion — the same
   loose phrasing that caused the mistake. Nothing changed yet: fixing `prompts.ml` changes
   the cache key and invalidates the 4.5b run (~$0.44 to redo), so it is Kyle's call.
+
+## 2026-08-02
+
+- **4.8 done — the dev/eval split, drawn before anything has been tuned.**
+  Every item in `data/fidelity/items.jsonl` now carries `"split"`: **42 dev, 43
+  eval**. Nothing else in the file changed — it is byte-identical to what 4.5b
+  graded apart from the added field — so the frozen report stays reproducible
+  and the whole set re-cuts by split off cache for $0.
+  Assignment is stratified within each group so both halves carry the same
+  constructions, with one override: **every item already implicated in an
+  observed error is forced to dev**, since a prompt fix for it is foreseeable —
+  `c02`/`c06` (the E-form sign flip), `i04` (the `few` inversion our own gold
+  gets wrong), `i06` (the renderer level-drop on relational predicates), `b04`
+  (the definite-description convention we chose rather than sourced).
+- **The guard that earned its keep was the one PLAN didn't ask for.** The step
+  specified an eval-contamination check. Writing it surfaced a second, quieter
+  failure: dev and eval *shared material*. Group J's arguments are assembled
+  from the same sentences as groups A, F and I, so the first cut of the split
+  had three collisions — `a01`/`j04`/`j05` and `a03`/`i01`/`j08` among them.
+  Promoting dev item `a01` into the few-shot prompt would have contaminated
+  **eval** item `j04`, invisibly, which is precisely the outcome the split
+  exists to prevent. `test_fidelity_set.ml` now checks that no sentence and no
+  proposition (compared canonically, not as a string) straddles the split, and
+  the split was re-cut so each collision class sits wholly on one side. Found
+  by the test, not by inspection — the hand-drawn split looked fine.
+  Third guard: the eval id list is **pinned in the test file**, so relabelling
+  an item that came back wrong is a reviewable code change rather than a quiet
+  data edit. 29 checks, up from 25; full `dune test` green.
+- **Re-cutting 4.5b by split, at no cost.** `bench/run_fidelity.ml` now tallies
+  and reports eval / dev / all separately, and the TSVs carry the split in
+  column 1. The `all` column reproduces the frozen 4.5b numbers exactly
+  (Kimi 100%, Sonnet 99%, GPT 96%).
+
+  | model | eval | dev |
+  |---|---|---|
+  | kimi-k3 | 100% (44/44) | 100% (47/47) |
+  | claude-sonnet-5 | 98% (43/44) | 100% (47/47) |
+  | gpt-5.6-terra | 98% (43/44) | 94% (44/47) |
+
+  The shape is what the burn rule predicted: **both meaning-inverting errors
+  (`c02`, `c06`) are in dev.** Every remaining miss across all three models is
+  the *same* disagreement — group E's multiword terms (`e02`, `e03`, `e06`),
+  where a model read "person under eighteen" or "duly authorized officer" as a
+  compound our `also_ok` list happens not to enumerate. Those are structural
+  reading choices, not errors of meaning.
+  **Deliberately not fixed:** widening `also_ok` on `e02`/`e06` would be editing
+  *eval* gold in response to an eval result. Same self-serving move as moving a
+  failed item to dev, one layer down in the scorer. Flagged for Kyle instead.
+- **Two eval coverage holes follow from the burn rule**, recorded in
+  `data/fidelity/README.md` and owed to 4.6: eval has no negative-term E-form
+  (both are burned) and no quantity level 3 (`i04` is the only level-3 item in
+  the set, and its gold is wrong).
+- **Still Kyle's call, unchanged from 2026-08-01:** the `prompts.ml` "^3 few"
+  wording and the `i04` gold. Both are now dev items, so fixing them costs no
+  eval measurement — which is exactly what 4.8 was for. It still invalidates the
+  cached 4.5b run (~$0.44 to redo).
