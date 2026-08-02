@@ -83,14 +83,19 @@ are real limitations of any eval-only number:**
 
 - *No negative-term E-form.* Both such items (`c02`, `c06`) are burned. Eval
   still has E-forms from groups A, D, E and F.
-- *No quantity level 3.* `i04` is the only level-3 item in the set, and its gold
-  is wrong. Level 3 is currently unmeasurable on eval.
+- *No quantity level 3.* `i04` is the only level-3 item in the set, and it is a
+  dev item. Level 3 is unmeasurable on eval. (Its gold was also **wrong** until
+  2026-08-02 — `+Volunteer^3+Employee`, the opposite of its own sentence,
+  because level 3 marks the predominant complement and so inverts the English
+  polarity. Corrected, along with the `prompts.ml` wording that taught the
+  error; the rule is now pinned in `test/test_prompts.ml`.)
 
 4.6 should fill both when it adds real-text items.
 
-**The split changed no item's content.** `items.jsonl` is byte-identical to the
-version the 4.5b run graded, apart from the added `split` field, so that report
-stays exactly reproducible and can be re-cut by split without re-spending.
+**The split changed no item's content.** When it was drawn, `items.jsonl` was
+byte-identical to the version the 4.5b run graded apart from the added `split`
+field, so that run re-cut by split at zero cost. (`i04`'s gold was corrected
+later the same day — see below — which did require re-running.)
 
 ## Fields
 

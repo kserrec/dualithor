@@ -951,3 +951,58 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   wording and the `i04` gold. Both are now dev items, so fixing them costs no
   eval measurement — which is exactly what 4.8 was for. It still invalidates the
   cached 4.5b run (~$0.44 to redo).
+
+- **The `few` inversion, fixed — and the back-check was right about our gold.**
+  Kyle approved the spend, so both halves landed: the `i04` gold and the
+  `prompts.ml` level-3 wording. Verified against the frozen JS reference before
+  touching anything, rather than trusting the port-spec restatement —
+  `readProp(parseProposition('+Volunteer^3+Employee'))` returns *"few volunteer
+  is not employee"*, so our gold for "Few volunteers are employees." asserted
+  the opposite of its own sentence. Gold now `+Volunteer^3−Employee`; the
+  notation block states the flip in both directions; a worked pair
+  ("Few voters are radicals." → `+Voter^3−Radical`) teaches it, because the
+  *rule alone* is precisely what had failed. Sixteen few-shots now, one over
+  PLAN 4.2's 10–15 — deliberate: dropping a working pair to make room would
+  have traded proven coverage for the fix.
+  `test_prompts.ml` pins it two ways (structural: a `Few …` pair must carry
+  level 3 and a minus predicate; independent: it must **read back** through the
+  engine without a negation), both verified to fire on the inverted formula.
+- **Re-run 4.5b in full — Kimi 100%, Sonnet 100%, GPT 98% (88/90, one refusal).**
+  `docs/fidelity-report-2026-08-02.md`; `-08-01.md` carries a SUPERSEDED banner
+  and is kept unedited. 45 calls, $0.54; back-check re-measure 8 calls, $0.08;
+  session total 53 calls, **$0.62**.
+  **The result that matters is what did *not* change.** The prompt rewrite fixed
+  all four group-E multiword misses and every model's `i04`. It did nothing to
+  `c02`/`c06`, GPT's E-form sign flip — the only meaning-inverting errors in the
+  study. PLAN 4.4 stated "prompt patching buys coverage, the back-check buys
+  correctness" as a prediction; this is it observed.
+  **4.4 re-measured: acceptance PASSED again**, both known-bad flagged unaided,
+  false positives **2/88 = 2%** (was 3/87). The one that disappeared was `i04` —
+  it had never been a false positive.
+  Both survivors are again **our** renderer's defects, not judge errors: `i06`
+  (quantity level dropped when the predicate is a relational complex) and `d03`
+  ("registered voter" read back as "registered and voter"). True false-positive
+  rate against a correct renderer: 0/88.
+- **The prompt fix also broke something, and it is recorded rather than chased.**
+  GPT now *refuses* `b08` ("Priya is both a director and a shareholder."),
+  which it translated correctly before, calling it "two predicates joined by
+  conjunction" — but `(+Director+Shareholder)` is a compound term and exactly
+  what the notation is for. It is an **eval** item. Attributing it to the added
+  pair versus the reworded block needs an ablation, and tuning further against
+  an eval item is what 4.8 exists to prevent. Left alone, reported in the
+  report's failure section. It is also why that report now carries a *missing*
+  column: a refusal is invisible to a percentage computed over attempts.
+- **Two defects found in our own plumbing, one fixed here, one flagged.**
+  Fixed: `smoke_backcheck.ml` parsed the fidelity TSV expecting 5 columns, and
+  the 4.8 commit earlier today added a 6th (`split`). It would have silently
+  loaded **zero** rows and printed a 0/0 false-positive rate that reads as a
+  pass — so the header check is now fatal rather than skipped. A regression I
+  introduced, caught only because the back-check happened to be the next thing
+  run.
+  Flagged, not fixed: `llm_client.ml` treats an empty 200 body as `Llm_error`,
+  not `Retryable`, so it does not retry. Two Kimi batches hit it mid-run and 22
+  sentence-slots vanished; the reported percentages still looked healthy
+  (100% of 71) because `attempted` excludes missing. Re-running filled them for
+  $0.05, but 4.6 is a bigger run and will hit this again.
+  Also noted: `CLAUDE.md` says "the cost ceiling in config is enforced in code."
+  There is no ceiling in `translate/config.ml` and none enforced anywhere.

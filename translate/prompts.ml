@@ -19,10 +19,15 @@
      engine is known to decide correctly, not shapes invented here. *)
 
 (* ── Few-shot pairs ───────────────────────────────────────────────────────
-   Fifteen pairs spanning the four categorical forms, singulars, negative and
+   Sixteen pairs spanning the four categorical forms, singulars, negative and
    compound and quoted terms, relationals (universal, particular, universal
-   object, nested, passive), and a numerical level. `test_prompts.ml` asserts
-   both that every formula parses and that this coverage is still here. *)
+   object, nested, passive), and two numerical levels. `test_prompts.ml`
+   asserts both that every formula parses and that this coverage is still here.
+
+   Sixteen, not the 10–15 PLAN 4.2 sized: the level-3 pair was added 2026-08-02
+   to correct a taught error (see the comment on it below), and dropping a
+   working pair to stay inside the range would have traded proven coverage for
+   it. *)
 
 let few_shots : (string * string) list =
   [
@@ -46,8 +51,15 @@ let few_shots : (string * string) list =
      "-(Head+Horse)+(Head+Animal)");
     ("Mary loves John.", "+-Mary*+(Lov+-John*)");
     ("Some girl is loved by some boy.", "+Girl+(Lov\xe2\x82\x82\xe2\x82\x81+Boy)");
-    (* TFL⁺ quantity level: ^1 many, ^2 most, ^3 few *)
+    (* TFL⁺ quantity levels. ^1 many and ^2 most read straight off the sign;
+       ^3 does not, and the 2026-08-02 correction is why both are taught. Level
+       3 marks the predominant *complement*, so `few S are P` needs the MINUS
+       predicate sign — `+Voter^3-Radical` reads "few voter is radical". Taught
+       with a worked pair because the rule alone was what failed: the prompt
+       said only "^3 few", and all three models duly wrote `+S^3+P` for a
+       `few S are P` sentence. *)
     ("Most voters are conservatives.", "+Voter^2+Conservative");
+    ("Few voters are radicals.", "+Voter^3-Radical");
   ]
 
 (* ── Declining a sentence ─────────────────────────────────────────────────
@@ -111,8 +123,14 @@ Terms.
                                Objects may nest: (Lov+(Adm-Teacher)).
                                A passive uses pairing subscripts on the
                                relation name: (Lov₂₁+Boy) = loved by some boy.
-  Voter^2                      a quantity level on a term: ^1 many, ^2 most,
-                               ^3 few. Omit it for plain some/every.
+  Voter^2                      a quantity level on the subject term: ^1 many,
+                               ^2 most, ^3 few. Omit it for plain some/every.
+                               ^3 is the exception: it marks the predominant
+                               COMPLEMENT, so its polarity is flipped.
+                               `+S^3-P` = few S are P.
+                               `+S^3+P` = few S are NOT P.
+                               Levels 1 and 2 do not flip: `+S^2+P` = most S
+                               are P.
 
 How to translate.
 1. Read the sentence's own surface form. Subject term first, predicate second,

@@ -81,9 +81,11 @@ let form s_sign p_sign () =
     props
 
 let () =
-  test "the few-shot set is 10–15 pairs, as the plan sizes it" (fun () ->
+  (* PLAN 4.2 sized this 10–15; the 2026-08-02 level-3 correction added a
+     sixteenth rather than drop a working pair to make room. *)
+  test "the few-shot set is 10–16 pairs, as the plan sizes it" (fun () ->
       let n = List.length few_shots in
-      check (n >= 10 && n <= 15) (Printf.sprintf "%d pairs" n));
+      check (n >= 10 && n <= 16) (Printf.sprintf "%d pairs" n));
   test "no formula is taught twice" (fun () ->
       let tfls = List.sort compare (List.map snd few_shots) in
       let rec dup = function
@@ -185,5 +187,49 @@ let () =
       check (contains u "1. Every horse is an animal.") "sentence 1 missing";
       check (contains u "2. No dog is a cat.") "sentence 2 missing";
       check (contains u "2 sentences") "the count is not stated")
+
+(* ── The level-3 polarity flip (corrected 2026-08-02) ──────────────────────
+   Level 3 marks the predominant *complement*, so a "few S are P" sentence
+   needs the MINUS predicate sign: `+S^3-P`. The prompt originally said only
+   "^3 few"; our own gold for i04 repeated the error, and all three models
+   copied it and were scored correct against it. Nothing in the pipeline
+   noticed, because a wrong-but-well-formed formula parses.
+
+   Pinned here rather than left to prose, and checked against the engine's own
+   English reading rather than against our restatement of the rule. *)
+
+let () =
+  test "a `Few ...` few-shot is taught, with level 3 and a minus predicate" (fun () ->
+      let few =
+        List.filter
+          (fun (nl, _, _) ->
+            String.length nl >= 4 && String.lowercase_ascii (String.sub nl 0 4) = "few ")
+          parsed
+      in
+      check (few <> []) "no `Few ...` pair is taught — the flip is untested";
+      List.iter
+        (fun (nl, tfl, (p : Tfl.Ast.prop)) ->
+          check (p.subject.level = 3)
+            (Printf.sprintf "%S: subject level is %d, expected 3" nl p.subject.level);
+          check
+            (p.predicate.sign = Tfl.Ast.Minus)
+            (Printf.sprintf
+               "%S is taught as %s — a `few S are P` sentence needs the MINUS predicate \
+                sign, or it asserts the opposite"
+               nl tfl))
+        few);
+  (* The independent check: the engine reads it back as the sentence says. *)
+  test "every `Few ...` few-shot reads back without a negation" (fun () ->
+      List.iter
+        (fun (nl, _, p) ->
+          if String.length nl >= 4 && String.lowercase_ascii (String.sub nl 0 4) = "few " then
+            let reading = Tfl.Render.read_prop p in
+            check
+              (not (contains reading " not "))
+              (Printf.sprintf "%S renders as %S — the polarity is inverted" nl reading))
+        parsed);
+  test "the notation text states that level 3 flips polarity" (fun () ->
+      check (contains system "+S^3-P") "the flipped form is not shown";
+      check (contains system "COMPLEMENT") "the reason for the flip is not stated")
 
 let () = finish "translation prompt"

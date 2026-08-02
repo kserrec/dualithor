@@ -22,7 +22,7 @@ let batch = 12
    Nothing about them reaches the judge. *)
 let known_bad = [ "c02"; "c06" ]
 
-type row = { id : string; grade : string; nl : string; got : string }
+type row = { id : string; split : string; grade : string; nl : string; got : string }
 
 let load () =
   let ic = open_in results in
@@ -33,9 +33,18 @@ let load () =
         match input_line ic with
         | l -> (
             match String.split_on_char '\t' l with
-            | [ id; grade; nl; _gold; got ] when id <> "id" ->
-                go ({ id; grade; nl; got } :: acc)
-            | _ -> go acc)
+            | [ split; id; grade; nl; _gold; got ] when split <> "split" ->
+                go ({ id; split; grade; nl; got } :: acc)
+            (* A silently empty run would print a 0/0 false-positive rate and
+               read as a pass, so an unrecognised header is fatal. *)
+            | [ _; _; _; _; _; _ ] -> go acc
+            | _ ->
+                failwith
+                  (Printf.sprintf
+                     "%s: expected 6 tab-separated columns (split id grade nl gold got), got \
+                      %d — re-run bench/run_fidelity.exe"
+                     results
+                     (List.length (String.split_on_char '\t' l))))
         | exception End_of_file -> List.rev acc
       in
       go [])
@@ -108,7 +117,7 @@ let () =
     print_endline "\n  over-flagged (these are faithful translations):";
     List.iter
       (fun (r, j) ->
-        Printf.printf "    %-5s %-44s -> %-40s %s\n" r.id
+        Printf.printf "    %-5s %-5s %-44s -> %-40s %s\n" r.id r.split
           (String.sub j.Translate.Backcheck.nl 0
              (min 42 (String.length j.Translate.Backcheck.nl)))
           j.Translate.Backcheck.rendering j.Translate.Backcheck.note)

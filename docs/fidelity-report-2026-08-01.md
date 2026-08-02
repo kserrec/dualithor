@@ -1,5 +1,15 @@
 # Translation-fidelity measurement (PLAN 4.5b)
 
+> ⚠️ **SUPERSEDED 2026-08-02 — see `fidelity-report-2026-08-02.md`.**
+> The numbers below were graded against a gold set containing one formula that
+> meant the opposite of its own sentence (`i04`: "Few volunteers are employees."
+> was gold-ed as `+Volunteer^3+Employee`, which the engine reads as "few
+> volunteer is **not** employee"), and against a prompt that taught that error.
+> All three models copied it and were scored **correct**. The gold and the
+> prompt were both corrected and the whole run redone.
+> **This file is kept unedited as the record of what was measured on 2026-08-01.
+> Do not cite its numbers.**
+
 Run 2026-08-01. 91 gold sentences + 10 out-of-fragment sentences + 8 arguments,
 through three models. 45 API calls, **$0.44**. Per-item results land in
 `data/results/` (gitignored); every failure is reproduced in full below, which
