@@ -15,7 +15,18 @@ it turns out wrong.
 
 ---
 
-## 1. Pre-registered predictions
+## 1. Pre-registered predictions — Block A (pre-redirect) · **FROZEN**
+
+> 🔒 **Frozen verbatim 2026-08-01 (Kyle's decision).** These six were written for the
+> project as it stood that morning: a translate→check pipeline evaluated on ProofWriter,
+> FOLIO, LogicBench and a syllogism set. Later the same day the project was redirected
+> toward expressiveness and real-world impact, which changed the datasets, the claims and
+> the architecture — so some of these now refer to measurements we may never make.
+>
+> **They are not edited to match.** A prediction rewritten after the fact stops being a
+> prediction and becomes a description, which destroys the only reason to record one. New
+> predictions go in Block B below; the paper reports how both blocks fared, wrong ones
+> included.
 
 Stated by Claude (Fable 5) on 2026-08-01, with no benchmark data in hand. Translator
 models under test are frontier-tier (Claude Sonnet 5, GPT-5.6, Kimi K3).
@@ -117,6 +128,103 @@ accuracy metric is where this lands.
 | 1.4 | Router: good recall, diluted precision | *not yet measured* |
 | 1.5 | FOLIO coverage 20–40% | *not yet measured* |
 | 1.6 | Selective accuracy ≥98% | *not yet measured* |
+
+---
+
+## 1B. Pre-registered predictions — Block B (post-redirect)
+
+Stated by Claude (Opus 5) on **2026-08-01, evening**, after the six literature sweeps and
+after the 4.5b fidelity run, before any of the measurements below exist. Same discipline as
+Block A: written down so they can be checked, especially when wrong.
+
+**What is already known and therefore not predicted here:** 4.5b measured translation
+fidelity on *authored* sentences at 96–100% with a 100% parse rate, 30/30 correct declines
+and 24/24 argument verdicts. One Block-A-style prediction has already been scored — the
+≥70% viability threshold, cleared by roughly thirty points, **recorded as wrong**.
+
+### 1B.1 Coverage on real regulatory text — **the number that decides the project's value**
+
+**Prediction: 25–45% of sentences sampled from real public-domain regulatory text parse
+into the fragment**, with the refusal reasons dominated by multi-clause structure and
+cross-reference rather than by the exotic cases (tense, arithmetic, defaults).
+
+Reasoning. Every sentence in the 4.5b set was authored by someone who knew the notation,
+which selects for translatability. Real regulation is written to be precise under
+adversarial reading, not to be single-clause: conditions stack, definitions are referenced
+by section number, and one sentence routinely carries three independent restrictions. My
+expectation is that the fragment holds the *propositional content* of much regulatory text
+but not its *packaging*, and that sentence-splitting — not new logical machinery — is where
+most of the recoverable coverage lives.
+
+This is now the project's largest unknown. Fidelity turned out not to be the constraint.
+
+### 1B.2 Fidelity on real text — **expect a drop, but a modest one**
+
+**Prediction: 80–92% faithful on in-fragment real sentences**, versus 96–100% on authored
+ones. Errors concentrated in long noun phrases and in deciding what is a term versus what
+is a relation.
+
+Reasoning. The 4.5b result suggests models have the notation itself well in hand; what real
+text adds is ambiguity about *what to formalize*, not difficulty in writing it down. That
+predicts degradation, not collapse.
+
+### 1B.3 The back-check (4.4) — **expect it to catch the known error, and to over-flag**
+
+**Prediction: it flags GPT's `c02`/`c06` sign inversion unaided, at a false-positive rate of
+5–20% on translations that are in fact correct.**
+
+Reasoning. `-(-Member)+Eligible` renders as something like "every non-member is eligible"
+against a source of "No non-member is eligible" — a difference no competent reader misses,
+so the catch should be easy. The over-flagging comes from the other direction: the engine's
+renderer is deterministic but stilted ("some boy lov some girl"), and a judge comparing
+stilted English to fluent English will sometimes call a faithful pair a mismatch. **If the
+false-positive rate exceeds ~20% the back-check costs more coverage than it buys**, and the
+right response is to improve the renderer, not to loosen the judge.
+
+### 1B.4 The matched FOL arm — **expect TFL to win on auditability, not on accuracy**
+
+**Prediction: NL→FOL and NL→TFL land within 5 points of each other on translation accuracy
+for in-fragment items; TFL's advantage shows up only in the back-check, which has no FOL
+counterpart.**
+
+Reasoning. This is Block A §1.3 restated with better information. The out-of-distribution
+headwind I expected did not materialise, so the remaining asymmetry is not about which
+notation models write better — it is that FOL has no canonical English reading to audit
+against, so there is nothing to compare.
+
+### 1B.5 The auditability study (Phase 9) — **the one I am least able to call**
+
+**Prediction: non-experts judge faithfulness correctly on 70–85% of items**, well above the
+2.36/12 that Alrabbaa et al. measured for laypeople reading description-logic proofs, and
+well below expert performance.
+
+Reasoning, and why the confidence is low. The optimistic case is that our task is far
+easier than theirs — comparing two English sentences rather than following a formal
+derivation. The pessimistic case is Alrabbaa's own conclusion, that logic-based artifacts
+are not automatically comprehensible, and our renderer's output is stilted enough that
+readers may distrust correct renderings. **A result below ~60% would undercut the paper's
+central claim**, and that outcome must be reported rather than reframed.
+
+### 1B.6 The defeasible layer (Phase 7) — **expect a coverage jump, no accuracy change**
+
+**Prediction: +10–25 points of in-fragment coverage on policy text, with end-task accuracy
+on already-covered items unchanged.**
+
+Reasoning. "Unless" and "except as provided in" are pervasive in policy text and currently
+force a refusal. The layer removes an obstacle rather than improving reasoning, so it should
+move coverage and leave accuracy flat.
+
+### 1B.7 Scorecard for later
+
+| # | Prediction | Outcome |
+|---|---|---|
+| 1B.1 | Real-text coverage 25–45% | *not yet measured* |
+| 1B.2 | Real-text fidelity 80–92% | *not yet measured* |
+| 1B.3 | Back-check catches c02/c06; FP rate 5–20% | *not yet measured* |
+| 1B.4 | TFL and FOL within 5 pts; TFL wins only on auditability | *not yet measured* |
+| 1B.5 | Non-expert audit accuracy 70–85% | *not yet measured* |
+| 1B.6 | Defeasible layer: +10–25 pts coverage, flat accuracy | *not yet measured* |
+| — | *(already scored)* 4.5b ≥70% structural accuracy | ❌ **wrong** — actual 96–100% |
 
 ---
 

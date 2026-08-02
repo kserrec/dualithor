@@ -855,3 +855,43 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   that title — the paper is "Remarks on the Idea of Non-monotonic (Diagrammatic)
   Inference," *Open Insight* 8(14):243–263, 2017 — and its claim that no certified modal
   extension of TFL exists is wrong (Englebretsen, NDJFL 29(3):381–395, 1988).
+- **Predictions frozen; Block B pre-registered.** `scope-and-predictions.md` §1 now carries
+  a 🔒 header and is untouched otherwise (Kyle's approval). A new §1B records six
+  post-redirect predictions made before the measurements exist — real-text coverage 25–45%
+  (now the project's largest unknown), real-text fidelity 80–92%, back-check false-positive
+  rate 5–20%, TFL and FOL within 5 points on accuracy with TFL winning only on
+  auditability, non-expert audit accuracy 70–85%, and the defeasible layer worth +10–25
+  points of coverage at flat accuracy. The already-scored 4.5b threshold is carried in the
+  scorecard as ❌ wrong.
+- **4.4 done — the back-check, and it found more than it was built to find.**
+  `translate/backcheck.ml`: render the model's formula through the 3.4 readable orientation,
+  then ask a judge whether that reading makes the same claim as the source sentence. The
+  judge never sees the TFL — showing it the formula would let it rate the formula it can
+  see rather than the English it produced, which is the failure being tested for. Missing
+  judgements fail *closed* (scored 0), because silence must never read as "no disagreement".
+  `test/test_backcheck.ml` (14 checks) leads with the test that decides whether the
+  mechanism can work at all: a meaning-inverting formula must render into *different*
+  English from the correct one. It does — `-(-Member)-Eligible` reads "no non-member is
+  eligible", `-(-Member)+Eligible` reads "every non-member is eligible".
+  **Acceptance PASSED.** Over all 91 GPT translations from 4.5b, judged by Sonnet: both
+  known-bad items flagged **unaided**, with accurate diagnoses ("quantifier reversed,
+  opposite claim"). False positives 3/87 = **3%**, against a pre-registered 5–20% and a
+  20% abandon threshold.
+  **Two of those three "false positives" are real defects in our own artifacts** — the
+  check surfaced them without anyone looking, which is a stronger demonstration than the
+  pinned catch:
+  (a) **The renderer drops quantity levels whenever the predicate is a relational complex.**
+  `+Officer^1+(Sign+Contract)`, `^2` and `^3` all read "some officer sign some contract",
+  identical to level 0. `render.ml` gates the quantifier word on `not rel_pred`, and
+  port-spec §14 documents the same, so this is inherited from the frozen reference, not a
+  port bug. It matters now that the rendering is an *audit surface*: a human checking a
+  levelled relational proposition is shown "some" where the formula says "many", and the
+  back-check is correspondingly blind to a dropped quantifier there.
+  (b) **Our own gold for i04 is semantically wrong, and the 4.2 prompt taught the error.**
+  Port-spec §14: **`few` inverts the English polarity** — `+S³+P` → "few s is not p",
+  `+S³−P` → "few s is p", because level 3 is the *predominant complement*. So "Few
+  volunteers are employees" is `+Volunteer^3−Employee`; our gold has `+Volunteer^3+Employee`,
+  which asserts the opposite. All three models matched the wrong gold, which is not a
+  coincidence: `prompts.ml` teaches "^3 few" with no mention of the inversion — the same
+  loose phrasing that caused the mistake. Nothing changed yet: fixing `prompts.ml` changes
+  the cache key and invalidates the 4.5b run (~$0.44 to redo), so it is Kyle's call.

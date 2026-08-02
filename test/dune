@@ -162,3 +162,12 @@
  (name test_score)
  (modules test_score)
  (libraries tfl bench test_support))
+
+; The back-check (4.4), offline half. The first test decides whether the
+; mechanism can work at all: if a meaning-inverting formula renders into the
+; same English as the correct one, no judge could ever catch it.
+
+(test
+ (name test_backcheck)
+ (modules test_backcheck)
+ (libraries tfl tfl_verify translate test_support))
