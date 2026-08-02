@@ -31,6 +31,7 @@ let () =
             false)
       Translate.Config.models
   in
+  print_endline (Translate.Llm_client.spend_report ());
   if ok then
     print_endline
       "smoke: all three models responded; usage appended to data/usage.jsonl"

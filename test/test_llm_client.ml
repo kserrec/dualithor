@@ -1,0 +1,112 @@
+(* The OpenRouter client's failure handling (PLAN 4.9). No network: the two
+   decisions worth testing are both pure or thunk-driven, and a test that needs
+   a live endpoint would never run.
+
+   The threat is a specific one that already cost us a measurement. On
+   2026-08-02 two Kimi batches came back as HTTP 200 with an empty body. The
+   client classified that as fatal, the batch was abandoned, and 22 sentence
+   slots vanished from the fidelity run — while the reported percentages still
+   looked healthy, because a sentence that never arrived is invisible to a rate
+   computed over attempts. A dropped call has to become another attempt, not a
+   silent hole in the data. *)
+
+module C = Translate.Llm_client
+
+let checks = ref 0
+
+let check name b =
+  incr checks;
+  if not b then failwith ("test_llm_client: " ^ name)
+
+(* ── Classification ──────────────────────────────────────────────────────── *)
+
+let is_retry = function C.Retry _ -> true | _ -> false
+let is_fatal = function C.Fatal _ -> true | _ -> false
+let is_body s = function C.Body b -> b = s | _ -> false
+
+let () =
+  (* The regression itself: under the old classification an empty 200 was a
+     body, and failed downstream in parse_response — outside the retry loop. *)
+  check "empty 200 body is retried" (is_retry (C.disposition_of ~code:200 ~raw:""));
+  check "whitespace-only 200 body is retried"
+    (is_retry (C.disposition_of ~code:200 ~raw:" \n\t "));
+  check "a real 200 body is returned"
+    (is_body {|{"choices":[]}|} (C.disposition_of ~code:200 ~raw:{|{"choices":[]}|}));
+  check "204 with no body is retried" (is_retry (C.disposition_of ~code:204 ~raw:""));
+  (* Unchanged behaviour, pinned so the split did not quietly move it. *)
+  check "429 is retried" (is_retry (C.disposition_of ~code:429 ~raw:"slow down"));
+  check "500 is retried" (is_retry (C.disposition_of ~code:500 ~raw:"boom"));
+  check "503 is retried" (is_retry (C.disposition_of ~code:503 ~raw:"boom"));
+  check "401 fails fast" (is_fatal (C.disposition_of ~code:401 ~raw:"bad key"));
+  check "400 fails fast" (is_fatal (C.disposition_of ~code:400 ~raw:"bad request"));
+  check "404 fails fast" (is_fatal (C.disposition_of ~code:404 ~raw:"no such model"))
+
+(* ── The retry loop ──────────────────────────────────────────────────────── *)
+
+(* Classifying a failure as retryable buys nothing unless the loop acts on it,
+   which is the half the lost sentences actually needed. Zero delay: the
+   backoff is not what is under test and three real sleeps would be 7s. *)
+
+let attempts_of f =
+  let n = ref 0 in
+  let thunk () =
+    incr n;
+    f !n
+  in
+  let result =
+    try Ok (Lwt_main.run (C.with_retries ~delay:0.0 ~max_attempts:3 thunk))
+    with e -> Error e
+  in
+  (!n, result)
+
+let () =
+  let n, r = attempts_of (fun _ -> Lwt.fail (C.Retryable "empty body on HTTP 200")) in
+  check "a retryable failure is attempted three times" (n = 3);
+  check "and then reports the last error"
+    (match r with Error (C.Llm_error m) -> m = "empty body on HTTP 200 (after 3 attempts)" | _ -> false);
+
+  let n, r =
+    attempts_of (fun i ->
+        if i < 3 then Lwt.fail (C.Retryable "empty body on HTTP 200")
+        else Lwt.return "recovered")
+  in
+  check "a call that recovers on the third attempt succeeds"
+    (n = 3 && r = Ok "recovered");
+
+  let n, r = attempts_of (fun _ -> Lwt.fail (C.Llm_error "HTTP 401: bad key")) in
+  check "a fatal failure is not retried" (n = 1);
+  check "and propagates unchanged"
+    (match r with Error (C.Llm_error m) -> m = "HTTP 401: bad key" | _ -> false);
+
+  (* An unexpected exception (a network drop surfacing as Unix_error, say) is
+     transient by default — the old loop did this and it stays. *)
+  let n, _ = attempts_of (fun _ -> Lwt.fail Exit) in
+  check "an unclassified exception is retried" (n = 3);
+
+  (* The ceiling must never be retried: another attempt costs the money the
+     ceiling just refused. *)
+  let n, r = attempts_of (fun _ -> Lwt.fail (C.Cost_ceiling "over")) in
+  check "the cost ceiling is not retried" (n = 1);
+  check "and propagates as itself"
+    (match r with Error (C.Cost_ceiling _) -> true | _ -> false);
+
+  (* A retryable failure must still be retried when it is raised synchronously
+     rather than returned as a rejected promise. *)
+  let n, _ = attempts_of (fun _ -> raise (C.Retryable "sync")) in
+  check "a synchronously raised retryable is retried" (n = 3)
+
+(* ── The cost ceiling ────────────────────────────────────────────────────── *)
+
+let () =
+  let ceiling = Translate.Config.cost_ceiling_usd in
+  check "the ceiling is a real budget, not zero or unbounded"
+    (ceiling > 0. && ceiling <= 100.);
+  check "an unspent run may call" (C.ceiling_stop ~spent:0. = None);
+  check "a run just under the ceiling may call"
+    (C.ceiling_stop ~spent:(ceiling -. 0.01) = None);
+  check "a run at the ceiling is stopped" (C.ceiling_stop ~spent:ceiling <> None);
+  check "a run over the ceiling is stopped"
+    (C.ceiling_stop ~spent:(ceiling *. 2.) <> None);
+  check "nothing has been spent by this test" (C.spent () = 0.)
+
+let () = Printf.printf "test_llm_client: %d checks passed\n" !checks

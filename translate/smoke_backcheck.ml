@@ -122,6 +122,7 @@ let () =
              (min 42 (String.length j.Translate.Backcheck.nl)))
           j.Translate.Backcheck.rendering j.Translate.Backcheck.note)
       fp);
+  print_endline ("\n  " ^ Translate.Llm_client.spend_report ());
   let ok = List.length caught = List.length bad && bad <> [] in
   print_endline
     (if ok then "\n4.4 acceptance: PASSED — both known errors flagged unaided"

@@ -1105,3 +1105,45 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   coverage) and Block B §1B.6 (defeasible coverage) become unmeasurable and are
   marked *not run*. Block A §1.6 (selective accuracy ≥98%) **survives** the Phase 8
   trim: policybench alone still yields the (coverage, accuracy-given-coverage) pair.
+
+- **4.9 done — the two plumbing defects closed before the real-text run.**
+  Both were recorded on 2026-08-02 and unactioned; both bite a bigger run.
+  - **The empty-200-body bug.** The classification lived inline in `call_once`
+    and only ever produced "2xx → body". An empty body therefore travelled all
+    the way to `parse_response`, which raised `Llm_error` — **outside** the
+    retry loop, by construction. Fixed by splitting the decision out as a pure
+    `disposition_of ~code ~raw : Body | Retry | Fatal`, with an empty or
+    whitespace-only 2xx classified `Retry`. The retry loop is now `with_retries`,
+    generic over its thunk. Both changes exist so the behaviour is testable
+    without a network — a test needing a live endpoint would never be run, and
+    this defect survived precisely because nothing tested it.
+  - **Confirmed the test is not vacuous.** The empty-body check was reverted for
+    one run: `test_llm_client: empty 200 body is retried` fails on the old
+    classification. Restored immediately. 25 checks in the new suite, covering
+    the classification, that a `Retryable` actually produces further attempts
+    (the half the 22 lost sentences needed — classification alone buys nothing),
+    and that fatal errors and the ceiling are not retried.
+  - **The cost ceiling.** `Config.cost_ceiling_usd = 5.0`, checked in `complete`
+    before every request, so a runaway loop overshoots by at most one call.
+    Sized against real spend: the whole 4.5b run across three models was $0.54,
+    so five dollars is roughly ten full runs — it will never interrupt honest
+    work, and a bug cannot get far. Cache hits never reach the client and are
+    never counted, which is the right accounting: they are free.
+  - **A stopped run prints no summary.** `run_fidelity` catches `Cost_ceiling`,
+    reports the spend, and exits 1 without the summary table. A half-run
+    reported as a run is the *same* failure as the 22 missing sentences: every
+    percentage still computes and nothing in the output says the denominator is
+    wrong. That is now two occurrences of this shape, so it is worth naming as a
+    class — **a measurement that degrades quietly is worse than one that fails.**
+  - **`CLAUDE.md` left standing, because it is now true.** Its claim has two
+    halves and only the ceiling half was missing; spend reporting is now in
+    `run_fidelity` and all three smokes, so the sentence needed no rewording.
+  - **Found while there:** the cost reader matched only `` `Float ``, so a
+    genuinely free call — JSON `0`, which yojson types as `` `Int `` — would have
+    been filed as unpriced. Fixed. The residual hole is real and reported rather
+    than hidden: a reply OpenRouter prices at nothing *at all* cannot be counted,
+    so the spend line names how many such calls there were and says the total is
+    a lower bound. The ceiling is only ever as good as the provider's accounting.
+  - No OCaml engine logic touched (changes are in `translate/`, `bench/`,
+    `test/`), so the 20k oracle and mass differential gates are not triggered.
+    `dune test` green.

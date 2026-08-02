@@ -59,7 +59,7 @@ and does not), and a corrected trigger for the deferred defeasible layer.
 
 **Execution order.** Doc order below is thematic; this is the order the work runs in:
 
-> 4.9 plumbing → 5.2 pronoun policy → **5.0 renderer** → 4.6 real-text coverage (with
+> ~~4.9 plumbing~~ ✅ → 5.2 pronoun policy → **5.0 renderer** → 4.6 real-text coverage (with
 > hand-labelled in/out answer key) → 5.1 router + 5.3 numerical audit → 6.1 missing premise →
 > 4.7 FOL arm (reshaped) → Phase 9 study (pilot, then decide on a panel) → Phase 8 trimmed →
 > Phase 10 analysis → Phase 11 write-up and release.
@@ -267,7 +267,7 @@ Accept: coverage and fidelity reported with the refusal-reason breakdown; in/out
 committed with the sample; observed translation errors collected for Phase 9; sentences and
 gold committed to `data/fidelity/real/`; spend logged.
 
-*4.9 Plumbing before the real-text run.* — **small, and it runs first.**
+*4.9 Plumbing before the real-text run.* ✅ DONE (2026-08-02 — `test/test_llm_client.ml`, 25 checks; no engine logic touched, `dune test` green) — **small, and it ran first.**
 Two defects recorded 2026-08-02 and unactioned, both of which bite a larger run:
 - `llm_client.ml` classifies an **empty 200 body** as `Llm_error` rather than `Retryable`, so
   it does not retry. Two Kimi batches hit it mid-run and **22 sentence slots vanished**, while
@@ -278,6 +278,24 @@ Two defects recorded 2026-08-02 and unactioned, both of which bite a larger run:
 Accept: empty-body responses retried (with a test that fails on the old classification); a
 ceiling in `translate/config.ml` enforced in code and checked before each run; `CLAUDE.md`'s
 claim is either true or reworded.
+**How it landed.** Response classification is now a pure `disposition_of ~code ~raw`
+(`Body | Retry | Fatal`) split out of the I/O, and the retry loop is `with_retries`, generic
+over its thunk — both testable with no network, which is why the test can exist at all. An
+empty or whitespace-only 2xx body is `Retry`; the 429/5xx-retry and 4xx-fail-fast rules are
+unchanged and now pinned. The empty-body check was reverted once to confirm the test is not
+vacuous: it fails on the old classification. Ceiling: `Config.cost_ceiling_usd = 5.0`
+(~ten full runs against the $0.54 that 4.5b actually cost), checked in `complete` before every
+request, so a runaway overshoots by at most one call; cache hits never reach the client and are
+never counted. `Cost_ceiling` is a distinct exception and is explicitly *not* retried.
+`run_fidelity` prints the ceiling up front, the spend at the end, and on a ceiling stop prints
+**no summary at all** — a half-run reported as a run is the same failure mode as the 22 missing
+sentences, since every percentage still computes. Both smokes and the back-check smoke report
+spend too, which makes the second half of `CLAUDE.md`'s claim true as well, so it was left
+standing rather than reworded. One bug found while there: a genuinely free call comes back as
+JSON `0`, which yojson types as `Int`, and the cost reader matched only `Float` — it would have
+been filed as unpriced. Unpriced replies cannot be counted at all, so the spend report names how
+many there were and says the total is a lower bound; that is the one hole in the ceiling and it
+is reported rather than papered over.
 
 *4.4 Back-translation fidelity check.* ✅ DONE (2026-08-01; **re-measured 2026-08-02** on the corrected run — `translate/backcheck.ml`, `test/test_backcheck.ml` 14 checks, `translate/smoke_backcheck.ml`) — **promoted: this is the correctness mechanism, not a nicety.**
 **Acceptance PASSED, twice.** Both `c02` and `c06` flagged unaided, with accurate diagnoses ("quality reversed: no vs every"). False positives **2/88 = 2%** on the corrected run, against a pre-registered 5–20% and a 20% abandon threshold. Both remaining "false positives" are real defects in **our** renderer, not judge errors (`i06` — quantity level dropped when the predicate is a relational complex; `d03` — a compound term read back as "registered and voter"), so the true rate against a correct renderer is 0/88. The third false positive from the first measurement was `i04`, and it was not a false positive at all: it found the wrong gold that forced the 4.5b re-run. **The renderer defect is still open** and now matters more, because the rendering is an audit surface.
@@ -414,7 +432,7 @@ Accept: sign-off; results written.
 *8.5 Syllogism set — NeuBAROCO or kin.* **Kept — as the project's only remaining public benchmark and external comparability point**, not as the headline win; see the phase header for the correction. Bias annotations still enable the belief-bias cut (`scope-and-predictions.md` §1.2).
 Accept: loader test green.
 
-*8.6 Baseline and pipeline runners.* Direct LLM answering vs the pipeline, per model per set, all calls cached, `--limit`, hard cost ceiling from config (**built in 4.9** — it does not exist today). The 4.3 cache already enforces never re-spending on an identical call.
+*8.6 Baseline and pipeline runners.* Direct LLM answering vs the pipeline, per model per set, all calls cached, `--limit`, hard cost ceiling from config (**built in 4.9**: `Config.cost_ceiling_usd`, enforced in `Llm_client.complete`; runners print it up front and report spend at the end). The 4.3 cache already enforces never re-spending on an identical call.
 Accept: 20-item slice ×3 models; per-item records in `data/results/`.
 
 *8.7 Full runs.* Policybench → syllogism set. Spend checked and logged before each.
@@ -518,7 +536,7 @@ The redirect inserted two phases. Old references in LOG.md and commit messages m
 
 - Never commit API keys; `.env` gitignored from 2.1.
 - All LLM calls cached to disk; never re-spend on identical calls.
-- Cost ceiling enforced in code (8.6), reported after every run.
+- Cost ceiling enforced in code (built 4.9, `Config.cost_ceiling_usd`), spend reported after every run.
 - After 1.12: OCaml engine changes require test suite + 20k oracle + paper-cases green before commit; verdict semantics never change silently. Before 1.12: every port step ends differential-clean against the JS reference.
 - The JS reference engine is frozen — never extended, never edited, only consulted. **Its authority is split (2026-08-02): authoritative on verdicts forever; no authority whatsoever over English rendering.** Rendering deviations exempt only the constructions actually changed, and the exempted count is reported so it cannot silently grow.
 - **Renderer changes are verdict-safe by construction** and are not blocked by the frozen-reference rule — English readings decide nothing. Every verdict gate must still be green.

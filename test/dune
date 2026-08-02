@@ -119,6 +119,16 @@
  (modules test_env)
  (libraries translate unix))
 
+; The OpenRouter client's failure handling (4.9): what counts as retryable,
+; that the loop acts on it, and the cost ceiling. No network — an empty 200
+; body classified as fatal is what silently dropped 22 sentences from the
+; 2026-08-02 fidelity run.
+
+(test
+ (name test_llm_client)
+ (modules test_llm_client)
+ (libraries translate lwt lwt.unix))
+
 ; The translation contract (4.1): the validator against good and bad payloads.
 
 (test

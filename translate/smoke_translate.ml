@@ -67,6 +67,7 @@ let () =
       Translate.Config.models
   in
   print_newline ();
+  print_endline (Translate.Llm_client.spend_report ());
   if ok then
     print_endline
       "4.3 smoke: every model returned a well-formed payload; usage appended to \

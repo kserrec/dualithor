@@ -335,6 +335,18 @@ let run_model model (sentences, declines, arguments) =
   report " all" (add dev ev);
   (model, [ ("eval", ev); ("dev", dev); ("all", add dev ev) ])
 
+(* A run stopped by the ceiling (PLAN 4.9) must not print a summary. Half a
+   fidelity run reported as a fidelity run is the same failure as the 22
+   sentences that went missing on 2026-08-02: every percentage still computes,
+   and nothing in the output says the denominator is wrong. *)
+let abort_on_ceiling why =
+  Printf.printf "\n!! run STOPPED — %s\n" why;
+  print_endline ("   " ^ Translate.Llm_client.spend_report ());
+  print_endline
+    "   No summary printed: a partial run is not a measurement. Raise the \
+     ceiling in translate/config.ml and re-run — cached calls cost nothing.";
+  exit 1
+
 let () =
   let data = load () in
   let s, d, a = data in
@@ -345,7 +357,12 @@ let () =
   in
   Printf.printf "gold set: %d sentences, %d declines, %d arguments — %d dev, %d eval\n%!"
     (List.length s) (List.length d) (List.length a) (in_split "dev") (in_split "eval");
-  let rows = List.map (fun m -> run_model m data) Translate.Config.models in
+  Printf.printf "cost ceiling: $%.2f for this run (translate/config.ml); cached calls are free\n%!"
+    Translate.Config.cost_ceiling_usd;
+  let rows =
+    try List.map (fun m -> run_model m data) Translate.Config.models
+    with Translate.Llm_client.Cost_ceiling why -> abort_on_ceiling why
+  in
   print_endline "\n=== summary";
   Printf.printf "%-28s %-6s %-14s %-14s %s\n" "model" "split" "faithful" "declines"
     "argument verdicts";
@@ -362,4 +379,5 @@ let () =
             t.arg_verdict_right t.arg_total)
         splits)
     rows;
-  print_endline "\nper-item results in data/results/fidelity-*.tsv (first column is the split)"
+  print_endline ("\n" ^ Translate.Llm_client.spend_report ());
+  print_endline "per-item results in data/results/fidelity-*.tsv (first column is the split)"
