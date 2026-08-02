@@ -125,3 +125,11 @@
  (name test_schema)
  (modules test_schema)
  (libraries translate test_support yojson))
+
+; The translation prompt (4.2): every few-shot formula parses through the
+; engine, and the notation coverage the few-shot set teaches is still intact.
+
+(test
+ (name test_prompts)
+ (modules test_prompts)
+ (libraries tfl translate test_support))

@@ -689,3 +689,17 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   offending value (`translations[2].confidence`), because that reason is the only evidence
   we get when a model's rate collapses mid-run. `test/test_schema.ml`, 26 checks, paired
   accept/refuse cases plus an assertion that each refusal names the *right* index.
+- **4.2 done — the translation prompt.** `translate/prompts.ml`: 15 few-shot pairs whose
+  formulas are propositions from `paper_cases` (or term-structure instances of them) with
+  English attached, so the shapes we teach are shapes the engine is known to decide
+  correctly. Every few-shot uses the ASCII aliases (`-`, `+-`); the one exception is the
+  passive's pairing subscripts, which have no ASCII spelling in the notation.
+  **No verdicts anywhere in the prompt** — showing a model a valid/invalid judgement would
+  invite it to reason to the answer and fit a formula to it, which is exactly the confound
+  the fidelity claim has to avoid. Four worked *decline* examples carry the other half of
+  the contract; the router claim rests on a model refusing rather than forcing a lossy
+  formula. `test/test_prompts.ml`, 21 checks: the acceptance check (every formula parses)
+  plus round-tripping through the printer, coverage assertions naming each construction
+  the set keeps alive, a check that the passive example's subscripts really read as
+  pairing roles rather than degrading into a relation named "Lov₂₁", and an assertion that
+  no verdict vocabulary leaked into the prompt text.
