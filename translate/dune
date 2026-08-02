@@ -1,12 +1,19 @@
 (library
  (name translate)
- (modules env config llm_client schema prompts)
- (libraries yojson lwt lwt.unix cohttp cohttp-lwt cohttp-lwt-unix))
+ (modules env config llm_client schema prompts cache translator)
+ (libraries tfl yojson lwt lwt.unix cohttp cohttp-lwt cohttp-lwt-unix))
 
-; The 2.2 live smoke test: spends real (tiny) money, needs the key — run by
-; hand with `dune exec translate/smoke.exe`, never wired into `dune test`.
+; The live smoke tests: both spend real (tiny) money and need the key — run by
+; hand, never wired into `dune test`.
+;   2.2  dune exec translate/smoke.exe            connectivity, three slugs
+;   4.3  dune exec translate/smoke_translate.exe  5 sentences x 3 models
 
 (executable
  (name smoke)
  (modules smoke)
  (libraries translate))
+
+(executable
+ (name smoke_translate)
+ (modules smoke_translate)
+ (libraries translate tfl))

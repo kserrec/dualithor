@@ -22,13 +22,13 @@ jobs:
       # Licensed benchmark corpora must stay out of a public MIT repo's
       # history, and history is the part you cannot take back (2026-08-01
       # audit). Fails if an ignore rule is dropped or a corpus gets tracked.
-      - name: benchmark corpora stay untracked
+      - name: benchmark corpora and cached model replies stay untracked
         run: |
-          for p in data/raw data/results data/eval; do
+          for p in data/raw data/results data/eval data/cache; do
             git check-ignore -q "$p/probe" \
               || { echo "::error::$p is no longer gitignored"; exit 1; }
           done
-          tracked=$(git ls-files data/raw data/results data/eval)
+          tracked=$(git ls-files data/raw data/results data/eval data/cache)
           if [ -n "$tracked" ]; then
-            echo "::error::corpus files are tracked: $tracked"; exit 1
+            echo "::error::corpus or cache files are tracked: $tracked"; exit 1
           fi

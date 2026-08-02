@@ -133,3 +133,12 @@
  (name test_prompts)
  (modules test_prompts)
  (libraries tfl translate test_support))
+
+; The translator harness (4.3): the classification step, no network. Guards
+; misattribution — pairing a formula with the wrong sentence is silent and
+; nothing downstream can detect it.
+
+(test
+ (name test_translator)
+ (modules test_translator)
+ (libraries tfl translate test_support))

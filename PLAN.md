@@ -136,17 +136,20 @@ Accept: guard tests green (A, O and levelled forms provably untouched); samples 
 
 ## Phase 4 — Translation Layer
 
-*4.1 Translation contract.*
+*4.1 Translation contract.* ✅ DONE (2026-08-01 — `translate/schema.ml`; `test/test_schema.ml`, 26 checks)
 `translate/schema.ml`: LLM must return strict JSON `{"translations": [{"nl", "tfl", "confidence"}], "untranslatable": [{"nl", "reason"}]}`. Validator (yojson) rejects malformed payloads with reasons.
 Accept: validator unit-tested against good and bad payloads.
+Shape only — whether a `tfl` string is a real proposition is 4.3's question, so `translate` stays engine-independent. Two documented leniencies (absent array reads as empty; one markdown fence stripped) so a formatting habit is never scored as a translation failure; rejections name the offending path.
 
-*4.2 Translation prompt.*
+*4.2 Translation prompt.* ✅ DONE (2026-08-01 — `translate/prompts.ml`; `test/test_prompts.ml`, 21 checks)
 `translate/prompts.ml`: system prompt teaching the notation + 10–15 few-shot NL→TFL pairs spanning universal affirmative/negative, particular, singular, negative terms, relationals. Source pairs from `paper_cases` so they're verdict-verified. Teach ASCII aliases (`-`, `+-`) so models needn't emit typographic signs.
 Accept: every few-shot TFL string parses via the engine.
+15 pairs, plus four worked *decline* examples carrying the router half of the contract. **No verdict vocabulary in the prompt** (asserted by test): teaching a validity judgement would invite reasoning-to-the-answer, the confound the fidelity claim must avoid.
 
-*4.3 Translator harness.*
+*4.3 Translator harness.* ✅ DONE (2026-08-01 — `translate/translator.ml` + `cache.ml`; live smoke 100% parse rate ×3 models, $0.035)
 `translate/translator.ml`: `translate ~model sentences`, calling the client, validating JSON, parsing every returned TFL string; parse failures recorded with their 1.14 taxonomy class, not fatal.
 Accept: smoke test — 5 hand-written sentences × 3 models; results and parse rates printed.
+Four outcomes per sentence (`Translated | Unparseable | Declined | Absent`); `Absent` exists because a silently dropped sentence would otherwise shrink the denominator and flatter every rate. Matching is on a normalised key and refuses paraphrases — a formula paired with the wrong sentence is undetectable downstream. `translate/cache.ml` keys replies by a digest of the exact (model, system, user) triple, per the standing no-double-spend constraint; `data/cache/` gitignored with a CI guard.
 
 *4.4 Back-translation fidelity check.*
 `translate/backcheck.ml`: render TFL back to English with the engine's own deterministic `readProp` first; one LLM call scores nl↔rendering semantic match 0–2. (Deterministic verbalization is a TFL-only advantage over FOL — note for the paper.)

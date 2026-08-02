@@ -11,3 +11,8 @@ data/usage.jsonl
 data/raw/
 data/results/
 data/eval/
+
+# Cached model replies (4.3). Model output, not repo material — and the cache
+# is keyed by a digest of the exact request, so it is reproducible by re-running
+# rather than something history needs to carry.
+data/cache/

@@ -738,3 +738,30 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   predictions — rewriting them after the fact would destroy the only reason they exist)
   and the two known errors in `expressiveness-literature.md`, both recorded in the new
   README instead. Kyle's call.
+- **4.3 done — the translator harness.** `translate/translator.ml` plus
+  `translate/cache.ml`. Four outcomes per input sentence; `Absent` is the one that had to
+  be invented, because a model that silently drops a sentence would otherwise shrink the
+  denominator and flatter every rate we report. Matching replies to inputs is on a
+  normalised key (case-folded, whitespace-collapsed) and **refuses paraphrases**: pairing a
+  formula with a sentence it may not be about is undetectable downstream — the parse rate
+  still computes, the back-check compares the wrong pair, and the fidelity audit measures
+  nothing. Reporting `Absent` is strictly better than a plausible wrong pairing.
+  A test caught a real bug before the live run: `index_by_nl` deduped at indexing time, so
+  a model answering the same sentence twice had its second formula silently discarded
+  rather than surfacing in `extra` — which is exactly the "model disagrees with itself"
+  signal we would want to see. Fixed by consuming one reply per claimed sentence.
+  Cache keyed by a digest of the exact (model, system, user) triple — deliberately *not*
+  fuzzy, since a hit must mean "this exact question was asked", never "something like it".
+  `data/cache/` gitignored and added to the CI untracked guard.
+  **Live smoke, $0.035 total:** all three models, 5 sentences, **100% parse rate** (4/4
+  attempted each), and all three declined the tense sentence with a temporal reason — the
+  router signal fired on its first real test.
+  **Two things the run showed that the parse rate hides**, both now on the record for the
+  fidelity experiment: (a) the three models produced three *different* structures for "No
+  temporary worker is eligible for the pension" — Sonnet quoted it as one term, GPT read
+  "the pension" as a singular inside a relational, Kimi read "temporary worker" as a
+  compound (+Temporary+Worker), which glosses as "no temporary **and** worker…". All three
+  parse; they are not the same claim. (b) Relation naming diverged across models (`Wrk` /
+  `Work_for` / `Work`) — harmless for one sentence, but two premises of one argument that
+  name the same verb differently will not connect, so term-naming consistency across a
+  multi-premise item is a threat the fidelity measurement must cover explicitly.
