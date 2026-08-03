@@ -1191,3 +1191,63 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
     control comes back `Unknown`. That `Unknown` is now pinned too.
   - No engine logic touched: this step is a test and two documents. `dune test`
     green, 18 new checks.
+
+- **5.0 done — the renderer is now ours, and it is the audit surface.**
+  Kyle approved the readings on 2026-08-02 after reviewing them one construction
+  at a time. Three deviations from the frozen JS renderer, each verdict-safe by
+  construction (an English reading decides nothing), each commented at its
+  branch, exempted by name in the differential, and pinned in a golden test.
+  - **Two proven bugs, one line of logic each.** The level gate
+    `lvl > 0 && not rel_pred` became `lvl > 0`: `rel_tail` already rendered a
+    relational predicate in both polarities, so nothing else moved, and level 3's
+    polarity inversion carried over unchanged. The compound joiner became `" "`
+    from `" and "` — a compound is one term, and English writes an intersection
+    by juxtaposition. These were the **only two remaining false positives** in
+    the 4.4 back-check.
+  - **A third deviation Kyle asked for after seeing the readings: the comma
+    seam.** A relational subject trails off with no closing word and an
+    affirmative relational predicate opens with none, so "every head some horse
+    head some animal" ran together with nothing between. A comma marks it. Chosen
+    over inserting "is" for a reason that generalises: **the comma needs no
+    knowledge of English words.** "is" is right for a noun-like relation and
+    wrong for a verb-like one ("every lov some woman is lov some girl"), and the
+    renderer cannot tell them apart. Where the tail already opens with "does
+    not", that word is the marker and no comma is added.
+  - **The pinned corpus exemption earned its keep immediately.** Adding the comma
+    took the corpus count from 5 to 7 and the gate failed, naming the two new
+    strings (the De Morgan head-of-a-horse pair) before anything was committed.
+    That is the whole point of pinning an exact number rather than reporting one:
+    a widening exemption becomes a reviewable diff instead of a silent drift.
+  - **The exemption predicate is exact, and the gate corrected it once.** A
+    rendering differs from the reference *iff* it hits one of the three
+    constructions. The first cut was not recursive through propositional terms
+    `[…]`, whose interiors `read_term` renders via `read_prop` — the differential
+    failed loudly with "few … does not d__4_ …" against "some …". Now mutually
+    recursive over terms and propositions.
+  - **Two decisions from Kyle worth keeping.** "Of" is refused as a *decision*,
+    not a deferral: the object's sign carries the quantity while the preposition
+    is lexical to the relation and slot, and a guessed preposition asserts a
+    relationship the formula never states, on the audit surface, where the
+    back-check cannot see it. Term naming reaches the first object slot only.
+    And "Alice is registered voter", missing its article, is accepted as
+    readable.
+  - **A new defect found while explaining a formula to Kyle, deferred as 4.10.**
+    A negative relational predicate renders `"does not " ^ reading`, which forces
+    a noun-like relation into a verb slot: "some employee does not member some
+    union". **It is not confined to counterclaims** — that example is an ordinary
+    true statement. Same root cause as "of" and as the comma-vs-"is" choice, and
+    term naming cannot rescue it (`"member of"` gives "does not member of some
+    union"). The lever is naming relations verb-like in `prompts.ml`, which Kyle
+    approved and deferred, together with the 4.5b re-run the prompt change forces
+    by invalidating the cache.
+  - **Gates, all green on the final source.** `dune test` (21 reading groups, 62
+    paper cases, 604 corpus strings, 0 disagreements); mass differential 884k
+    inputs through 18 gates, **zero disagreements**, 14m50s, exemption holding its
+    pin at 7+1 with 123,247 renderings still compared byte-for-byte and all three
+    deviations reached; 20k oracle all six suites, **zero failures**, 25m59s. Both
+    long gates were re-run from scratch after the comma landed rather than
+    trusting the earlier pass.
+  - Also corrected: `render.ml`'s own header still claimed its strings "mirror
+    the JS renderer exactly" and are a byte-exact contract. False after three
+    deliberate deviations, and it would have told the next reader the reference
+    still governs English here.

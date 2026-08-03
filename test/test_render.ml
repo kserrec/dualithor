@@ -35,7 +35,10 @@ let () =
 
   (* readTerm/readProp: probe-verified reference strings *)
   test "readTerm: compounds, negations, relations, brackets" (fun () ->
-      check_eq (read_term (t "(+White+Horse)")) "white and horse";
+      (* 5.0: a compound is one term, so it joins by juxtaposition. The frozen
+         reference says "white and horse"; the approved readings live in
+         test_readings.ml. *)
+      check_eq (read_term (t "(+White+Horse)")) "white horse";
       check_eq (read_term (t "(−Smoker)")) "non-smoker";
       check_eq (read_term (t "(Lov+Woman)")) "lov some woman";
       check_eq (read_term (t "(Gave+Rose−Girl)")) "gave some rose every girl";

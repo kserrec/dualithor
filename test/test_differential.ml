@@ -111,6 +111,136 @@ let ( ||> ) (a : string option) (b : unit -> string option) =
 
 let expect_json = Shim_client.expect_json shim
 
+(* ── The 5.0 renderer deviations ─────────────────────────────────────────── *)
+
+(* The JS reference has no authority over English rendering (PLAN, standing
+   constraints, 2026-08-02): it is one earlier draft of an English generator and
+   two of its readings are wrong. Two constructions are now rendered
+   differently, and *only* those two are exempted here — everything else keeps
+   being compared byte-for-byte, and the exempted counts are printed and
+   asserted below so the exemption cannot silently grow.
+
+   Both conditions are exact rather than approximate: a rendering differs from
+   the reference **iff** one of them holds. That matters, because an
+   over-broad predicate would let an unrelated regression hide inside the
+   exemption. *)
+
+(* Deviation 2 — a quantity level is spoken ("many"/"most"/"few") even when
+   the predicate is a relational complex, where the reference silently dropped
+   it. The branch is reached only when no orientation offers a fixed-reference
+   subject: read_prop re-orients to put a definite individual in front, and a
+   fixed-reference subject takes a different branch entirely. *)
+let level_word_on_relation (p : Tfl.Ast.prop) =
+  let open Tfl.Ast in
+  (not
+     (List.exists
+        (fun (o : prop) -> Tfl.Infer.is_fixed_ref o.subject.term)
+        (Tfl.Relational.orientations p)))
+  && p.subject.sign <> Minus && p.subject.level > 0
+  && match p.predicate.term with Rel _ -> true | _ -> false
+
+(* Deviation 3 — a comma marks the seam where a relational subject reading abuts
+   an affirmative relational predicate, which the reference ran together with a
+   single space. Mirrors the `sep` call sites in render.ml: for a universal
+   subject the tail never opens with a marker word, and for a particular subject
+   it opens with "does not" exactly when the branch is negative, which is where
+   the space stays. *)
+let comma_boundary (p : Tfl.Ast.prop) =
+  let open Tfl.Ast in
+  (not
+     (List.exists
+        (fun (o : prop) -> Tfl.Infer.is_fixed_ref o.subject.term)
+        (Tfl.Relational.orientations p)))
+  && Tfl.Render.ends_in_relation p.subject.term
+  && (match p.predicate.term with Rel _ -> true | _ -> false)
+  &&
+  let q_plus = p.predicate.sign = Plus in
+  if p.subject.sign = Minus then true
+  else if p.subject.level > 0 then
+    if p.subject.level = 3 then not q_plus else q_plus
+  else q_plus
+
+(* Deviation 1 — a compound term joins with a space, not " and ". A
+   one-element compound is unaffected: both joiners collapse to the element
+   itself.
+
+   The two are checked together and recursively, because rendering recurses:
+   read_term on a propositional term [...] renders the proposition inside it
+   through read_prop, level branch and all. Missing that nesting is what the
+   first cut of this predicate got wrong — the gate caught it. *)
+let rec term_deviates (t : Tfl.Ast.term) =
+  let open Tfl.Ast in
+  match t with
+  | Atom _ -> false
+  | Neg t -> term_deviates t
+  | Compound els ->
+      List.length els > 1 || List.exists (fun e -> term_deviates e.term) els
+  | Rel { head; objects } ->
+      term_deviates head || List.exists (fun o -> term_deviates o.term) objects
+  | PropTerm (Inner_prop p) -> prop_deviates p
+  | PropTerm (Inner_term t) -> term_deviates t
+
+and prop_deviates (p : Tfl.Ast.prop) =
+  term_deviates p.subject.term
+  || term_deviates p.predicate.term
+  || level_word_on_relation p || comma_boundary p
+
+let proof_deviates (proof : Tfl.Derive.proof) =
+  List.exists
+    (fun (l : Tfl.Derive.line) ->
+      match l.l_prop with Some p -> prop_deviates p | None -> false)
+    proof.lines
+
+(* Exemptions are counted separately for the corpus gate — a fixed, deterministic
+   set of real formulas from tfl.test.js — and for the random gates, because only
+   the corpus count can be pinned to an exact number. A pinned count is what makes
+   "the exemption can never silently grow" enforceable rather than aspirational:
+   any change in which real formulas are exempted becomes a reviewable diff. *)
+let corpus_prop_skips = ref 0
+let corpus_term_skips = ref 0
+let corpus_exempted = ref []
+let render_prop_skips = ref 0
+let render_term_skips = ref 0
+let explain_skips = ref 0
+
+(* The other side of the ledger: an exemption count means nothing without the
+   count it is measured against. *)
+let render_compared = ref 0
+let render_term_compared = ref 0
+let explain_compared = ref 0
+
+(* Which of the three deviations each gate actually reached. A deviation nobody
+   generates is a deviation nobody is testing. *)
+let saw_compound_dev = ref 0
+let saw_level_dev = ref 0
+let saw_comma_dev = ref 0
+
+(* Pinned corpus exemption counts. The corpus is every string literal in
+   tfl.test.js, so this is a fixed set of formulas someone wrote on purpose, and
+   the run prints each exempted string by name. All eight are accounted for:
+
+     compound term (6)
+       readProp  +(+A^2+B)+C     -(+A+(+B+C))+D   -(+C+(+B+A))+D
+                 -(+White+Horse)+Gentle           -S+(+A+B)
+       readTerm  (+Rich-Happy)
+     comma boundary (2)
+       readProp  -(Head+Horse)+(Head+Animal)      -(Head+Horse)+(Head+Horse)
+
+   The level-on-relation deviation appears nowhere in the corpus; the random
+   gate reaches it, which is what the "deviations reached" assertion checks.
+   Changing either number is a deliberate edit to this line — a reviewable diff
+   rather than a silently widening exemption. It has already done its job once:
+   adding the comma took readProp from 5 to 7, and the gate said so. *)
+let corpus_prop_pin = 7
+let corpus_term_pin = 1
+
+let note_deviation (p : Tfl.Ast.prop) =
+  let level = level_word_on_relation p and comma = comma_boundary p in
+  if level then incr saw_level_dev;
+  if comma then incr saw_comma_dev;
+  (* neither fired, so the exemption came from a compound term *)
+  if not (level || comma) then incr saw_compound_dev
+
 (* ── 1.4: inference core A over one proposition ─────────────────────────── *)
 
 let core_disagreement (p : Tfl.Ast.prop) : string option =
@@ -242,17 +372,28 @@ let corpus_gate () =
       | exception _ -> ()
       | prop ->
           run "core" (core_disagreement prop);
-          run "readProp"
-            (expect_json "readProp"
-               [ Ast_json.prop_to_json prop ]
-               (`String (Tfl.Render.read_prop prop))));
+          if prop_deviates prop then (
+            note_deviation prop;
+            corpus_exempted := ("readProp " ^ s) :: !corpus_exempted;
+            incr corpus_prop_skips)
+          else (
+            incr render_compared;
+            run "readProp"
+              (expect_json "readProp"
+                 [ Ast_json.prop_to_json prop ]
+                 (`String (Tfl.Render.read_prop prop)))));
       match parse_term s with
       | exception _ -> ()
       | term ->
-          run "readTerm"
-            (expect_json "readTerm"
-               [ Ast_json.term_to_json term ]
-               (`String (Tfl.Render.read_term term))))
+          if term_deviates term then (
+            corpus_exempted := ("readTerm " ^ s) :: !corpus_exempted;
+            incr corpus_term_skips)
+          else (
+            incr render_term_compared;
+            run "readTerm"
+              (expect_json "readTerm"
+                 [ Ast_json.term_to_json term ]
+                 (`String (Tfl.Render.read_term term)))))
     strings;
   Printf.printf
     "corpus gate: %d distinct strings, %d checks, %d disagreements\n"
@@ -458,13 +599,24 @@ let diff_render =
   gate "differential: readProp/readTerm strings agree byte-for-byte"
     ~count:(count 10_000 100_000) ~print:print_proposition Gen.prop_gen
     (fun p ->
-      expect_json "readProp"
-        [ Ast_json.prop_to_json p ]
-        (`String (Tfl.Render.read_prop p))
+      (if prop_deviates p then (
+         note_deviation p;
+         incr render_prop_skips;
+         None)
+       else (
+         incr render_compared;
+         expect_json "readProp"
+           [ Ast_json.prop_to_json p ]
+           (`String (Tfl.Render.read_prop p))))
       ||> fun () ->
-      expect_json "readTerm"
-        [ Ast_json.term_to_json p.subject.term ]
-        (`String (Tfl.Render.read_term p.subject.term)))
+      if term_deviates p.subject.term then (
+        incr render_term_skips;
+        None)
+      else (
+        incr render_term_compared;
+        expect_json "readTerm"
+          [ Ast_json.term_to_json p.subject.term ]
+          (`String (Tfl.Render.read_term p.subject.term))))
 
 (* explainProof over real bounded proofs (direct and indirect, found or not):
    the OCaml proof record crosses the pipe in the JS proof shape, so both
@@ -474,11 +626,18 @@ let diff_explain =
     ~print:Gen.print_argument Gen.relational_argument_gen
     (fun (premises, conclusion) ->
       let compare_proof (proof : Tfl.Derive.proof) =
-        expect_json "explainProof"
-          [ Result_json.proof_to_json proof ]
-          (match Tfl.Render.explain_proof proof with
-          | Some s -> `String s
-          | None -> `Null)
+        (* explain_proof narrates its lines through read_prop, so a proof that
+           mentions a deviating proposition inherits the exemption. *)
+        if proof_deviates proof then (
+          incr explain_skips;
+          None)
+        else (
+          incr explain_compared;
+          expect_json "explainProof"
+            [ Result_json.proof_to_json proof ]
+            (match Tfl.Render.explain_proof proof with
+            | Some s -> `String s
+            | None -> `Null))
       in
       compare_proof (Tfl.Derive.derive ~max_lines:60 premises conclusion)
       ||> fun () ->
@@ -574,12 +733,17 @@ let diff_consistency_narration =
       with
       | None -> None
       | Some proof ->
-          incr narrated;
-          expect_json "explainProof"
-            [ Result_json.proof_to_json proof ]
-            (match Tfl.Render.explain_proof proof with
-            | Some s -> `String s
-            | None -> `Null))
+          if proof_deviates proof then (
+            incr explain_skips;
+            None)
+          else (
+            incr narrated;
+            incr explain_compared;
+            expect_json "explainProof"
+              [ Result_json.proof_to_json proof ]
+              (match Tfl.Render.explain_proof proof with
+              | Some s -> `String s
+              | None -> `Null)))
 
 (* Harness self-test: a real divergence must be DETECTED, or a clean run means
    nothing. "+É+P" is the documented §16.4 case — the JS reference parses É as
@@ -625,9 +789,79 @@ let () =
     "arbitrary shapes: %d decided identically, %d rejected identically\n\
      arbitrary valid shapes: %d decided identically, %d rejected identically\n\
      consistency narrations: %d proofs narrated\n\
-     parseProgram: %d sources skipped (quoted-comment deviation)\n"
+     parseProgram: %d sources skipped (quoted-comment deviation)\n\
+     rendering exemptions (PLAN 5.0): corpus %d readProp + %d readTerm; random \
+     %d readProp + %d readTerm + %d explainProof, against %d + %d + %d \
+     compared byte-for-byte\n\
+     deviations reached: %d compound-term, %d level-on-relation, %d \
+     comma-boundary\n"
     arbitrary_tally.decided arbitrary_tally.rejected valid_tally.decided
-    valid_tally.rejected !narrated !quote_comment_skips;
+    valid_tally.rejected !narrated !quote_comment_skips !corpus_prop_skips
+    !corpus_term_skips !render_prop_skips !render_term_skips !explain_skips
+    !render_compared !render_term_compared !explain_compared !saw_compound_dev
+    !saw_level_dev !saw_comma_dev;
+  (* Named, not just counted: six strings is few enough to read, and a pin you
+     cannot see the contents of is a number nobody can check. *)
+  List.iter
+    (fun e -> Printf.printf "  exempted from the corpus: %s\n" e)
+    (List.sort compare !corpus_exempted);
+  (* The exemption is asserted in three ways, because a bare count reported into
+     a log guards nothing.
+
+     1. **Pinned on the corpus.** The corpus is every string literal in
+        tfl.test.js — fixed, deterministic, and made of formulas someone wrote
+        on purpose. Exactly these many are exempted; changing that number is a
+        deliberate edit to this line, which is a reviewable diff. This is the
+        4.8 pinned-eval-list pattern.
+     2. **Both deviations are reached.** An exemption for a construction nobody
+        generates tests nothing.
+     3. **The un-exempted surface stays large.** The exempted fraction of the
+        random gate is a property of the generator (Gen.prop_gen builds compound
+        terms liberally), not a measure of overreach — so this is a floor on
+        what is still compared byte-for-byte, not a cap on what is skipped. *)
+  let expect_pinned label got want =
+    if got = want then true
+    else (
+      Printf.eprintf
+        "\226\156\151 rendering exemption: corpus %s exempted %d, pinned at %d \
+         \226\128\148 the exemption changed shape; re-read it before editing \
+         the pin\n"
+        label got want;
+      false)
+  in
+  let expect_reached label got =
+    if got > 0 then true
+    else (
+      Printf.eprintf
+        "\226\156\151 rendering exemption: the %s deviation was never reached \
+         \226\128\148 it is ungated\n"
+        label;
+      false)
+  in
+  let compared = !render_compared + !render_term_compared + !explain_compared in
+  let floor_ok =
+    if compared >= 5_000 then true
+    else (
+      Printf.eprintf
+        "\226\156\151 rendering exemption: only %d renderings compared \
+         byte-for-byte \226\128\148 the exemption has swallowed the gate\n"
+        compared;
+      false)
+  in
+  let exemption_ok =
+    List.for_all Fun.id
+      [
+        expect_pinned "readProp" !corpus_prop_skips corpus_prop_pin;
+        expect_pinned "readTerm" !corpus_term_skips corpus_term_pin;
+        expect_reached "compound-term" !saw_compound_dev;
+        expect_reached "level-on-relation" !saw_level_dev;
+        expect_reached "comma-boundary" !saw_comma_dev;
+        floor_ok;
+      ]
+  in
   exit
-    (if (not control_ok) || (not corpus_ok) || qcheck_failures <> 0 then 1
+    (if
+       (not control_ok) || (not corpus_ok) || (not exemption_ok)
+       || qcheck_failures <> 0
+     then 1
      else 0)

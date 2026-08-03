@@ -66,6 +66,16 @@
  (modules test_numerical)
  (libraries tfl test_support qcheck-core qcheck-core.runner))
 
+; The approved English readings (5.0). The rendering is the audit surface the
+; Phase 9 participant reads, and the frozen JS reference has no authority over
+; it — a comparison can only say "this matches the old thing", so the readings
+; are written out for Kyle to approve, as the 3.3 trace samples were.
+
+(test
+ (name test_readings)
+ (modules test_readings)
+ (libraries tfl test_support))
+
 (test
  (name test_render)
  (modules test_render)

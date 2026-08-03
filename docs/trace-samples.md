@@ -76,8 +76,8 @@ one keeps the awkward shape, and no orientation trick can fix it:
 
 ```
 1. [premise] −Horse+Animal — every horse is animal
-2. [It] −(Head+Horse)+(Head+Horse) — every head some horse head some horse
-3. [DON] −(Head+Horse)+(Head+Animal) — every head some horse head some animal  (from 1, 2)
+2. [It] −(Head+Horse)+(Head+Horse) — every head some horse, head some horse
+3. [DON] −(Head+Horse)+(Head+Animal) — every head some horse, head some animal  (from 1, 2)
 ```
 
 Reading these well would need real English machinery — inserting "of",
@@ -96,3 +96,62 @@ read backwards relative to the narrative.
 
 Items 2, 4 and 5 are properties of the frozen rendering contract; item 1 is the
 one where the inconsistency is now visible enough to be worth a decision.
+
+### Update, 2026-08-02 — the renderer is no longer frozen (PLAN 5.0)
+
+The paragraphs above call the renderer a frozen contract. That was true when they
+were written and is not any more. Kyle's 2026-08-02 decision split the reference
+engine's authority: it stays authoritative on **verdicts** forever and the
+comparison keeps running, but it has **no authority whatsoever over English
+rendering** — it is one earlier draft of an English generator, and deferring to it
+there means pinning our audit surface to a known-broken draft. Renderer changes are
+verdict-safe by construction: an English reading decides nothing.
+
+**Three readings changed.** Two were the back-check's only remaining false
+positives: the quantity word is now spoken on a relational predicate ("many officer
+sign some contract", where it used to read "some", identical to level 0), and a
+compound term reads as a noun phrase ("registered voter", not "registered and
+voter"). Neither appears in the traces at the top of this page, so those are
+unchanged.
+
+**The third is item 2 above, and it is the only edit to a sample on this page.** A
+relational subject reading trails off with no closing word, and an affirmative
+relational predicate opens with none, so the two used to run together with nothing
+between them. A comma now marks the seam:
+
+> every head some horse**,** head some animal
+
+Kyle approved it on 2026-08-02 over the alternative of inserting "is", for a reason
+worth recording: the comma needs no knowledge of English words. "is" reads correctly
+when the relation is noun-like ("every head some horse is head some animal") and
+wrongly when it is verb-like ("every lov some woman is lov some girl"), and a
+deterministic renderer cannot tell those apart. Where the predicate already opens
+with "does not", that word is the marker and no comma is added.
+
+The approved readings are in `test/test_readings.ml`; the rendering differential
+exempts exactly these three constructions, pins the corpus exemption to an exact
+count, and prints every exempted string by name.
+
+**What this changes for the items above.** "Frozen renderer" is no longer a reason
+not to fix something — it is now a question of scope and of Kyle's approval, with
+the full verdict gate as the price. Items 1 and 4 are open work rather than
+constraints; item 2 is improved but not solved, since the comma marks the boundary
+without supplying the missing "of".
+
+**And "of" is not coming**, which is a decision rather than a deferral (Kyle,
+2026-08-02). The object's sign carries the *quantity* — `+` is "some", `−` is
+"every" — while the preposition is a lexical property of the particular relation and
+argument slot: `Head` wants "of", `Lov` wants nothing, `Gave` wants "to" on its
+second object. Nothing in the notation distinguishes those, so the renderer would
+have to guess, and a wrong preposition asserts a relationship the formula never
+states, on the audit surface, where the back-check compares rendering to source and
+a plausible-sounding error is exactly what slips through. The available lever is
+item 3's: term naming. A quoted head `"head of"` reads "head of some horse" and
+costs the engine nothing — but it reaches only the *first* object slot, because the
+head is printed before all of them, so `(Gave+Rose−Girl)` can never get its "to".
+That residue goes in the paper's limitations.
+
+Item 4 also has a new sibling recorded in `test_readings.ml`: a compound predicate
+on a named individual reads "Alice is registered voter", missing its article — the
+same gap, made more visible now that the compound reads as a noun phrase. Kyle
+accepted it as readable on 2026-08-02.
