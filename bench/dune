@@ -11,3 +11,11 @@
  (name run_fidelity)
  (modules run_fidelity)
  (libraries bench tfl tfl_verify translate yojson lwt lwt.unix))
+
+; The 4.6 real-text sample. Implements data/fidelity/real/PROTOCOL.md exactly;
+; deterministic, no network — reads the gitignored raw XML in data/raw/ and
+; writes the committed sample. Run by hand from the repo root.
+
+(executable
+ (name sample_real)
+ (modules sample_real))
