@@ -439,8 +439,30 @@ let check_argument ?max_lines ?slack (premises : prop list) (conclusion : prop)
   if List.exists has_level (premises @ [ conclusion ]) then
     (* Numerical fragment: any nonzero level routes to the decision method. *)
     let d = numerical_decision premises conclusion in
+    (* PLAN 5.3, Kyle's decision 2026-08-02: a failed numerical decision is
+       `Unknown`, never `Invalid`.
+
+       The three conditions are a *sound but incomplete* rule set, and
+       Pratt-Hartmann (2009, 2013) proves no finite syllogistic rule set can be
+       complete for the numerically definite syllogistic — so inferences this
+       cannot derive necessarily exist. Asserting `Invalid` for them is a wrong
+       verdict, not a missing one. Witness: `+S^2+P ; +S^2+Q ⊢ +P+Q` — two
+       strict majorities of one set must intersect, so it is valid, and
+       condition (ii) rejects it for having two particular premises against one
+       particular conclusion.
+
+       This is the same boundary the rest of the engine already respects, and
+       `Unknown ≠ Invalid` is documented in the 3.1 interface for exactly this
+       reason. The cost is real and deliberate: **this layer can now certify
+       validity and can never assert invalidity**, so genuinely invalid
+       leveled arguments (most does not convert; many does not license most)
+       come back `Unknown` too. Recovering that needs an actual decision
+       procedure — `Sat(Syl+Num)` is NP-complete, so integer reasoning would
+       give real verdicts — rather than more rules, which provably cannot
+       suffice. Documented deviation from the frozen JS reference, normalized
+       in the differential harness. *)
     {
-      verdict = (if d.n_valid then Valid else Invalid);
+      verdict = (if d.n_valid then Valid else Unknown);
       meth = Numerical;
       certificate = None;
       proof = None;

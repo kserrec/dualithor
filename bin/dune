@@ -1,0 +1,8 @@
+; The CLI (PLAN 11.4, pulled ahead): JSON over stdio. The release client wraps
+; this binary, and 4.6 and 6.1 both drive the engine through it.
+
+(executable
+ (name tfl_cli)
+ (public_name tfl-verify)
+ (modules tfl_cli)
+ (libraries tfl tfl_verify yojson))

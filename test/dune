@@ -137,7 +137,7 @@
 (test
  (name test_llm_client)
  (modules test_llm_client)
- (libraries translate lwt lwt.unix))
+ (libraries translate lwt lwt.unix str))
 
 ; The translation contract (4.1): the validator against good and bad payloads.
 
@@ -203,3 +203,13 @@
  (name test_anaphora)
  (modules test_anaphora)
  (libraries tfl tfl_verify test_support))
+
+; The CLI process boundary (11.4, pulled ahead). A line protocol loses every
+; queued request behind a crash, not just the one that caused it — so the batch
+; interleaves garbage with real work and counts replies.
+
+(test
+ (name test_cli)
+ (modules test_cli)
+ (libraries yojson unix)
+ (deps ../bin/tfl_cli.exe))

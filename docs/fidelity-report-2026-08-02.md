@@ -1,5 +1,10 @@
 # Translation-fidelity measurement, corrected re-run (PLAN 4.5b)
 
+> **SUPERSEDED by `fidelity-report-2026-08-02-v2.md`** (PLAN 4.10, same day).
+> The prompt gained a relation-naming guideline, which changes every cache key,
+> so these numbers belong to prompt revision 1. Kept unedited as the record of
+> what was measured under that prompt; cite the v2 report instead.
+
 Run 2026-08-02. Supersedes `fidelity-report-2026-08-01.md`, which is kept
 unedited as the record of what was measured that day but must not be cited.
 

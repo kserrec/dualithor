@@ -25,6 +25,9 @@ let expect premises conclusion expected name =
 let valid ps c name = expect ps c "valid" name
 let invalid ps c name = expect ps c "invalid" name
 
+(* 5.3: numerical non-derivability abstains rather than asserting invalid. *)
+let unknown ps c name = expect ps c "unknown" name
+
 (* paper_cases' [not_valid] contract: outside the complete fragment the engine
    must at least not certify — any verdict but Valid passes. *)
 let not_valid ps c name =
@@ -102,7 +105,9 @@ let () =
 
 let () =
   valid [ "+C^3−H"; "−C+E" ] "+E−H" "Table 12 — bao-3 is valid";
-  invalid [ "+H^1+I"; "−g+H" ] "−g+I" "Table 10 — kaa-1 is invalid";
+  (* 5.3: numerical non-derivability abstains rather than asserting invalid *)
+  unknown [ "+H^1+I"; "−g+H" ] "−g+I"
+    "Table 10 — kaa-1: no derivation (book says invalid)";
   valid [ "+V^2+C" ] "+V+C" "most descends to some"
 
 (* ── Malformed and empty input (the API's own ground) ───────────────────── *)

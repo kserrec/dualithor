@@ -148,16 +148,39 @@ let with_timeout timeout_s thunk =
        Lwt.fail (Retryable (Printf.sprintf "timeout after %.0fs" timeout_s)));
     ]
 
+(* A body we cannot read is a **transient** condition, not a permanent one: the
+   provider answered 200 and handed us nothing usable, which is exactly what a
+   dropped or truncated response looks like from here. So it raises `Retryable`
+   and the loop gets another go.
+
+   This function used to run *outside* the retry loop, and every failure in it
+   was fatal. That is what lost two Kimi batches — 20 sentences — from the
+   2026-08-02 fidelity re-run, after 4.9 had already fixed the narrower
+   empty-body case one layer down. A structured provider error is different in
+   kind: that is the provider telling us something definite, so it still fails
+   fast rather than burning three attempts on a bad model slug.
+
+   Every message now carries the body's byte count and its first 300 bytes. The
+   run that exposed this printed an empty payload and left nothing to diagnose
+   from, which is its own defect. *)
 let parse_response raw =
   let open Yojson.Safe.Util in
-  let fail why = raise (Llm_error (why ^ ": " ^ truncate_msg raw)) in
-  let json =
-    try Yojson.Safe.from_string raw with _ -> fail "unparseable response body"
+  let detail why =
+    Printf.sprintf "%s (%d bytes): %S" why (String.length raw)
+      (truncate_msg raw)
   in
+  let bad why = raise (Retryable (detail why)) in
+  let fatal why = raise (Llm_error (detail why)) in
+  let json =
+    try Yojson.Safe.from_string raw with _ -> bad "unparseable response body"
+  in
+  (* A non-object body would make every `member` below raise Type_error outside
+     any handler, which escapes as an uncaught exception rather than an error. *)
+  (match json with `Assoc _ -> () | _ -> bad "response body is not a JSON object");
   (* OpenRouter can answer 200 with an {"error": …} payload. *)
   (match member "error" json with
   | `Null -> ()
-  | e -> fail ("provider error " ^ Yojson.Safe.to_string e));
+  | e -> fatal ("provider error " ^ Yojson.Safe.to_string e));
   try
     let content =
       json |> member "choices" |> index 0 |> member "message"
@@ -181,7 +204,11 @@ let parse_response raw =
         cost;
       },
       id )
-  with Type_error _ -> fail "unexpected response shape"
+  (* Both, and the distinction is not academic: `member` on a wrong-typed field
+     raises Type_error, but `index 0` on an *empty* array raises Undefined —
+     which used to escape this function uncaught and kill the process rather
+     than produce an error. Found by the test below, not in the wild. *)
+  with Type_error _ | Undefined _ -> bad "unexpected response shape"
 
 (* The retry loop, generic over the attempt so it can be exercised without a
    network. Anything not classified `Retryable` — or refused by the ceiling —
@@ -208,12 +235,18 @@ let complete ?(timeout_s = 120.) ~model ~system ~user ~max_tokens () =
   | Some why -> Lwt.fail (Cost_ceiling why)
   | None ->
       let key = api_key () in
-      let* raw =
+      (* parse_response is INSIDE the loop: a body-shape failure is retryable
+         and only becomes fatal once the attempts are spent. *)
+      let* r, id =
         with_retries ~max_attempts:3 (fun () ->
-            with_timeout timeout_s
-              (call_once ~key ~model ~system ~user ~max_tokens))
+            let* raw =
+              with_timeout timeout_s
+                (call_once ~key ~model ~system ~user ~max_tokens)
+            in
+            match parse_response raw with
+            | v -> Lwt.return v
+            | exception e -> Lwt.fail e)
       in
-      let r, id = parse_response raw in
       (match r.cost with
       | Some c -> spent_usd := !spent_usd +. c
       | None -> incr unpriced_calls);

@@ -95,6 +95,54 @@ let () =
   let n, _ = attempts_of (fun _ -> raise (C.Retryable "sync")) in
   check "a synchronously raised retryable is retried" (n = 3)
 
+(* ── Reading the response body ───────────────────────────────────────────── *)
+
+(* A body we cannot read is transient, not permanent: the provider answered 200
+   and gave us nothing usable. This must raise `Retryable`, and parse_response
+   must sit INSIDE the retry loop — it did not, and that cost the 2026-08-02
+   fidelity re-run two Kimi batches (20 sentences) after 4.9 had already fixed
+   the narrower empty-body case one layer down. A structured provider error is
+   different in kind and still fails fast. *)
+
+let raises_retryable f = match f () with _ -> false | exception C.Retryable _ -> true
+let raises_fatal f = match f () with _ -> false | exception C.Llm_error _ -> true
+
+let () =
+  let parse s () = C.parse_response s in
+  check "an unreadable body is retryable" (raises_retryable (parse ""));
+  check "a truncated body is retryable" (raises_retryable (parse {|{"choices":|}));
+  check "a non-object body is retryable" (raises_retryable (parse "[]"));
+  check "a body with no choices is retryable" (raises_retryable (parse "{}"));
+  check "an empty choices array is retryable"
+    (raises_retryable (parse {|{"choices":[]}|}));
+  check "a null content is retryable"
+    (raises_retryable (parse {|{"choices":[{"message":{"content":null}}]}|}));
+  (* The provider telling us something definite is not worth three attempts. *)
+  check "a structured provider error fails fast"
+    (raises_fatal (parse {|{"error":{"message":"no such model"}}|}));
+  (* Every message carries the byte count, because the run that exposed this
+     printed an empty payload and left nothing to diagnose from. *)
+  check "failure messages name the body size"
+    (match C.parse_response "{}" with
+    | exception C.Retryable m ->
+        (* "(2 bytes)" for "{}" *)
+        let re = Str.regexp_string "(2 bytes)" in
+        (try ignore (Str.search_forward re m 0); true with Not_found -> false)
+    | _ -> false);
+  let good =
+    {|{"id":"gen-1","choices":[{"message":{"content":"hi"}}],"usage":{"prompt_tokens":3,"completion_tokens":1,"cost":0.5}}|}
+  in
+  (match C.parse_response good with
+  | r, id ->
+      check "a well-formed body parses" (r.content = "hi" && id = "gen-1");
+      check "tokens and cost are read"
+        (r.prompt_tokens = 3 && r.completion_tokens = 1 && r.cost = Some 0.5)
+  | exception e -> check ("a well-formed body parses: " ^ Printexc.to_string e) false);
+  (* A free call is JSON `0`, which yojson types as `Int`. *)
+  (match C.parse_response {|{"choices":[{"message":{"content":"x"}}],"usage":{"cost":0}}|} with
+  | r, _ -> check "a zero cost is counted, not filed as unpriced" (r.cost = Some 0.)
+  | exception _ -> check "a zero cost is counted" false)
+
 (* ── The cost ceiling ────────────────────────────────────────────────────── *)
 
 let () =

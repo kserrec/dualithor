@@ -230,7 +230,23 @@ let run_model model (sentences, declines, arguments) =
       Printf.printf "  batch %d/%d (%d sentences)%!" (i + 1) nbatches (List.length batch);
       let nls = List.map (function `S s -> s.s_nl | `D d -> d.d_nl) batch in
       match call model nls with
-      | None -> print_newline ()
+      (* A failed batch used to tally nothing at all, so its sentences left the
+         numerator and the denominator together and the run reported a healthy
+         percentage over whatever survived — 20 of Kimi's 91 vanished this way
+         on 2026-08-02. Counting them as missing is what makes the loss
+         visible; the summary then refuses to call the run a measurement. *)
+      | None ->
+          print_newline ();
+          List.iter
+            (fun entry ->
+              match entry with
+              | `S s ->
+                  let t = tally_of s.s_split in
+                  t.missing <- t.missing + 1
+              (* a decline is already in declined_total, so an unanswered one
+                 shows up as a lower declined_right without further help *)
+              | `D _ -> ())
+            batch
       | Some r ->
           if r.from_cache then print_string " [cached]";
           print_newline ();
@@ -266,7 +282,9 @@ let run_model model (sentences, declines, arguments) =
       let tally = tally_of a.a_split in
       let nls = List.map fst a.a_lines in
       match call model nls with
-      | None -> print_newline ()
+      | None ->
+          print_newline ();
+          tally.missing <- tally.missing + List.length a.a_lines
       | Some r ->
           if r.from_cache then print_string " [cached]";
           let got =
@@ -380,4 +398,25 @@ let () =
         splits)
     rows;
   print_endline ("\n" ^ Translate.Llm_client.spend_report ());
-  print_endline "per-item results in data/results/fidelity-*.tsv (first column is the split)"
+  print_endline "per-item results in data/results/fidelity-*.tsv (first column is the split)";
+  (* A run that lost sentences is not a measurement, and the percentages above
+     will not say so on their own — every one of them still computes over
+     whatever came back. So the run declares itself incomplete and exits
+     non-zero rather than leaving that to a reader. *)
+  let missing =
+    List.fold_left
+      (fun acc (_, splits) ->
+        acc
+        + List.fold_left
+            (fun a (label, t) -> if label = "all" then a + t.missing else a)
+            0 splits)
+      0 rows
+  in
+  if missing > 0 then (
+    Printf.printf
+      "\n!! INCOMPLETE — %d sentence slot(s) never came back. These numbers are \
+       NOT a measurement:\n\
+      \   every percentage above is computed over what arrived. Re-run (cached \
+       calls are free) before citing anything.\n"
+      missing;
+    exit 1)

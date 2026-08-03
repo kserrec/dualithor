@@ -1297,3 +1297,71 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
     unambiguous, so the fuzz suites can cover `^2` even while `^1` and `^3` stay
     unmodelled for want of a threshold. That is what would have caught this.
   - No code changed. `dune test` untouched and green.
+
+- **5.3(a) done — the numerical layer abstains instead of asserting invalidity.**
+  Kyle's call after the finding was reported. One line in `decide.ml`:
+  `verdict = (if d.n_valid then Valid else Unknown)`.
+  - **What it cost, deliberately.** Three paper cases and one verify case that
+    the literature presents as *invalid* now come back `unknown` (Tables 10 and
+    11, att-3). The layer can certify validity and can no longer deny it. Those
+    tests were **retargeted at the decision record** rather than weakened — the
+    three conditions must still fail for exactly the paper's reasons, so the
+    rule is as tested as it ever was; we have only stopped drawing an unlicensed
+    conclusion from it. The book's verdict now lives in each test's name.
+  - **Correction to the finding as first reported.** I said condition (ii) alone
+    rejected `+S^2+P ; +S^2+Q ⊢ +P+Q`. Conditions (i) and (ii) both fail: the
+    shared subject S appears in each premise and in neither side of the
+    conclusion, so it never cancels. The additive algebra cannot express the
+    inference at all. The witness is now a pinned test.
+  - **The differential normalizes rather than exempts**, which is strictly
+    better: our `Unknown` is mapped back to the reference's `invalid` for the
+    verdict field only, so the **entire decision record** — three conditions,
+    both particular counts, carried and conclusion levels — is still compared
+    byte-for-byte. 62,880 normalizations in the mass run, all with matching
+    records, so the rule is provably unchanged and only the conclusion is weaker.
+  - Gates: `dune test` green, mass differential 884k inputs / 18 gates / **zero
+    disagreements** / 19m36s, 20k oracle six suites / **zero failures** / 37m59s.
+
+- **4.10 done, and the first attempt at its re-run did not count.**
+  - **The prompt change**: relation names must be verb stems even when the
+    English nominalizes them ("the holder of a permit" → `Hold`, never
+    `Holder`), because the renderer puts the relation name where a verb goes and
+    cannot tell a noun from a verb. Readability, not soundness — a term name is
+    opaque to the engine.
+  - **Result: unchanged, and one problem cleared.** Sonnet 99%, GPT 99%, Kimi
+    100%; zero unparseable in 273 attempts, zero missing, 30/30 declines, 24/24
+    argument verdicts, $0.05. GPT's `b08` over-refusal is gone without being
+    targeted; Sonnet lost one item. One item each way is noise at this size and
+    is reported as unchanged. **Neither remaining failure involves a relation
+    name**, so the guideline is untested here — its real test is 4.6.
+  - **Both failures are decomposition choices, not meaning inversions.** `e02`
+    decomposed "person under eighteen" into a compound where the gold kept a
+    quoted term; `e07` did the reverse with "non-resident". Worth carrying into
+    10.2: "more analytic than our gold" is a different failure from "wrong".
+  - **The first attempt reported Kimi 100% (71/71)** — twenty sentences short —
+    with a clean summary and exit 0. Three defects, all fixed:
+    **(1)** 4.9's fix was in the wrong layer. The empty-body check went into
+    `call_once`, inside the retry loop, but `parse_response` still ran *outside*
+    it, so every other unreadable 200 stayed fatal on the first attempt. Now
+    inside the loop.
+    **(2)** A failed batch tallied nothing, not even `missing`. **Third
+    occurrence this session of the same shape — a measurement degrading quietly
+    instead of failing.** It now counts them and a run with any missing slot
+    declares itself not a measurement and exits non-zero.
+    **(3)** Found by the new test rather than in the wild: `index 0` on an empty
+    `choices` array raises `Undefined`, not `Type_error`, so it escaped
+    `parse_response` uncaught and would have killed the process.
+  - **Open, not solved:** what the provider actually returned. The old message
+    discarded the payload; an empty body was ruled out by probing yojson
+    directly. Messages now carry byte count and first 300 bytes.
+
+- **CLI done (`bin/tfl_cli.ml`, pulled ahead from 11.4).** JSON in, JSON out,
+  one object per line; `check`, `parse`, `render`. It never crashes and never
+  exits non-zero on bad input — a line protocol loses **every queued request
+  behind** a crash, not just the one that caused it, so the test interleaves
+  garbage with real work and counts replies (14 checks). The taxonomy class
+  survives to the JSON, which is what makes 4.6's coverage measurable from
+  outside the engine, and both of today's engine changes surface correctly
+  through the boundary. One harness bug worth remembering: `Unix.pipe` is not
+  close-on-exec by default, so the child inherited its own stdin write end and
+  never saw EOF — the test hung until `~cloexec:true`.

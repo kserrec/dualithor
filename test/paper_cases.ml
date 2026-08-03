@@ -42,6 +42,13 @@ let invalid premises conclusion name =
 let not_valid premises conclusion name =
   test name (fun () -> expect_not_valid premises conclusion name)
 
+(* PLAN 5.3: the numerical layer abstains where the rule set cannot derive,
+   because it is provably incomplete and so "not derivable" does not license
+   "not entailed". Distinct from [not_valid], which accepts any non-Valid
+   verdict — this demands the abstention specifically. *)
+let unknown premises conclusion name =
+  test name (fun () -> expect_verdict premises conclusion "unknown" name)
+
 (* ── A. The 15 moods valid without existential import ────────────────────────
    Figures: 1 = M–P, S–M · 2 = P–M, S–M · 3 = M–P, M–S · 4 = P–M, M–S.
    A = −S+P · E = −S−P · I = +S+P · O = +S−P. *)
@@ -202,15 +209,21 @@ let () =
    condition (iii) (port-spec §12). Levels: ^1 many, ^2 most, ^3 few. *)
 
 let () =
-  invalid [ "+H^1+I"; "−g+H" ] "−g+I" "Table 10 — kaa-1 is invalid";
-  invalid [ "−C+F"; "+M^1+C" ] "+M^2+F"
-    "Table 11 — akt-4 is invalid on the level condition";
+  (* PLAN 5.3: the paper presents these as invalid and the engine agrees that
+     no derivation exists — but it no longer *asserts* invalidity, because the
+     rule set is provably incomplete and cannot distinguish "not derivable"
+     from "not entailed". The book's verdict is recorded in the name; ours is
+     the honest weaker one. *)
+  unknown [ "+H^1+I"; "−g+H" ] "−g+I"
+    "Table 10 — kaa-1: no derivation (book says invalid)";
+  unknown [ "−C+F"; "+M^1+C" ] "+M^2+F"
+    "Table 11 — akt-4: fails the level condition (book says invalid)";
   valid [ "+C^3−H"; "−C+E" ] "+E−H" "Table 12 — bao-3 is valid";
   valid [ "−F−C"; "+V^2+C" ] "+V^1−F" "Table 13 — ekg-2 is valid";
   valid [ "−M+P"; "+S^2+M" ] "+S^2+P"
     "att-1: a most-premise on the conclusion's own subject licenses a \
      most-conclusion";
-  invalid [ "−M+P"; "+M^2+S" ] "+S^2+P"
+  unknown [ "−M+P"; "+M^2+S" ] "+S^2+P"
     "att-3: a most-premise on the middle term licenses nothing";
   valid [ "+V^2+C" ] "+V+C" "most descends to some"
 

@@ -111,6 +111,39 @@ let ( ||> ) (a : string option) (b : unit -> string option) =
 
 let expect_json = Shim_client.expect_json shim
 
+(* ── The 5.3 numerical deviation ─────────────────────────────────────────── *)
+
+(* Documented divergences are normalized here, in the harness, never in the
+   engine (see the file header). PLAN 5.3, Kyle's decision 2026-08-02: a failed
+   numerical decision is now `Unknown` where the reference asserts `invalid`,
+   because the rule set is provably incomplete and cannot tell "not derivable"
+   from "not entailed".
+
+   This maps our abstention back to the reference's assertion for comparison
+   purposes only, and touches nothing else: the whole decision record — the
+   three conditions, the carried and conclusion levels, both particular counts —
+   is still compared byte-for-byte, which is what actually checks the rule. The
+   normalization fires only on the exact pair (verdict = unknown, method =
+   numerical); a numerical `Valid`, or an `unknown` from any other method, is
+   compared unchanged. *)
+let numerical_abstentions = ref 0
+
+let normalize_numerical (j : Yojson.Safe.t) =
+  match j with
+  | `Assoc fields -> (
+      match
+        (List.assoc_opt "verdict" fields, List.assoc_opt "method" fields)
+      with
+      | Some (`String "unknown"), Some (`String "numerical") ->
+          incr numerical_abstentions;
+          `Assoc
+            (List.map
+               (fun (k, v) ->
+                 if k = "verdict" then (k, `String "invalid") else (k, v))
+               fields)
+      | _ -> j)
+  | _ -> j
+
 (* ── The 5.0 renderer deviations ─────────────────────────────────────────── *)
 
 (* The JS reference has no authority over English rendering (PLAN, standing
@@ -440,8 +473,8 @@ let diff_args =
       let pj = `List (List.map Ast_json.prop_to_json premises) in
       let cj = Ast_json.prop_to_json conclusion in
       expect_json "checkArgument" [ pj; cj ]
-        (Result_json.result_to_json
-           (Tfl.Decide.check_argument premises conclusion))
+        (normalize_numerical (Result_json.result_to_json
+           (Tfl.Decide.check_argument premises conclusion)))
       ||> fun () ->
       expect_json "checkInconsistent"
         [ `List (List.map Ast_json.prop_to_json (premises @ [ conclusion ])) ]
@@ -490,8 +523,8 @@ let diff_rel_args =
           Ast_json.prop_to_json conclusion;
           `Assoc [ ("maxLines", `Int 60) ];
         ]
-        (Result_json.result_to_json
-           (Tfl.Decide.check_argument ~max_lines:60 premises conclusion)))
+        (normalize_numerical (Result_json.result_to_json
+           (Tfl.Decide.check_argument ~max_lines:60 premises conclusion))))
 
 (* Documented deviation (LOG 2026-08-01): the OCaml comment stripper is
    quote-aware and the frozen reference's is not, so a source with `--` inside
@@ -592,8 +625,8 @@ let diff_numerical =
           `List (List.map Ast_json.prop_to_json premises);
           Ast_json.prop_to_json conclusion;
         ]
-        (Result_json.result_to_json
-           (Tfl.Decide.check_argument premises conclusion)))
+        (normalize_numerical (Result_json.result_to_json
+           (Tfl.Decide.check_argument premises conclusion))))
 
 let diff_render =
   gate "differential: readProp/readTerm strings agree byte-for-byte"
@@ -668,8 +701,8 @@ let compare_check_argument tally (premises, conclusion) : string option =
   let ocaml =
     try
       Ok
-        (Result_json.result_to_json
-           (Tfl.Decide.check_argument ~max_lines:60 premises conclusion))
+        (normalize_numerical (Result_json.result_to_json
+           (Tfl.Decide.check_argument ~max_lines:60 premises conclusion)))
     with Tfl.Infer.Engine_error m -> Error m
   in
   match (ocaml, Shim_client.call shim "checkArgument" args) with
@@ -794,12 +827,13 @@ let () =
      %d readProp + %d readTerm + %d explainProof, against %d + %d + %d \
      compared byte-for-byte\n\
      deviations reached: %d compound-term, %d level-on-relation, %d \
-     comma-boundary\n"
+     comma-boundary\n\
+     numerical abstentions normalized (PLAN 5.3): %d\n"
     arbitrary_tally.decided arbitrary_tally.rejected valid_tally.decided
     valid_tally.rejected !narrated !quote_comment_skips !corpus_prop_skips
     !corpus_term_skips !render_prop_skips !render_term_skips !explain_skips
     !render_compared !render_term_compared !explain_compared !saw_compound_dev
-    !saw_level_dev !saw_comma_dev;
+    !saw_level_dev !saw_comma_dev !numerical_abstentions;
   (* Named, not just counted: six strings is few enough to read, and a pin you
      cannot see the contents of is a number nobody can check. *)
   List.iter
@@ -856,6 +890,9 @@ let () =
         expect_reached "compound-term" !saw_compound_dev;
         expect_reached "level-on-relation" !saw_level_dev;
         expect_reached "comma-boundary" !saw_comma_dev;
+        (* the 5.3 deviation must be exercised too, or the normalization is
+           covering a case the gates never generate *)
+        expect_reached "numerical abstention" !numerical_abstentions;
         floor_ok;
       ]
   in

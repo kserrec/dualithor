@@ -15,17 +15,20 @@ let conditions (r : result) =
 
 let () =
   (* The paper's Tables 10–13 (Castro-Manzano et al. 2018) *)
-  test "Table 10 — kaa-1 is invalid (fails the sum and particular counts)"
-    (fun () ->
+  (* PLAN 5.3: the paper calls these invalid; we now abstain rather than assert
+     it, because the rule set is incomplete and cannot tell "no derivation" from
+     "no entailment". The *decision record* is unchanged and is what these tests
+     check — the conditions must still fail for exactly the paper's reasons. *)
+  test "Table 10 — kaa-1 fails the sum and particular counts" (fun () ->
       let r = arg [ "+H^1+I"; "-g+H" ] "-g+I" in
-      check (r.verdict = Invalid) "verdict";
+      check (r.verdict = Unknown) "abstains, never Invalid (5.3)";
       check (r.meth = Numerical) "method";
       let sum, particular, _ = conditions r in
       check (not sum) "sum fails";
       check (not particular) "particular fails");
-  test "Table 11 — akt-4 is invalid on the LEVEL condition alone" (fun () ->
+  test "Table 11 — akt-4 fails the LEVEL condition alone" (fun () ->
       let r = arg [ "-C+F"; "+M^1+C" ] "+M^2+F" in
-      check (r.verdict = Invalid) "verdict";
+      check (r.verdict = Unknown) "abstains, never Invalid (5.3)";
       check (conditions r = (true, true, false)) "conditions");
   test "Table 12 — bao-3 is valid" (fun () ->
       let r = arg [ "+C^3-H"; "-C+E" ] "+E-H" in
@@ -92,7 +95,7 @@ let () =
     "condition (iii) is term-matched: an intermediate quantity rides its own \
      term" (fun () ->
       let r = arg [ "-B+A"; "+B^2+H" ] "+H^2+A" in
-      check (r.verdict = Invalid) "att-3 shape invalid";
+      check (r.verdict = Unknown) "att-3 shape abstains (5.3)";
       check (conditions r = (true, true, false)) "level fails alone";
       check
         ((arg [ "-B+A"; "+B^2+H" ] "+H+A").verdict = Valid)
@@ -100,5 +103,20 @@ let () =
       check
         ((arg [ "-M+P"; "+S^2+M" ] "+S^2+P").verdict = Valid)
         "att-1 carries");
+
+  (* The 5.3 witness itself: a *valid* inference the rule set cannot derive.
+     Before 5.3 this came back Invalid, which was a wrong verdict. Two strict
+     majorities of one set must intersect — |S∩P| + |S∩Q| > |S| forces
+     |S∩P∩Q| > 0. The additive algebra simply cannot express it: the shared
+     subject S occurs in both premises and in neither side of the conclusion,
+     so it never cancels (condition (i)), and two particular premises stand
+     against one particular conclusion (condition (ii)). Pinned so the
+     abstention cannot quietly become an assertion again. *)
+  test "the overlap inference abstains rather than denying a valid argument"
+    (fun () ->
+      let r = arg [ "+S^2+P"; "+S^2+Q" ] "+P+Q" in
+      check (r.verdict = Unknown) "must not be Invalid — the argument is valid";
+      check (conditions r = (false, false, true))
+        "the sum and the particular count both fail; the level condition is fine");
 
   finish "numerical unit tests"

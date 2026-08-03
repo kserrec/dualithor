@@ -139,6 +139,14 @@ How to translate.
    mirrors the sentence.
 2. Keep the verb of a relation as the relation name, in a short stem form
    (loves -> Lov, admires -> Adm), so the same verb is always the same name.
+   When the English names the relation with a noun instead — "the holder of a
+   permit", "a dependent of a claimant" — use the underlying verb stem anyway
+   (Hold, Depend), never the noun (Holder, Dependent). The formula gets read
+   back to a person as English, and that reading puts the relation name where a
+   verb goes: `+Applicant-(Hold+Permit)` reads "some applicant does not hold
+   some permit", where `Holder` would read "does not holder some permit". If
+   the relation genuinely has no verb form, keep the noun — an awkward reading
+   is better than a name that does not match the sentence.
 3. Use one proposition per sentence. If a sentence needs two, it does not
    belong in the notation — decline it.
 4. Never invent structure the sentence does not have, and never drop structure
