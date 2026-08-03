@@ -28,3 +28,12 @@
  (name sample_defs)
  (modules sample_defs)
  (libraries bench))
+
+; Regenerates every number in docs/coverage-report-2026-08-02.md from the
+; committed labels. Committed labels with no committed derivation is a quiet
+; trap: edit one label and the report goes stale silently.
+
+(executable
+ (name coverage_stats)
+ (modules coverage_stats)
+ (libraries yojson))

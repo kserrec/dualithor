@@ -6,6 +6,11 @@ Three samples drawn mechanically from the eCFR under protocols pre-registered
 before any sentence was fetched or read. All raw material, labels and criteria
 are committed under `data/fidelity/real/`.
 
+**Every number below regenerates from the committed labels**:
+`opam exec -- dune exec bench/coverage_stats.exe`. Committed labels with no
+committed derivation is a quiet trap — edit one label and the tables go stale
+with nothing to say so.
+
 ## Headline
 
 | Genre | n | Strict coverage | Ambient-deontic | Pre-registered prediction |
