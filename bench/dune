@@ -1,6 +1,6 @@
 (library
  (name bench)
- (modules score)
+ (modules score cfr)
  (libraries tfl tfl_verify))
 
 ; The 4.5b fidelity run: sends the gold set through every model and grades it.
@@ -18,4 +18,13 @@
 
 (executable
  (name sample_real)
- (modules sample_real))
+ (modules sample_real)
+ (libraries bench))
+
+; The 4.6 definitional sample (PROTOCOL-2): same pipeline, genre selected at the
+; section level. Deterministic, no network.
+
+(executable
+ (name sample_defs)
+ (modules sample_defs)
+ (libraries bench))
