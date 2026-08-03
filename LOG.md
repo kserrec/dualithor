@@ -1251,3 +1251,49 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
     the JS renderer exactly" and are a byte-exact contract. False after three
     deliberate deviations, and it would have told the next reader the reference
     still governs English here.
+
+- **5.3 first pass — the numerical layer asserts a wrong verdict. Reported, not
+  fixed; the change is verdict semantics and that is Kyle's call.**
+  - **The defect.** `check_argument` routes any nonzero level to
+    `numerical_decision` and then does `verdict = (if d.n_valid then Valid else
+    Invalid)`. There is **no `Unknown` branch on the numerical path**, so every
+    inference the three additive conditions cannot derive is positively asserted
+    invalid. Pratt-Hartmann 2009/2013 prove no finite syllogistic rule set is
+    complete here, so those inferences must exist — and the incompleteness
+    surfaces as a **false `Invalid`**, not as an abstention. The rest of the
+    engine respects that boundary; `Unknown ≠ Invalid` is documented in the 3.1
+    interface for exactly this reason.
+  - **Witness, run against the engine:** `+S^2+P ; +S^2+Q ⊢ +P+Q` — "most S are
+    P", "most S are Q", therefore "some P is Q" — comes back **`Invalid`**,
+    method `numerical`. Valid on our own stated reading of `^2` (most): two
+    strict majorities of one set must intersect, |S∩P| + |S∩Q| > |S| so
+    |S∩P∩Q| > 0. Empty domain is safe rather than an existential-import trap:
+    if |S| = 0 the premise is false and the argument is vacuously valid.
+    Condition (ii) is what kills it — two particular premises against one
+    particular conclusion, which is precisely the shape an additive rule set
+    cannot see.
+  - **No false `Valid` found.** Monotone shapes and the genuinely invalid
+    controls (most does not convert, most is not transitive, two "many" sets need
+    not meet) all came back correct. The gap looks confined to the `Invalid`
+    direction — still a wrong verdict by this project's bar.
+  - **Why nothing caught it, which is the more useful finding.** The semantic
+    oracle **does not model quantity levels at all** — `test/semantics.ml` says
+    so in as many words, and `test_oracle.ml` never mentions a level — so the six
+    fuzz suites give this layer zero coverage. And the differential gate cannot
+    help *by construction*: the frozen JS reference implements the same rule, so
+    both engines agree on the wrong answer. **Two independent implementations
+    agreeing on 884,000 inputs is strong evidence about the port and no evidence
+    whatsoever about a rule they share.** Worth remembering the next time the
+    884k number is quoted as general assurance. The only thing that has ever
+    checked this layer against meaning is five hand-verified paper cases.
+  - **Options put to Kyle:** (a) return `Unknown` instead of `Invalid` on
+    numerical non-derivability — safe, honest, costs the layer its ability to
+    assert invalidity; (b) decide it algorithmically, since `Sat(Syl+Num)` is
+    only NP-complete and integer reasoning gives real verdicts instead of rules
+    that provably cannot be complete; (c) document and leave, which the
+    correctness bar rules out. Recommended (a) now, (b) only if 4.6 shows
+    most/many/few actually occur in real regulatory text.
+  - **Owed either way and cheap:** a semantics for level 2. Strict majority is
+    unambiguous, so the fuzz suites can cover `^2` even while `^1` and `^3` stay
+    unmodelled for want of a threshold. That is what would have caught this.
+  - No code changed. `dune test` untouched and green.

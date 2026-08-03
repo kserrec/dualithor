@@ -368,6 +368,27 @@ Pratt-Hartmann 2008 demonstrates the incompleteness of previously published proo
 **Kept 2026-08-02** on the correctness bar alone: this is possible unsoundness in code that already ships, independent of anything it used to gate (6.3 is now cut, so this no longer blocks anything — it stands on its own).
 Accept: `numerical_decision` checked against Pratt-Hartmann's results; either confirmed sound on our fragment or the gap is characterised and reported to Kyle before any change.
 
+**5.3 first pass — 2026-08-02. Gap found and characterised; NOTHING CHANGED, awaiting Kyle's decision, because the fix is a verdict-semantics change.**
+
+**The defect: the numerical path returns a wrong verdict, not a missing one.** `decide.ml` routes any nonzero level to `numerical_decision` and then does `verdict = (if d.n_valid then Valid else Invalid)` — **it never returns `Unknown`.** So every inference the three additive conditions cannot derive is positively asserted to be invalid. Pratt-Hartmann 2009/2013 prove no finite syllogistic rule set is complete for the numerically definite syllogistic, so such inferences are guaranteed to exist; here the incompleteness surfaces as a **false `Invalid`** rather than as a safe abstention. Everywhere else in the engine that boundary is respected — `Unknown ≠ Invalid` is documented in the 3.1 interface precisely because derivation search is incomplete.
+
+**Witness, verified against the engine:**
+
+> `+S^2+P` ("most S are P") and `+S^2+Q` ("most S are Q") ⊢ `+P+Q` ("some P is Q") — **engine says `Invalid`, method `numerical`.**
+
+It is valid on the repo's own stated reading of level 2 (`^2` = most; port-spec §5, `paper_cases.ml` §G). Two strict majorities of the same set must intersect: |S∩P| + |S∩Q| > |S| gives |S∩P∩Q| > 0 by inclusion–exclusion. The empty-domain case is safe rather than an existential-import trap — if |S| = 0 then `+S^2+P` is false and the argument is vacuously valid. Condition (ii) is what rejects it: two particular premises against one particular conclusion, and the overlap inference is exactly the shape an additive rule set cannot see.
+
+**No false `Valid` found.** Probes over the monotone shapes (universal-with-most, most-with-negative-predicate, most-descends-to-some) and the genuinely invalid controls (most does not convert; most is not transitive; two "many" sets need not meet) all came back correct. The evidence so far says Valid verdicts are sound and the whole gap is in the `Invalid` direction — which is still a wrong verdict by this project's bar.
+
+**Why nothing caught it, and this is the more important half.** (a) **The semantic oracle does not model levels at all** — `test/semantics.ml`: *"Quantity levels (TFL⁺) are ignored, exactly as the JS oracle ignores them — the intermediate quantifiers have no semantics here"*, and `test_oracle.ml` never mentions a level. So the six fuzz suites give the numerical layer **zero** coverage. (b) **The differential gate cannot help by construction**: the frozen JS reference implements the *same* rule, so both engines agree on the wrong answer. Two independent implementations agreeing on 884k inputs is strong evidence about the *port* and no evidence at all about a rule they share. The only thing that ever checked this layer against meaning is five hand-verified paper cases.
+
+**The options, for Kyle.**
+- **(a) Cheap and safe:** numerical non-derivability returns `Unknown` instead of `Invalid`. Honest, matches the rest of the engine, and costs the layer its ability to assert invalidity at all — it would certify Valid only. A verdict-semantics change, so it needs an explicit decision and the full gate.
+- **(b) The principled route this step already names:** decide it algorithmically. `Sat(Syl+Num)` is only NP-complete, so integer/Presburger reasoning gives real Valid *and* Invalid instead of searching for rules that provably do not exist. A real build.
+- **(c) Document and leave it.** Not acceptable under the correctness bar as written.
+**Recommendation: (a) now, (b) only if the numerical fragment turns out to matter to the paper** — 4.6 will show whether "most/many/few" appear in real regulatory text at all.
+**Owed either way, and cheap: a semantics for level 2.** Strict majority is unambiguous, so the fuzz suites can cover `^2` even if `^1` and `^3` stay unmodelled for want of a threshold. That is the first thing that would have caught this.
+
 ---
 
 ## Phase 6 — TFL-native capabilities (the "impact *with* TFL" phase)
