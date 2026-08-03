@@ -126,7 +126,7 @@ accuracy metric is where this lands.
 | 1.2 | +10–20 pts on bias-incongruent slice | *not yet measured* |
 | 1.3 | Auditability wins; parse rate may not | *not yet measured* |
 | 1.4 | Router: good recall, diluted precision | *not yet measured* |
-| 1.5 | FOLIO coverage 20–40% | *not yet measured* |
+| 1.5 | FOLIO coverage 20–40% | *not run* — Phase 8 trimmed 2026-08-02; recorded, never deleted |
 | 1.6 | Selective accuracy ≥98% | *not yet measured* |
 
 ---
@@ -218,7 +218,7 @@ move coverage and leave accuracy flat.
 
 | # | Prediction | Outcome |
 |---|---|---|
-| 1B.1 | Real-text coverage 25–45% | *not yet measured* |
+| 1B.1 | Real-text coverage 25–45% | **WRONG — measured 5% strict / 12% ambient-deontic on 60 mechanically sampled sentences (2026-08-02). Multi-clause did dominate as predicted; deontic modality (48%) was not predicted at all and is second. See `docs/coverage-report-2026-08-02.md`.** |
 | 1B.2 | Real-text fidelity 80–92% | *not yet measured* |
 | 1B.3 | Back-check catches c02/c06; FP rate 5–20% | *not yet measured* |
 | 1B.4 | TFL and FOL within 5 pts; TFL wins only on auditability | *not yet measured* |

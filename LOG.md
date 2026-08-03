@@ -1365,3 +1365,52 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   through the boundary. One harness bug worth remembering: `Unix.pipe` is not
   close-on-exec by default, so the child inherited its own stdin write end and
   never saw EOF — the test hung until `~cloexec:true`.
+
+- **4.6 done — real-text coverage is 5%, and it reorders the project.**
+  Full result in `docs/coverage-report-2026-08-02.md`; scope consequences in
+  PLAN's second 2026-08-02 amendment. Three samples, three pre-registered
+  protocols, **three wrong predictions, all recorded wrong.**
+  - **Normative regulation 5%** (3/60 strict, 7/60 ambient-deontic) against a
+    predicted 25–45%. **Definitions sections 25%** (5/20) and **standards of
+    identity 3%** (1/30), both predicted 35–60%.
+  - **46 of 60 normative sentences are blocked more than once**, which is the
+    finding that matters. Blockers: multi-clause 65%, deontic 48%,
+    cross-reference 35%, tense 27%, arithmetic 25%, not-a-proposition 18%,
+    defeasible 7%.
+  - **Sentence splitting — the cheap lever this plan pre-authorised — buys three
+    points**, 5% to 8%. It is aimed at the most common blocker and is still
+    nearly worthless, because the sentences it fixes are usually deontic too.
+    That is the practical lesson of labelling every blocker instead of one.
+  - **Defeasibility is the rarest blocker.** The field treats exceptions as the
+    hard problem of legal formalization; here they block 7% of normative
+    sentences and 0% of standards of identity, while arithmetic and
+    cross-reference block three to five times as much. Phase 7's deferral was
+    right for the wrong reason.
+  - **"Definitional" was the wrong genre cut.** Definitions sections reach 5x the
+    normative baseline with the corpus held constant — genre does matter — but
+    standards of identity are definitions too and came back *worse than
+    obligations*, because they define numerically ("Cream contains not less than
+    18 percent milkfat"; arithmetic blocks 47% of them, the highest single
+    blocker measured anywhere in this project). What the six tractable sentences
+    share is that all are **naming or class-inclusion** statements: the fragment
+    fits taxonomy, not description, quantification or obligation.
+  - **Taxonomy is not the new product**, and I proposed it before thinking it
+    through. Description logic is purpose-built for subsumption, standardised and
+    tooled, and does 294k SNOMED concepts in six seconds. 6.2 stays a tool
+    feature with no paper claim.
+  - **The correction that actually matters to how the project is run:** I had
+    been treating coverage as load-bearing for the whole project. It is
+    load-bearing for exactly one framing — point it at a regulation and verify
+    decisions — which is now dead. **Phase 9 and 6.1 never depended on it**, and
+    both survive untouched.
+  - **Method notes worth keeping.** No upper length bound on candidates, on
+    purpose: dropping long sentences would have deleted the evidence for the
+    dominant blocker and inflated coverage by exactly the amount that matters.
+    Genre selected at the section level, never by sentence. Raw XML parsed from
+    primary source, never through a summariser. 7 CFR 273 contributed nothing to
+    the definitions sample because it has no section headed "Definitions" —
+    recorded rather than repaired, because adding a source after seeing a zero is
+    the adjustment a pre-registered protocol exists to prevent.
+  - `bench/cfr.ml` holds the shared extraction so the samples cannot drift apart
+    through a reimplementation; `sample_real` regenerates byte-identical after
+    the refactor.

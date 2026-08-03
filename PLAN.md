@@ -74,6 +74,90 @@ trim: policybench alone still yields the (coverage, accuracy-given-coverage) pai
 
 ---
 
+## Scope amendment 2 — 2026-08-02 (evening), after the coverage measurement
+
+**The measurement that reorders everything: real-text coverage is 5%.**
+`docs/coverage-report-2026-08-02.md` has the full result; the short version is
+normative regulation **5%** (3/60), definitions sections **25%** (5/20), standards
+of identity **3%** (1/30), against pre-registered predictions of 25–60%. All
+three predictions wrong, all three recorded wrong.
+
+**What this kills.**
+
+- **"Point this at a regulation and verify eligibility decisions."** Decisions
+  live in normative text and normative text is 5%. This PLAN said, before the
+  number existed, that a tool refusing 80% of real sentences is a demonstration
+  rather than a system. The real figure is 88–95%.
+- **The sentence-splitting conditional build**, pre-authorised in the Phase 7
+  block if multi-clause structure dominated the refusals. It does dominate — 65%
+  — and splitting alone still moves coverage from 5% to **8%**, because the
+  sentences it would fix are usually deontic as well. A lever aimed at the most
+  common blocker is worth almost nothing when blockers co-occur. **Do not build
+  it.**
+- **Coverage-chasing in general.** The ceiling with three levers is 38%, and two
+  of those "levers" are conventions that cost claim strength rather than
+  engineering time. Not worth the trade.
+- **Phase 7's original motivation.** Defeasibility is the *rarest* blocker
+  measured — 7% of normative sentences, 0% of standards of identity. The
+  deferral was right; the reason recorded for it was wrong. What the deontic half
+  of that phase would address is real (48%), but see below: we are not chasing
+  coverage.
+
+**What it does not touch, and this is the point.** Both real contributions are
+coverage-independent, and I had been treating coverage as load-bearing for the
+whole project when it is load-bearing for exactly one framing:
+
+- **Phase 9, the auditability study.** Needs ~30 items; 91 engine-verified
+  authored ones already exist. Three published groups name the gap and one
+  designed the experiment and could not run it. Unaffected by 4.6.
+- **6.1, closed-form missing premise.** Works on whatever parses. Still
+  unclaimed in the literature. Still answers "why was I *not* found eligible",
+  which OWL justifications structurally cannot.
+
+**Taxonomy is NOT the new product.** The six tractable sentences are all naming
+or class-inclusion statements, so the fragment fits the *taxonomic* layer of a
+regulation. Pointing the build there would walk straight into description logic —
+purpose-built for subsumption, standardised, tooled, and fast enough to do
+294,000 SNOMED concepts in six seconds. It is the most occupied ground we could
+choose. **6.2 stays what it was: a tool feature, no paper claim.**
+
+**What the paper becomes.** Three parts, in this order:
+
+1. **The coverage reality**, pre-registered, with the blocker distribution — the
+   measurement this field skips. The reusable artifact is not the 5%; it is the
+   per-blocker table, most of which generalises to any formalization target
+   (deontic 48%, cross-reference 35%, tense 27%, arithmetic 25%). Includes the
+   finding that **defeasibility is the rarest blocker**, against the field's
+   assumption that exceptions are the hard problem.
+2. **What a variable-free logic uniquely offers on the fragment it does reach**:
+   a deterministic verbalizer audited by actual humans against the original
+   source sentence (Phase 9), and closed-form enthymeme completion (6.1).
+3. **Why surface-closeness does not buy coverage.** What blocks formalization is
+   missing expressive primitives, not syntactic distance from English. A logic
+   that looks like English fails on the same sentences as one that does not.
+   This is a correction to a motivation much of the subfield leans on, ours
+   included.
+
+**The risk to state rather than hide:** a reviewer can read this as "the system
+does not work". The defence is that (1) is a contribution in its own right and
+(2) is genuine novelty on a narrow, honestly-stated fragment — and that defence
+is only credible because the protocols were pre-registered. **The pre-registration
+discipline is now the most valuable thing in the repo.**
+
+**Execution order from here.**
+
+> **6.1 missing premise** → **Phase 9 pilot** (design, pre-register, run) →
+> Phase 8 trimmed further (policybench only, as the in-fragment set) →
+> Phase 10 analysis → Phase 11 write-up.
+
+Dropped from the near term: 4.6's fidelity arm (three in-fragment sentences
+would measure nothing), 4.7's FOL accuracy number (the comparative claim now
+lives entirely in Phase 9's control arm), 5.1's router evaluation as a headline
+(the answer key exists and is committed, but the router's value was gated on
+coverage that is not there).
+
+---
+
 *Prior art to cite (read abstracts in Phase 2):* Logic-LM (Pan et al. 2023), LINC (Olausson et al. 2023), natural logic / NatLog (MacCartney & Manning), NaturalLI (Angeli & Manning), Sommers & Englebretsen's TFL, Castro-Manzano's TFL programming/Aristotelian databases work.
 
 *Translator models under test (via OpenRouter unless noted):* a current Claude model, GPT-5.6, Kimi (current K-series). Look up current OpenRouter model slugs at runtime — do not hardcode from memory.
