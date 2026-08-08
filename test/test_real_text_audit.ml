@@ -12,7 +12,8 @@ open Harness
 let normative_path = "../data/fidelity/real/labels.jsonl"
 let definitions_path = "../data/fidelity/real/labels-defs.jsonl"
 let audit_path = "../data/fidelity/real/audit-pass-1.jsonl"
-let packet_path = "../data/fidelity/real/SECOND-ANNOTATOR-PACKET.md"
+let markdown_packet_path = "../data/fidelity/real/SECOND-ANNOTATOR-PACKET.md"
+let html_packet_path = "../data/fidelity/real/INDEPENDENT-ANNOTATION.html"
 
 let read_jsonl path =
   let ic = open_in path in
@@ -40,6 +41,24 @@ let contains haystack needle =
   in
   nn = 0 || go 0
 
+let count_occurrences haystack needle =
+  let hn = String.length haystack and nn = String.length needle in
+  let rec go i count =
+    if nn = 0 || i + nn > hn then count
+    else if String.sub haystack i nn = needle then go (i + nn) (count + 1)
+    else go (i + 1) count
+  in
+  go 0 0
+
+let find_substring_from haystack needle start =
+  let hn = String.length haystack and nn = String.length needle in
+  let rec go i =
+    if i + nn > hn then None
+    else if String.sub haystack i nn = needle then Some i
+    else go (i + 1)
+  in
+  if nn = 0 then Some start else go start
+
 let mem name j = Yojson.Safe.Util.member name j
 let str name j = Yojson.Safe.Util.to_string (mem name j)
 let id j = str "id" j
@@ -57,6 +76,19 @@ let original_accepted =
   List.filter (fun j -> str "label" j = "in") original_rows
 
 let audit_rows = read_jsonl audit_path
+
+let packet_mapping =
+  [
+    ("S01", "d17");
+    ("S02", "r25");
+    ("S03", "d47");
+    ("S04", "d01");
+    ("S05", "r54");
+    ("S06", "d05");
+    ("S07", "r41");
+    ("S08", "d03");
+    ("S09", "d11");
+  ]
 
 let find id_wanted rows =
   match List.find_opt (fun j -> id j = id_wanted) rows with
@@ -161,17 +193,102 @@ let () =
         (mem "formula" r41 = mem "formula" d11)
         "r41 and d11 must carry the same formula");
 
-  test "the independent-human packet contains no first-pass formula" (fun () ->
-      let packet = read_file packet_path in
+  test "the independent-human packets contain no first-pass formula" (fun () ->
+      let packets =
+        [ read_file markdown_packet_path; read_file html_packet_path ]
+      in
       List.iter
         (fun a ->
           match mem "formula" a with
           | `String formula ->
-              check
-                (not (contains packet formula))
-                (id a ^ ": first-pass formula leaked into the blinded packet")
+              List.iter
+                (fun packet ->
+                  check
+                    (not (contains packet formula))
+                    (id a ^ ": first-pass formula leaked into a blinded packet"))
+                packets
           | _ -> ())
         audit_rows);
+
+  test "the HTML form contains exactly the nine blinded source rows" (fun () ->
+      let html = read_file html_packet_path in
+      List.iter
+        (fun row ->
+          let sentence = str "nl" row in
+          let expected =
+            List.length
+              (List.filter
+                 (fun candidate -> str "nl" candidate = sentence)
+                 audit_rows)
+          in
+          check
+            (count_occurrences html sentence = expected)
+            (Printf.sprintf "HTML multiplicity for %s is not %d" (id row)
+               expected))
+        (unique_by_text audit_rows);
+      List.iteri
+        (fun index (code, source_id) ->
+          let row = find source_id audit_rows in
+          let code_marker = Printf.sprintf "\"code\": \"%s\"" code in
+          check
+            (count_occurrences html code_marker = 1)
+            (code ^ ": expected exactly one HTML item record");
+          let code_pos = Option.get (find_substring_from html code_marker 0) in
+          let next_pos =
+            match List.nth_opt packet_mapping (index + 1) with
+            | None -> String.length html
+            | Some (next_code, _) ->
+                Option.get
+                  (find_substring_from html
+                     (Printf.sprintf "\"code\": \"%s\"" next_code)
+                     (code_pos + String.length code_marker))
+          in
+          let source_marker =
+            Printf.sprintf "\"source\": %s"
+              (Yojson.Safe.to_string (`String (str "source" row)))
+          in
+          let sentence_marker =
+            Printf.sprintf "\"sentence\": %s"
+              (Yojson.Safe.to_string (`String (str "nl" row)))
+          in
+          let source_pos = find_substring_from html source_marker code_pos
+          and sentence_pos =
+            find_substring_from html sentence_marker code_pos
+          in
+          check
+            (match (source_pos, sentence_pos) with
+            | Some source_at, Some sentence_at ->
+                source_at < sentence_at && sentence_at < next_pos
+            | _ -> false)
+            (Printf.sprintf "%s is not mapped to source record %s" code
+               source_id))
+        packet_mapping);
+
+  test "the HTML form is offline and exports the review schema" (fun () ->
+      let html = read_file html_packet_path in
+      let lower = String.lowercase_ascii html in
+      List.iter
+        (fun forbidden ->
+          check
+            (not (contains lower forbidden))
+            ("participant HTML must not contain " ^ forbidden))
+        [
+          "http://";
+          "https://";
+          "<script src";
+          "<link ";
+          "localstorage";
+          "sessionstorage";
+          "fetch(";
+          "xmlhttprequest";
+          "websocket";
+        ];
+      check
+        (contains html "tfl-verify-independent-annotation")
+        "HTML export schema marker is missing";
+      check
+        (contains html "tfl-independent-annotation-complete.json")
+        "HTML completed-answer filename is missing");
 
   test "first-pass raw and de-duplicated sensitivity counts regenerate"
     (fun () ->

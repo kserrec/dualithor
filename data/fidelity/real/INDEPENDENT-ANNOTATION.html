@@ -1,0 +1,1236 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Independent regulatory-sentence annotation</title>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #586174;
+      --paper: #ffffff;
+      --wash: #f4f6fb;
+      --line: #d8deea;
+      --accent: #3659b8;
+      --accent-dark: #29458f;
+      --accent-wash: #edf2ff;
+      --good: #24724f;
+      --good-wash: #eaf7f0;
+      --danger: #a22e3d;
+      --danger-wash: #fff0f2;
+      --shadow: 0 12px 32px rgba(31, 42, 68, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--wash);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    button,
+    .file-button {
+      min-height: 44px;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible,
+    summary:focus-visible,
+    .file-button:focus-within {
+      outline: 3px solid rgba(54, 89, 184, 0.28);
+      outline-offset: 2px;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    .skip-link {
+      position: absolute;
+      left: -9999px;
+      top: 0;
+      z-index: 20;
+      padding: 0.75rem 1rem;
+      color: white;
+      background: var(--accent-dark);
+    }
+
+    .skip-link:focus {
+      left: 1rem;
+      top: 1rem;
+    }
+
+    .hero {
+      color: white;
+      background: linear-gradient(135deg, #263d7d 0%, #3659b8 62%, #4f72cc 100%);
+      padding: 3rem 1.25rem 4.5rem;
+    }
+
+    .hero-inner,
+    main,
+    footer {
+      width: min(920px, calc(100% - 2rem));
+      margin-inline: auto;
+    }
+
+    .eyebrow {
+      margin: 0 0 0.6rem;
+      font-size: 0.82rem;
+      font-weight: 750;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.86;
+    }
+
+    h1 {
+      max-width: 760px;
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 3.25rem);
+      line-height: 1.08;
+      letter-spacing: -0.035em;
+    }
+
+    .hero-summary {
+      max-width: 720px;
+      margin: 1rem 0 0;
+      color: #e9eeff;
+      font-size: 1.08rem;
+    }
+
+    .facts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin-top: 1.35rem;
+    }
+
+    .fact {
+      padding: 0.35rem 0.7rem;
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      font-size: 0.9rem;
+    }
+
+    main {
+      margin-top: -2.25rem;
+      padding-bottom: 4rem;
+    }
+
+    .panel,
+    .item-card,
+    .toolbar {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+
+    .panel {
+      margin-bottom: 1rem;
+      padding: clamp(1.2rem, 4vw, 2rem);
+    }
+
+    .panel h2,
+    .toolbar h2 {
+      margin: 0 0 0.65rem;
+      font-size: 1.3rem;
+      letter-spacing: -0.015em;
+    }
+
+    .panel p:first-of-type {
+      margin-top: 0;
+    }
+
+    .panel p:last-child {
+      margin-bottom: 0;
+    }
+
+    .notice {
+      margin-top: 1rem;
+      padding: 0.9rem 1rem;
+      border-left: 4px solid var(--accent);
+      border-radius: 8px;
+      background: var(--accent-wash);
+    }
+
+    details.panel {
+      padding: 0;
+    }
+
+    details.panel > summary {
+      padding: 1.2rem 1.4rem;
+      cursor: pointer;
+      font-weight: 750;
+    }
+
+    details.panel[open] > summary {
+      border-bottom: 1px solid var(--line);
+    }
+
+    .details-body {
+      padding: 1.2rem 1.4rem 1.5rem;
+    }
+
+    .details-body ul {
+      padding-left: 1.25rem;
+    }
+
+    .details-body li + li {
+      margin-top: 0.45rem;
+    }
+
+    .notation-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.65rem;
+      margin: 1rem 0;
+    }
+
+    .notation-grid code,
+    .example {
+      display: block;
+      padding: 0.7rem 0.8rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8f9fc;
+      color: #26345d;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.92rem;
+      white-space: normal;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0.75rem;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto;
+      gap: 1rem;
+      align-items: center;
+      margin: 1rem 0;
+      padding: 1rem 1.15rem;
+    }
+
+    .progress-copy {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 0.4rem;
+      font-size: 0.92rem;
+      font-weight: 700;
+    }
+
+    progress {
+      display: block;
+      width: 100%;
+      height: 0.65rem;
+      overflow: hidden;
+      border: 0;
+      border-radius: 999px;
+      background: #e6eaf2;
+    }
+
+    progress::-webkit-progress-bar {
+      background: #e6eaf2;
+    }
+
+    progress::-webkit-progress-value {
+      background: var(--good);
+    }
+
+    progress::-moz-progress-bar {
+      background: var(--good);
+    }
+
+    .toolbar-actions,
+    .final-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+
+    button,
+    .file-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.65rem 0.95rem;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      cursor: pointer;
+      font-weight: 750;
+      text-decoration: none;
+    }
+
+    button.primary {
+      color: white;
+      background: var(--accent);
+    }
+
+    button.primary:hover {
+      background: var(--accent-dark);
+    }
+
+    button.secondary,
+    .file-button {
+      color: var(--accent-dark);
+      border-color: #bfc9e3;
+      background: white;
+    }
+
+    button.secondary:hover,
+    .file-button:hover {
+      background: var(--accent-wash);
+    }
+
+    button.danger-quiet {
+      color: var(--danger);
+      border-color: transparent;
+      background: transparent;
+    }
+
+    button.danger-quiet:hover {
+      background: var(--danger-wash);
+    }
+
+    .file-button input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+    }
+
+    .status {
+      grid-column: 1 / -1;
+      min-height: 1.4rem;
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .status.success {
+      color: var(--good);
+      font-weight: 700;
+    }
+
+    .status.error {
+      color: var(--danger);
+      font-weight: 700;
+    }
+
+    .item-card {
+      margin-bottom: 1rem;
+      padding: clamp(1.2rem, 4vw, 1.8rem);
+      scroll-margin-top: 8.5rem;
+    }
+
+    .item-card.complete {
+      border-color: #a8d4bd;
+      box-shadow: 0 10px 28px rgba(36, 114, 79, 0.07);
+    }
+
+    .item-card.has-error {
+      border-color: #e0a6ae;
+      box-shadow: 0 10px 28px rgba(162, 46, 61, 0.08);
+    }
+
+    .item-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .item-heading h2 {
+      margin: 0;
+      font-size: 1.15rem;
+    }
+
+    .source {
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 650;
+    }
+
+    .sentence {
+      margin: 0 0 1.25rem;
+      padding: 1rem;
+      border-radius: 10px;
+      background: #f8f9fc;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.08rem;
+      line-height: 1.55;
+    }
+
+    fieldset {
+      min-width: 0;
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+
+    legend,
+    .field-label {
+      display: block;
+      margin-bottom: 0.45rem;
+      font-weight: 750;
+    }
+
+    .choice-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+
+    .choice {
+      display: flex;
+      gap: 0.7rem;
+      align-items: flex-start;
+      padding: 0.85rem;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .choice:hover {
+      border-color: #aab8db;
+      background: var(--accent-wash);
+    }
+
+    .choice input {
+      width: 1.15rem;
+      height: 1.15rem;
+      margin-top: 0.15rem;
+      accent-color: var(--accent);
+      flex: 0 0 auto;
+    }
+
+    .choice strong,
+    .choice small {
+      display: block;
+    }
+
+    .choice small {
+      margin-top: 0.15rem;
+      color: var(--muted);
+    }
+
+    .conditional,
+    .rationale-field {
+      margin-top: 1rem;
+    }
+
+    input[type="text"],
+    textarea {
+      width: 100%;
+      padding: 0.75rem 0.8rem;
+      color: var(--ink);
+      border: 1px solid #aeb7c8;
+      border-radius: 8px;
+      background: white;
+    }
+
+    input[type="text"]:focus,
+    textarea:focus {
+      border-color: var(--accent);
+    }
+
+    .formula-input {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    textarea {
+      min-height: 6.5rem;
+      resize: vertical;
+    }
+
+    .field-help {
+      margin: 0.35rem 0 0;
+      color: var(--muted);
+      font-size: 0.87rem;
+    }
+
+    .blocker-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.45rem 0.8rem;
+    }
+
+    .blocker {
+      display: flex;
+      gap: 0.55rem;
+      align-items: flex-start;
+      padding: 0.55rem 0.65rem;
+      border-radius: 7px;
+      background: #f8f9fc;
+      font-size: 0.9rem;
+    }
+
+    .blocker input {
+      margin-top: 0.18rem;
+      accent-color: var(--accent);
+    }
+
+    .other-blocker {
+      margin-top: 0.65rem;
+    }
+
+    .item-error {
+      min-height: 1.3rem;
+      margin: 0.8rem 0 0;
+      color: var(--danger);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .confirmation label {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      padding: 1rem;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      cursor: pointer;
+      background: #f8f9fc;
+    }
+
+    .confirmation input {
+      width: 1.2rem;
+      height: 1.2rem;
+      margin-top: 0.15rem;
+      accent-color: var(--accent);
+      flex: 0 0 auto;
+    }
+
+    .confirmation-error {
+      min-height: 1.3rem;
+      margin: 0.55rem 0 0;
+      color: var(--danger);
+      font-weight: 700;
+    }
+
+    .final-actions {
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 0.5rem;
+    }
+
+    .final-actions .primary {
+      padding-inline: 1.3rem;
+    }
+
+    footer {
+      padding: 0 0 2.5rem;
+      color: var(--muted);
+      font-size: 0.86rem;
+      text-align: center;
+    }
+
+    @media (max-width: 720px) {
+      .hero {
+        padding-top: 2.2rem;
+      }
+
+      .toolbar {
+        position: static;
+        grid-template-columns: 1fr;
+      }
+
+      .notation-grid,
+      .choice-row,
+      .blocker-list {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar-actions,
+      .final-actions {
+        width: 100%;
+      }
+
+      .toolbar-actions > *,
+      .final-actions > * {
+        flex: 1 1 100%;
+      }
+
+      .item-heading {
+        display: block;
+      }
+
+      .source {
+        display: block;
+        margin-top: 0.2rem;
+      }
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+
+      .hero {
+        color: var(--ink);
+        background: white;
+        padding: 1rem 0;
+      }
+
+      .hero-summary {
+        color: var(--ink);
+      }
+
+      .facts,
+      .toolbar,
+      .final-actions,
+      footer {
+        display: none;
+      }
+
+      main {
+        margin-top: 0;
+      }
+
+      .panel,
+      .item-card {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to the annotation</a>
+
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">Independent research annotation</p>
+      <h1>Can each sentence fit one logic proposition without losing meaning?</h1>
+      <p class="hero-summary">
+        You will read a short guide, independently judge nine regulatory sentences, and
+        download one answer file to return. This is not a test of you—disagreements are
+        useful research data.
+      </p>
+      <div class="facts" aria-label="Task facts">
+        <span class="fact">9 sentences</span>
+        <span class="fact">About 30–45 minutes</span>
+        <span class="fact">Works entirely offline</span>
+        <span class="fact">No personal information</span>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="panel" aria-labelledby="before-title">
+      <h2 id="before-title">Before you begin</h2>
+      <p>
+        For each sentence, mark <strong>in</strong> only when all of its asserted meaning
+        can be represented as one proposition in the notation below. Otherwise mark
+        <strong>out</strong>, identify every blocker, and briefly explain your judgment.
+      </p>
+      <div class="notice">
+        Work independently. Do not view or discuss the project's existing labels or
+        formulas before returning your answers. Repeated text is intentional; judge every
+        numbered row independently.
+      </div>
+      <div class="notice">
+        A newly opened copy starts blank. This form does not use browser storage or embed
+        your answers into the HTML file. If you pause, click <strong>Save draft</strong> and
+        later use <strong>Load draft</strong>. Do not close this tab before saving or
+        exporting.
+      </div>
+    </section>
+
+    <details class="panel" open>
+      <summary>Read the decision rules and notation</summary>
+      <div class="details-body">
+        <h2>The decision rules</h2>
+        <ul>
+          <li>Mark <strong>in</strong> only if you can give one complete formula.</li>
+          <li>
+            Mark <strong>out</strong> if asserted tense, arithmetic, modality, exception,
+            cross-sentence reference, independent clauses, or other structure would be
+            lost. A formula merely parsing is not enough.
+          </li>
+          <li>
+            A quoted phrase is one atomic term. Quote a genuine multiword name or lexical
+            unit, but do not quote a structured clause merely to force it through.
+          </li>
+          <li>
+            The engine does not resolve pronouns or other anaphors from earlier sentences.
+            A <code>*</code> marks a fixed individual; it does not discover what a pronoun
+            refers to.
+          </li>
+          <li>
+            A section citation may remain inside a term when it only names that term. Mark
+            <strong>out</strong> if the cited rule's contents are needed for the assertion.
+          </li>
+          <li>
+            Read regulatory <em>means</em> as an exhaustive definition. If both sides are
+            general classes, one-way inclusion is incomplete. If both sides name one
+            individual thing, the singular identity form is symmetric.
+          </li>
+        </ul>
+
+        <h2>The notation</h2>
+        <p>Each proposition has four parts and no spaces:</p>
+        <p class="example">(quantity sign)(subject term)(quality sign)(predicate term)</p>
+        <div class="notation-grid" aria-label="Notation examples">
+          <code>−S+P &nbsp; every S is P</code>
+          <code>−S−P &nbsp; no S is P</code>
+          <code>+S+P &nbsp; some S is P</code>
+          <code>+S−P &nbsp; some S is not P</code>
+          <code>±Ada*+P &nbsp; Ada is P</code>
+          <code>±Twain*+Clemens* &nbsp; singular identity</code>
+        </div>
+        <p>
+          Terms containing spaces or punctuation must be quoted, for example
+          <code>−&quot;service animal&quot;+Animal</code>. A binary relation has the shape
+          <code>−Contract+(Govern±Law*)</code>.
+        </p>
+      </div>
+    </details>
+
+    <section class="toolbar" aria-label="Progress and file controls">
+      <div>
+        <div class="progress-copy">
+          <span>Progress</span>
+          <span id="progress-text">0 of 9 complete</span>
+        </div>
+        <progress id="progress" max="9" value="0">0 of 9</progress>
+      </div>
+      <div class="toolbar-actions">
+        <label class="file-button">
+          Load draft
+          <input id="load-draft" type="file" accept="application/json,.json">
+        </label>
+        <button id="save-draft" class="secondary" type="button">Save draft</button>
+        <button id="reset" class="danger-quiet" type="button">Clear answers</button>
+      </div>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <form id="annotation-form" autocomplete="off" novalidate>
+      <div id="items"></div>
+
+      <section class="panel confirmation" aria-labelledby="independence-title">
+        <h2 id="independence-title">Independence confirmation</h2>
+        <label for="independence">
+          <input id="independence" type="checkbox">
+          <span>
+            I labelled these sentences without viewing the project-side labels or formulas.
+          </span>
+        </label>
+        <p id="independence-error" class="confirmation-error" aria-live="polite"></p>
+      </section>
+
+      <section class="panel final-actions" aria-label="Finish annotation">
+        <div>
+          <strong>Finished?</strong><br>
+          <span class="field-help">The page will check every answer before downloading.</span>
+        </div>
+        <button class="primary" type="submit">Export completed answers</button>
+      </section>
+    </form>
+  </main>
+
+  <footer>
+    Packet 2026-08-08-v1 · Offline form · No answers are transmitted anywhere
+  </footer>
+
+  <template id="item-template">
+    <article class="item-card">
+      <div class="item-heading">
+        <h2 data-role="code"></h2>
+        <span class="source" data-role="source"></span>
+      </div>
+      <p class="sentence" data-role="sentence"></p>
+
+      <fieldset>
+        <legend>Can the complete sentence be represented as one TFL proposition?</legend>
+        <div class="choice-row">
+          <label class="choice" data-role="in-label">
+            <input data-role="in-radio" type="radio" value="in">
+            <span>
+              <strong>In</strong>
+              <small>I can provide one complete formula.</small>
+            </span>
+          </label>
+          <label class="choice" data-role="out-label">
+            <input data-role="out-radio" type="radio" value="out">
+            <span>
+              <strong>Out</strong>
+              <small>Some asserted meaning would be lost.</small>
+            </span>
+          </label>
+        </div>
+      </fieldset>
+
+      <div class="conditional" data-when="in" hidden>
+        <label class="field-label" data-role="formula-label">Exact TFL formula</label>
+        <input
+          class="formula-input"
+          data-role="formula"
+          type="text"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+        >
+        <p class="field-help">Write one formula. It will be parser-checked after your answers are locked.</p>
+      </div>
+
+      <div class="conditional" data-when="out" hidden>
+        <fieldset>
+          <legend>Every blocker that applies</legend>
+          <div class="blocker-list" data-role="blockers"></div>
+        </fieldset>
+        <div class="other-blocker">
+          <label class="field-label" data-role="other-label">Another blocker, if needed</label>
+          <input data-role="other-blocker" type="text" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="rationale-field">
+        <label class="field-label" data-role="rationale-label">Brief rationale</label>
+        <textarea data-role="rationale" placeholder="Explain your judgment in one or two sentences."></textarea>
+      </div>
+      <p class="item-error" data-role="error" aria-live="polite"></p>
+    </article>
+  </template>
+
+  <script id="packet-items" type="application/json">
+[
+  {
+    "code": "S01",
+    "source": "24 CFR 5",
+    "sentence": "Section 214 means section 214 of the Housing and Community Development Act of 1980, as amended (42 U.S.C. 1436a)."
+  },
+  {
+    "code": "S02",
+    "source": "20 CFR 416",
+    "sentence": "Your medical source is not a qualified medical source as defined in § 416.919g."
+  },
+  {
+    "code": "S03",
+    "source": "21 CFR 137",
+    "sentence": "It is referred to hereafter as the No. 72 sieve."
+  },
+  {
+    "code": "S04",
+    "source": "20 CFR 416",
+    "sentence": "SSI benefits also include any federally administered State supplementary payments."
+  },
+  {
+    "code": "S05",
+    "source": "24 CFR 5",
+    "sentence": "However, selection is subject to the income-eligibility and income-targeting requirements in § 5.653."
+  },
+  {
+    "code": "S06",
+    "source": "20 CFR 416",
+    "sentence": "Disability program means the Federal program for providing supplemental security income benefits for the blind and disabled under title XVI of the Act, as amended."
+  },
+  {
+    "code": "S07",
+    "source": "24 CFR 5",
+    "sentence": "ADA means the Americans with Disabilities Act of 1990 (42 U.S.C. 12101 et seq.)."
+  },
+  {
+    "code": "S08",
+    "source": "20 CFR 416",
+    "sentence": "Nonmedical source means a source of evidence who is not a medical source."
+  },
+  {
+    "code": "S09",
+    "source": "24 CFR 5",
+    "sentence": "ADA means the Americans with Disabilities Act of 1990 (42 U.S.C. 12101 et seq.)."
+  }
+]
+  </script>
+
+  <script>
+    "use strict";
+
+    const SCHEMA = "tfl-verify-independent-annotation";
+    const SCHEMA_VERSION = 1;
+    const PACKET_VERSION = "2026-08-08-v1";
+    const ITEMS = JSON.parse(document.getElementById("packet-items").textContent);
+    const BLOCKERS = [
+      ["tense", "Tense, dates, deadlines, or temporal ordering"],
+      ["arithmetic", "Numbers, comparisons, thresholds, or counting"],
+      ["cross-reference", "A cited rule's contents are required"],
+      ["anaphora", "A pronoun or phrase needs an earlier antecedent"],
+      ["defeasible", "An exception, unless-clause, or default"],
+      ["multi-clause", "More than one independent condition or predication"],
+      ["deontic", "Obligation, permission, or prohibition"],
+      ["not-a-proposition", "A heading, fragment, command, or bare phrase"],
+      ["definitional-equivalence", "An exhaustive definition needs two directions"]
+    ];
+
+    const form = document.getElementById("annotation-form");
+    const itemsRoot = document.getElementById("items");
+    const template = document.getElementById("item-template");
+    const progress = document.getElementById("progress");
+    const progressText = document.getElementById("progress-text");
+    const status = document.getElementById("status");
+    const independence = document.getElementById("independence");
+    const independenceError = document.getElementById("independence-error");
+    const loadDraft = document.getElementById("load-draft");
+    let dirty = false;
+
+    function cardFor(code) {
+      return itemsRoot.querySelector(`[data-code="${code}"]`);
+    }
+
+    function selectedLabel(card) {
+      const selected = card.querySelector("input[type='radio']:checked");
+      return selected ? selected.value : null;
+    }
+
+    function responseFor(item) {
+      const card = cardFor(item.code);
+      const label = selectedLabel(card);
+      const formula = card.querySelector("[data-role='formula']").value.trim();
+      const rationale = card.querySelector("[data-role='rationale']").value.trim();
+      const blockers = Array.from(
+        card.querySelectorAll("[data-role='blockers'] input:checked"),
+        (input) => input.value
+      );
+      const other = card.querySelector("[data-role='other-blocker']").value.trim();
+      if (other) blockers.push(other);
+
+      return {
+        code: item.code,
+        source: item.source,
+        sentence: item.sentence,
+        label,
+        formula: label === "in" ? formula : null,
+        blockers: label === "out" ? blockers : [],
+        rationale
+      };
+    }
+
+    function responseIsComplete(response) {
+      if (!response.label || !response.rationale) return false;
+      if (response.label === "in") return Boolean(response.formula);
+      return response.blockers.length > 0;
+    }
+
+    function updateCard(card) {
+      const label = selectedLabel(card);
+      card.querySelector("[data-when='in']").hidden = label !== "in";
+      card.querySelector("[data-when='out']").hidden = label !== "out";
+      const item = ITEMS.find((candidate) => candidate.code === card.dataset.code);
+      card.classList.toggle("complete", responseIsComplete(responseFor(item)));
+    }
+
+    function updateProgress() {
+      const complete = ITEMS.map(responseFor).filter(responseIsComplete).length;
+      progress.value = complete;
+      progress.textContent = `${complete} of ${ITEMS.length}`;
+      progressText.textContent = `${complete} of ${ITEMS.length} complete`;
+    }
+
+    function setStatus(message, kind = "") {
+      status.textContent = message;
+      status.className = `status ${kind}`.trim();
+    }
+
+    function makeBlocker(code, value, description) {
+      const wrapper = document.createElement("label");
+      wrapper.className = "blocker";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.name = `blockers-${code}`;
+      input.value = value;
+      const text = document.createElement("span");
+      const strong = document.createElement("strong");
+      strong.textContent = value;
+      const detail = document.createElement("span");
+      detail.textContent = ` — ${description}`;
+      text.append(strong, detail);
+      wrapper.append(input, text);
+      return wrapper;
+    }
+
+    function renderItem(item) {
+      const card = template.content.firstElementChild.cloneNode(true);
+      card.dataset.code = item.code;
+      card.querySelector("[data-role='code']").textContent = item.code;
+      card.querySelector("[data-role='source']").textContent = item.source;
+      card.querySelector("[data-role='sentence']").textContent = item.sentence;
+
+      const inRadio = card.querySelector("[data-role='in-radio']");
+      const outRadio = card.querySelector("[data-role='out-radio']");
+      inRadio.name = `label-${item.code}`;
+      inRadio.id = `${item.code}-in`;
+      outRadio.name = `label-${item.code}`;
+      outRadio.id = `${item.code}-out`;
+      card.querySelector("[data-role='in-label']").htmlFor = inRadio.id;
+      card.querySelector("[data-role='out-label']").htmlFor = outRadio.id;
+
+      const formula = card.querySelector("[data-role='formula']");
+      formula.id = `${item.code}-formula`;
+      card.querySelector("[data-role='formula-label']").htmlFor = formula.id;
+
+      const other = card.querySelector("[data-role='other-blocker']");
+      other.id = `${item.code}-other-blocker`;
+      card.querySelector("[data-role='other-label']").htmlFor = other.id;
+
+      const rationale = card.querySelector("[data-role='rationale']");
+      rationale.id = `${item.code}-rationale`;
+      card.querySelector("[data-role='rationale-label']").htmlFor = rationale.id;
+
+      const blockerRoot = card.querySelector("[data-role='blockers']");
+      BLOCKERS.forEach(([value, description]) => {
+        blockerRoot.append(makeBlocker(item.code, value, description));
+      });
+
+      itemsRoot.append(card);
+    }
+
+    function clearValidation() {
+      document.querySelectorAll(".item-card").forEach((card) => {
+        card.classList.remove("has-error");
+        card.querySelector("[data-role='error']").textContent = "";
+        card.querySelectorAll("[aria-invalid='true']").forEach((field) => {
+          field.removeAttribute("aria-invalid");
+        });
+      });
+      independenceError.textContent = "";
+      independence.removeAttribute("aria-invalid");
+    }
+
+    function validateCard(item) {
+      const card = cardFor(item.code);
+      const response = responseFor(item);
+      const errors = [];
+      let firstInvalid = null;
+
+      if (!response.label) {
+        errors.push("choose In or Out");
+        firstInvalid = card.querySelector("[data-role='in-radio']");
+      } else if (response.label === "in" && !response.formula) {
+        errors.push("provide the exact formula");
+        firstInvalid = card.querySelector("[data-role='formula']");
+      } else if (response.label === "out" && response.blockers.length === 0) {
+        errors.push("select or write at least one blocker");
+        firstInvalid = card.querySelector("[data-role='blockers'] input");
+      }
+
+      if (!response.rationale) {
+        errors.push("write a brief rationale");
+        if (!firstInvalid) firstInvalid = card.querySelector("[data-role='rationale']");
+      }
+
+      if (errors.length > 0) {
+        card.classList.add("has-error");
+        card.querySelector("[data-role='error']").textContent = `Please ${errors.join(" and ")}.`;
+        if (firstInvalid) firstInvalid.setAttribute("aria-invalid", "true");
+      }
+
+      return { valid: errors.length === 0, firstInvalid };
+    }
+
+    function validateAll() {
+      clearValidation();
+      let firstInvalid = null;
+      let valid = true;
+
+      ITEMS.forEach((item) => {
+        const result = validateCard(item);
+        if (!result.valid) {
+          valid = false;
+          if (!firstInvalid) firstInvalid = result.firstInvalid;
+        }
+      });
+
+      if (!independence.checked) {
+        valid = false;
+        independence.setAttribute("aria-invalid", "true");
+        independenceError.textContent = "Confirm independence before exporting completed answers.";
+        if (!firstInvalid) firstInvalid = independence;
+      }
+
+      return { valid, firstInvalid };
+    }
+
+    function payload(statusName) {
+      return {
+        schema: SCHEMA,
+        schema_version: SCHEMA_VERSION,
+        packet_version: PACKET_VERSION,
+        status: statusName,
+        exported_at: new Date().toISOString(),
+        independence_confirmed: independence.checked,
+        responses: ITEMS.map(responseFor)
+      };
+    }
+
+    function downloadJson(data, filename) {
+      const blob = new Blob([`${JSON.stringify(data, null, 2)}\n`], {
+        type: "application/json"
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function setResponse(item, response) {
+      const card = cardFor(item.code);
+      const label = response.label === "in" || response.label === "out" ? response.label : null;
+      card.querySelectorAll("input[type='radio']").forEach((radio) => {
+        radio.checked = radio.value === label;
+      });
+      card.querySelector("[data-role='formula']").value =
+        typeof response.formula === "string" ? response.formula : "";
+      card.querySelector("[data-role='rationale']").value =
+        typeof response.rationale === "string" ? response.rationale : "";
+
+      const importedBlockers = Array.isArray(response.blockers)
+        ? response.blockers.filter((value) => typeof value === "string")
+        : [];
+      const known = new Set(BLOCKERS.map(([value]) => value));
+      card.querySelectorAll("[data-role='blockers'] input").forEach((checkbox) => {
+        checkbox.checked = importedBlockers.includes(checkbox.value);
+      });
+      card.querySelector("[data-role='other-blocker']").value = importedBlockers
+        .filter((value) => !known.has(value))
+        .join("; ");
+      updateCard(card);
+    }
+
+    function validateImported(data) {
+      if (!data || data.schema !== SCHEMA || data.schema_version !== SCHEMA_VERSION) {
+        throw new Error("This is not a TFL-Verify annotation draft.");
+      }
+      if (data.packet_version !== PACKET_VERSION) {
+        throw new Error(`This draft is for packet ${data.packet_version || "unknown"}, not ${PACKET_VERSION}.`);
+      }
+      if (!Array.isArray(data.responses) || data.responses.length !== ITEMS.length) {
+        throw new Error(`The draft must contain exactly ${ITEMS.length} responses.`);
+      }
+      const expectedCodes = ITEMS.map((item) => item.code).sort().join(" ");
+      const receivedCodes = data.responses.map((response) => response.code).sort().join(" ");
+      if (receivedCodes !== expectedCodes) {
+        throw new Error("The draft's sentence codes do not match this packet.");
+      }
+    }
+
+    ITEMS.forEach(renderItem);
+    updateProgress();
+
+    form.addEventListener("input", (event) => {
+      const card = event.target.closest(".item-card");
+      if (card) updateCard(card);
+      dirty = true;
+      updateProgress();
+      setStatus("");
+    });
+
+    independence.addEventListener("change", () => {
+      dirty = true;
+      independenceError.textContent = "";
+      independence.removeAttribute("aria-invalid");
+    });
+
+    document.getElementById("save-draft").addEventListener("click", () => {
+      downloadJson(payload("draft"), "tfl-independent-annotation-draft.json");
+      dirty = false;
+      setStatus("Draft downloaded. Keep that JSON file if you plan to resume later.", "success");
+    });
+
+    loadDraft.addEventListener("change", async () => {
+      const file = loadDraft.files && loadDraft.files[0];
+      if (!file) return;
+      try {
+        const data = JSON.parse(await file.text());
+        validateImported(data);
+        ITEMS.forEach((item) => {
+          const response = data.responses.find((candidate) => candidate.code === item.code);
+          setResponse(item, response);
+        });
+        independence.checked = data.independence_confirmed === true;
+        clearValidation();
+        updateProgress();
+        dirty = false;
+        setStatus(`Loaded ${file.name}.`, "success");
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : "The draft could not be loaded.", "error");
+      } finally {
+        loadDraft.value = "";
+      }
+    });
+
+    document.getElementById("reset").addEventListener("click", () => {
+      if (!window.confirm("Clear every answer in this page? This cannot be undone unless you saved a draft.")) {
+        return;
+      }
+      form.reset();
+      document.querySelectorAll(".item-card").forEach(updateCard);
+      clearValidation();
+      updateProgress();
+      dirty = false;
+      setStatus("All answers cleared.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const result = validateAll();
+      updateProgress();
+      if (!result.valid) {
+        setStatus("Some answers are incomplete. The first missing field is highlighted below.", "error");
+        if (result.firstInvalid) {
+          result.firstInvalid.focus();
+          result.firstInvalid.closest(".item-card, .confirmation")?.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+          });
+        }
+        return;
+      }
+
+      downloadJson(
+        payload("complete"),
+        "tfl-independent-annotation-complete.json"
+      );
+      dirty = false;
+      setStatus(
+        "Completed answer file downloaded. Return that JSON file unchanged to the project author.",
+        "success"
+      );
+    });
+
+    window.addEventListener("beforeunload", (event) => {
+      if (!dirty) return;
+      event.preventDefault();
+      event.returnValue = "";
+    });
+  </script>
+</body>
+</html>

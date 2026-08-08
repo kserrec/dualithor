@@ -67,7 +67,10 @@ the preceding sentence and the engine has no anaphora. Provisional sensitivity i
 with source duplicates retained and 6/107 after exact-text de-duplication. Full reasoning,
 including the two convention-dependent singular-description cases, is in
 `docs/regulatory-reaudit-pass-1-2026-08-08.md`. The standalone blinded human packet is
-`data/fidelity/real/SECOND-ANNOTATOR-PACKET.md`.
+`data/fidelity/real/SECOND-ANNOTATOR-PACKET.md`; its participant-facing offline form is
+`data/fidelity/real/INDEPENDENT-ANNOTATION.html`. A newly opened copy starts blank, validates
+all nine responses, and exports versioned JSON without a server, account, network request,
+external dependency, or browser storage.
 
 **Acceptance:** all nine records adjudicated in the first pass, with every retained `in`
 record formula-backed; an independently locked human pass; reconciliation log; regenerated

@@ -34,6 +34,13 @@ The blinded packet maps `S01` through `S09` to `d17`, `r25`, `d47`, `d01`, `r54`
 `r41`, `d03`, and `d11`, respectively; the map is recorded here, outside the packet, so
 the two identical ADA rows remain separately reconcilable.
 
+The participant-facing delivery is the self-contained offline form
+`data/fidelity/real/INDEPENDENT-ANNOTATION.html`. It always opens blank, makes conditional
+fields explicit, checks completeness, and exports the response as versioned JSON. It has
+no network or external-package dependency and no browser persistence, so a project-side
+trial cannot travel inside the untouched blank file sent to the independent annotator.
+The Markdown packet remains the canonical text and no-JavaScript fallback.
+
 ## Judgments
 
 | ID | First-pass judgment | Exact formula or blocker | Why |

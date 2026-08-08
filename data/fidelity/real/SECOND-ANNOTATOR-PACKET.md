@@ -1,5 +1,9 @@
 # Independent regulatory-sentence annotation packet
 
+> **Canonical text/fallback copy.** The participant-facing version is
+> `INDEPENDENT-ANNOTATION.html`. It presents the same nine rows as an offline form and
+> exports a structured JSON answer file.
+
 **Packet version:** 2026-08-08-v1
 
 **Estimated work:** 30–45 minutes
@@ -153,6 +157,11 @@ ADA means the Americans with Disabilities Act of 1990 (42 U.S.C. 12101 et seq.).
 
 ## Return format
 
-Return a completed copy of this file, including the independence statement. Do not look at
-the rest of the repository to check whether your formulas parse; the project will run that
-mechanical check only after your labels are locked.
+Preferred: open `INDEPENDENT-ANNOTATION.html`, complete all nine rows, confirm the
+independence statement, click **Export completed answers**, and return the downloaded
+`tfl-independent-annotation-complete.json` file unchanged. The HTML file sends nothing
+over the network, uses no browser storage, and does not embed answers into itself.
+
+If the HTML form cannot run, return a completed copy of this Markdown file instead. Do not
+look at the rest of the repository to check whether your formulas parse; the project will
+run that mechanical check only after your labels are locked.

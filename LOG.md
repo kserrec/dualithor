@@ -1466,3 +1466,15 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
     checks passed; it pins the population, source text, parses, renderings, duplicate, and
     both raw/de-duplicated counts, and prevents any first-pass formula from leaking into
     the independent packet.
+
+- **Gate B's independent-human packet now has a participant-facing offline form.**
+  `data/fidelity/real/INDEPENDENT-ANNOTATION.html` presents the same nine blinded rows with
+  conditional formula/blocker fields, live progress, completeness validation, a signed
+  independence confirmation, draft save/load, and a versioned JSON export. It is one file
+  with no dependency, server, account, network request, or browser storage. A newly opened
+  copy starts blank, and answers are never embedded into the HTML: Kyle can try the form
+  without his answers travelling in the untouched file sent to the independent annotator.
+  Headless Chrome rendered all nine cards and the export control; embedded JSON and
+  JavaScript syntax checks passed. The focused audit verifier is now **9/9**, additionally
+  pinning exact HTML item multiplicity, absence of first-pass formulas, offline-only
+  behavior, and the response schema marker.
