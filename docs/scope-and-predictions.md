@@ -291,8 +291,10 @@ certifies the step between them. Philosophical prose almost never presents that 
 defers `suggestMissingPremise` among the Aristotelian extras. Missing-premise suggestion
 **is** enthymeme completion — the exact operation philosophical reconstruction needs. A
 tool that says "invalid as stated; valid if you grant *this* premise, rendered in English"
-would be a real contribution to reading philosophy, and it is latent in the reference
-engine we already ported around. Not scheduled; recorded so it is not forgotten.
+could be a useful teaching feature, and it is latent in the reference engine we already
+ported around. It is not a research novelty: Sommers and Englebretsen 2000, Chapter 5,
+§3, already solves missing premises algebraically. Not scheduled; see
+`missing-premise-priority-audit-2026-08-08.md`.
 
 **Where the value actually is:** teaching logic (the reference engine's `checkExpression`
 grading path exists for this), formalising the historical canon, and checking one's own

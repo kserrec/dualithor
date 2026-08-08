@@ -140,6 +140,10 @@ claims TFL-Verify exists to test.
 - This is the system our vendored engine implements (with the no-existential-import
   discipline and the P/Z test as the categorical decision); the book is the ground truth
   for the 1.13 paper-cases audit.
+- Chapter 5, §3, pp. 118–122 also publishes algebraic enthymeme completion: introduce
+  one or more unknown premises, write the validity equation, and solve for the omitted
+  signed expressions. This establishes priority over TFL-Verify's former closed-form
+  missing-premise proposal; see `missing-premise-priority-audit-2026-08-08.md`.
 - For the paper's fidelity claim: the book's own selling point — the notation tracks how
   people actually phrase arguments — is exactly the property we are testing empirically
   via LLM translation fidelity vs FOL.
@@ -170,13 +174,12 @@ Primary: Castro-Manzano, Lozano-Cobos & Reyes-Cárdenas, "Programming with Term 
   singular/universal distinction does in TFL); no variables, no unification — inference is
   DON-driven. Named future work at time of writing: a relational module, a numerical
   reasoning module, a probabilistic interpretation (Thompson 1986).
-- How TFL-Verify relates: our engine is, in effect, a realization of that named future
-  work — full relational layer (passives with scope guards, proterms, indirect proof),
-  the TFL⁺ numerical decision, and the Mozes features (NL explanations, stronger answers,
-  possibility, missing-premise suggestion) — and then points the whole apparatus at a new
-  job neither line anticipated: verifying LLM outputs, with translation fidelity and
-  fragment routing as the research questions. Their group is the natural collaboration
-  contact (PLAN 8.6).
+- How TFL-Verify relates: the OCaml engine implements the relational layer, TFL⁺
+  numerical validity checks, programs and queries, and deterministic English readings.
+  Missing-premise suggestion exists only in the frozen JavaScript reference as bounded
+  search and is not part of the OCaml release surface. The former regulatory-router
+  product is discontinued; the remaining research question is a matched human comparison
+  of deterministic TFL- and FOL-derived English.
 
 ### Cross-cutting contrast for the paper (Part B)
 

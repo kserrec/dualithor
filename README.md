@@ -1,17 +1,33 @@
 # TFL-Verify
 
-A pipeline that verifies LLM outputs using Term Functor Logic (TFL): natural language is translated into TFL's variable-free plus-minus notation, checked by a symbolic engine, and routed — parseable claims get cheap, auditable verification; unparseable ones get flagged as outside the fragment.
+A research and teaching implementation of Term Functor Logic (TFL) in OCaml, with an
+experimental natural-language-to-TFL translation pipeline and a JSON-lines command-line
+interface.
 
-**The two claims under test:**
+**Project decision (2026-08-08):** the regulatory-verification product is discontinued.
+Strict coverage on sampled normative regulation was 3/60 (5%), definitions sections were
+5/20 (25%), and standards of identity were 1/30 (3%). The router, policy benchmark, and
+coverage-expansion roadmap are not being built. The engine will be preserved for a narrow
+release; the only remaining paper bet is a fair human study of whether deterministic
+TFL-derived English makes formalization errors easier to detect than matched deterministic
+FOL-derived English.
 
-1. **Fidelity:** NL→TFL translation is more faithful and more human-auditable than NL→FOL translation, because TFL's variable-free plus-minus syntax mirrors natural-language surface form.
-2. **Router:** TFL fragment membership — does the sentence parse into TFL at all? — is a clean, mechanical escalation signal: parse success → verify cheaply; parse failure → flag or escalate. FOL pipelines have no equivalent signal.
+**Engine state:** the OCaml port agrees with the frozen JavaScript reference on 884,000
+generated inputs plus the reference corpus, and the categorical core is backed by a
+finite-model oracle and a 62-case literature audit. That is strong evidence for the port,
+not a claim of formal verification: the shared oracle does not model TFL⁺ quantity levels,
+relational search is incomplete and may return `Unknown`, and the numerical layer now
+certifies `Valid` but abstains instead of asserting `Invalid`. The total `Tfl.Safe` surface
+has survived 102,000 adversarial inputs. The deterministic renderer is reproducible, but
+determinism alone does not guarantee grammatical or semantically correct English.
 
-**Status:** the OCaml engine is **authoritative** as of the differential handover (2026-08-01): the full port — parser/printer, inference core, P/Z categorical decision, relational layer, programs/queries/equivalence, TFL⁺ numerical decision, NL rendering — agrees with the reference engine on 884,000 generated inputs plus the reference's own corpus, with zero disagreements (`docs/differential-report.md`). The ported finite-model oracle is clean at 20k iterations across all six fuzz suites, and a curated 62-case audit against the literature passes. `opam exec -- dune test` runs everything (the differential gate needs Node ≥ 18). The engine is also total at its public surface (`Tfl.Safe`): every refusal is a structured `Lexical | Syntactic | Outside_fragment` failure, verified against 102,000 adversarial inputs with no crash and no case over 0.04s (`docs/engine-surface.md`). **Phases 1–3 are complete**: on top of the engine there is now an OpenRouter client for the three translator models under test, and the verification API (`Tfl_verify.check`) that returns a verdict, a method, and an auditable trace — every step in plus-minus notation with a deterministic English gloss (`docs/trace-samples.md`).
-
-**Phase 4, the translation layer, is most of the way there.** A strict JSON contract, a few-shot prompt that teaches the notation without ever teaching a validity judgement, a translator harness, and a **back-translation check** that renders a model's own formula back to English and asks whether it still says what the source sentence said — a check that is available *because* term logic has a canonical English reading, so the back-translation is produced by a **total deterministic function** rather than by a second language model. (The round trip itself is not ours — Amrollahi, Lopez & Barrett, arXiv:2604.25031, formalize, back-translate, re-formalize and check equivalence. What is ours is a verbalizer that cannot hallucinate, and putting its output in front of a person.) The first fidelity measurement is in (`docs/fidelity-report-2026-08-02.md`): on 91 authored policy-register sentences across three models, **100% / 100% / 98% faithful with a 100% parse rate and 30/30 correct refusals of out-of-fragment sentences.** Two caveats are load-bearing and stated in the report: the sentences are authored rather than sampled, so this is an upper bound, and nothing here is comparative — no FOL arm has been run, so core claim 1 is not yet supported. The back-check caught both of the study's meaning-inverting errors unaided at a 2% false-positive rate, and it also caught a wrong entry in our own gold set. Next, per the 2026-08-02 scope amendment at the head of `PLAN.md`: run-harness plumbing, pin the pronoun-resolution policy, **fix the English renderer** (it is the audit surface and has two proven bugs), then the real-text arm (coverage on sampled regulatory text, now the largest open question), then the router, the missing-premise contribution, the FOL arm and the auditability study.
-
-The system — engine and pipeline — is being written in **OCaml**. The JavaScript engine below was the executable specification for the port: differential testing forced the OCaml engine to agree with it, input for input, and now keeps it honest as a standing regression gate. A thin pip-installable Python client ships at release for easy adoption.
+**Research state:** on 91 authored, notation-shaped sentences, the latest run scored Sonnet
+90/91, GPT 90/91, and Kimi 91/91 faithful, with zero unparseable outputs, 30/30 correct
+declines, and 24/24 correct argument verdicts. This is an upper-bound development result,
+not ecological or comparative evidence. The canonical TFL textbook also already solves
+missing premises algebraically, so that proposed novelty claim is retired. The current
+five-phase go/no plan and its stopping rules are at the head of `PLAN.md`; the primary-
+source correction is in `docs/missing-premise-priority-audit-2026-08-08.md`.
 
 ## Quickstart
 
@@ -30,7 +46,10 @@ API keys for the pipeline's LLM calls live in a gitignored `.env` at the repo ro
 - `PLAN.md` — the authoritative project plan (phases, steps, acceptance checks).
 - `lib/tfl/` — the OCaml TFL engine (authoritative since the differential handover).
 - `lib/verify/` — the verification API the pipeline calls: verdict, method, and a glossed proof trace, with JSON in both directions.
-- `translate/`, `router/`, `bench/`, `analysis/` — the pipeline: NL→TFL translation, fragment routing, benchmark runners, metrics (Phases 2–7; `translate/` has the OpenRouter client, the rest are scaffolded).
+- `translate/` — the experimental NL→TFL client, prompt, cache, and back-check.
+- `bench/` — fidelity and regulatory-coverage measurement code.
+- `router/`, `analysis/` — dormant scaffolds; neither is a current product track.
+- `bin/` — the JSON-lines `check`, `parse`, and `render` command-line interface.
 - `data/` — benchmark corpora, eval sets, results (see `data/README.md`; licensed corpora are gitignored and CI-guarded).
 - `test/` — unit suites, paper-cases audit, the ported oracle, and the differential harness.
 - `engine/` — the reference TFL engine, vendored verbatim from [kserrec/guides](https://github.com/kserrec/guides) (`term-functor-logic/lab/`): a pure, dependency-free JavaScript implementation of Sommers & Englebretsen's term logic — parser, inference core, relational layer, logic-programming queries, and a finite-model-semantics fuzz oracle. Frozen: never extended, only consulted. Run `node engine/tfl.test.js` for the test suite, `node engine/oracle.js -n 20000` for the semantic fuzz gate.

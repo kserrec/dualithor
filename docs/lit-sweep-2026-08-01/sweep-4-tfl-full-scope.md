@@ -282,8 +282,10 @@ the tradition leaves them to the singular-term apparatus and cite Sommers 1969 /
 
 ## 4. Q3 — The algorithmic content of missing-premise suggestion
 
-**Finding: the idea is published and precisely stated; a general algorithm is not, at least not
-anywhere I could reach.**
+**Corrected finding, 2026-08-08: the algebraic method is published in the canonical TFL
+textbook. The original novelty conclusion below was false because that primary source had
+not been read.** See `../missing-premise-priority-audit-2026-08-08.md` for the dedicated
+priority audit.
 
 What is verified:
 1. Mozes 1989 (DOI 10.1016/S0747-7171(89)80030-6) defines an Aristotelian database by five
@@ -296,27 +298,28 @@ What is verified:
 2. The **invocation protocol** is specified: "if the query is an answer query and it was not
    proven as true or false, the user may ask for implicit rules" (Castro-Manzano et al. 2018,
    verbatim). So it is a user-triggered operation on a *failed* answer query — not automatic.
-3. I could **not** read Mozes 1989 itself (ScienceDirect 403). **Whether Mozes gives a method or
-   just the capability is unresolved.** Both secondary restatements describe *what* it does and
-   are silent on *how*.
+3. I could **not** read Mozes 1989 itself (ScienceDirect 403). Whether Mozes gives a method or
+   just the capability remains unresolved. That question no longer controls priority,
+   because Sommers and Englebretsen 2000 supplies the method directly.
+4. Sommers and Englebretsen, *An Invitation to Formal Reasoning*, Chapter 5, §3,
+   pp. 118–122, was read from a local primary copy on 2026-08-08. On pp. 119–120 the
+   authors represent an omitted universal premise as an unknown signed expression, put it
+   into the validity equation, and isolate it by subtracting the given premise from the
+   conclusion. On pp. 120–121 they reduce a two-unknown case and enumerate the admissible
+   premise pairs before selecting the true pair.
 
 The one published, verified instance of premise-supplying in the TFL algebra is narrow:
 Castro-Manzano et al. 2018, footnote 16 — "For the valid inferential patterns that need
 existential import, like aat-1 or aak-1, the only requirement is to add the missing implicit
 premise that states the existence of the minor term, namely, something akin to +S⁰+S⁰."
 
-**The obvious algorithm is a subtraction, and it is unclaimed.** TFL's decision procedure, as
-stated verbatim in Castro-Manzano et al. 2018, is: a conclusion follows iff (i) the sum of the
-premises is algebraically equal to the conclusion, (ii) the number of particular-quantity
-conclusions equals the number of particular-quantity premises, and (iii) [in TFL+] the
-conclusion's quantification level does not exceed the maximum level among premises. Because (i)
-is an *equation over a free abelian group on signed terms*, the missing premise of an enthymeme
-with premises P₁…Pₙ and target conclusion C is **exactly `C − Σᵢ Pᵢ`**, with (ii) and (iii)
-acting as side conditions that determine the candidate's quantity and level. That makes
-enthymeme completion in TFL a constant-time computation rather than a search — the property
-that makes this tradition genuinely distinctive for the task. **I found no publication that
-states this.** If TFL-Verify implements it, that is a novel contribution, not a port; it should
-be presented as such, and Mozes 1989 should be read first to confirm priority.
+**Priority verdict:** the proposed `C − Σᵢ Pᵢ` contribution is occupied. The book does not
+use the project's free-abelian-group terminology and does not specify the proposed OCaml API,
+but it publishes the same essential algorithmic idea: solve the TFL validity equation for
+one or more omitted premises. A multiplicity-aware implementation over reusable universals
+could still be useful engineering or a narrower formal generalization. It cannot support the
+project's broad claim to have invented closed-form or search-free TFL enthymeme completion.
+The former Phase 6.1 is therefore cancelled rather than built in search of a shrinking claim.
 
 ---
 
@@ -389,14 +392,16 @@ Ranked by (published-source strength × likely value to policy text):
 
 ## Verification caveats
 
-1. **No primary book text was read.** Sommers 1982, Englebretsen 1987/1996, Sommers &
-   Englebretsen 2000, Peterson 2000, Szabolcsi & Englebretsen 2008 — all inaccessible.
+1. **Primary-book access was incomplete in the original sweep.** Sommers 1982,
+   Englebretsen 1987/1996, Peterson 2000, and Szabolcsi & Englebretsen 2008 were
+   inaccessible. Sommers & Englebretsen 2000 was obtained and its relevant primary text
+   read on 2026-08-08; that late reading reversed §4's central novelty conclusion.
    Archive.org search-inside endpoints (`api.archivelab.org`, `ia-fts.archive.org`,
    `fulltext/inside.php`) are all dead or return "Item not available"; Google Books API returned
    zero items for full-text probes; JSTOR, Project MUSE chapter text, Taylor & Francis,
    Springer, MDPI HTML, and PhilArchive all returned 403 to programmatic fetches. Every claim
-   about these books' *contents* is marked [P] or [U] above and must be re-checked against a
-   library copy before it enters the paper.
+   about the still-unread books' *contents* is marked [P] or [U] above and must be re-checked
+   against a library copy before it enters the paper.
 2. **Discarded summariser content.** A WebSearch summary attributed to ontology.co a specific
    account of Sommers on identity ("a = b" as "a is b and b is a"; "a is the same φ as b" as
    "Some φ which is a is b"). Direct WebFetch of that same page **did not contain the passage**.
@@ -415,8 +420,9 @@ Ranked by (published-source strength × likely value to policy text):
    Patents abstract.
 4. **Mozes 1989 not read.** The five features are quoted from two secondary restatements that
    agree closely, both by Castro-Manzano. Independent confirmation is still owed. In particular,
-   §4's central question — whether Mozes specifies a *method* for missing-rule suggestion —
-   is **open**, and I did not manufacture an answer.
+   whether Mozes specifies a *method* for missing-rule suggestion is open. It is no longer
+   the priority-critical question because Sommers and Englebretsen 2000 already publishes
+   algebraic missing-premise recovery.
 5. **Thompson 1982 and Thompson 1986.** Thompson 1982 (*NDJFL* 23(1):75–84) appears identically
    in three independent bibliographies I read; my Crossref query for it failed to parse, so it
    is [P] rather than [V]. Thompson 1986 exists only as an in-text "cf." with no bibliography

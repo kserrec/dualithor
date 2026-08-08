@@ -1414,3 +1414,33 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
   - `bench/cfr.ml` holds the shared extraction so the samples cannot drift apart
     through a reimplementation; `sample_real` regenerates byte-identical after
     the refactor.
+
+## 2026-08-08
+
+- **Deep-review decision persisted as a bounded five-phase go/no plan.** The former
+  regulatory-verification roadmap is superseded. The regulatory product, router,
+  policybench, coverage chasing, missing-premise build, and broad packaging work are
+  unscheduled. The OCaml engine remains worth a narrow research/teaching release. Before
+  any further paper work, the project must complete: primary-source priority audit;
+  formula-backed re-audit of the nine accepted regulatory records with an independent
+  second human annotator; matched deterministic FOL verbalizer and counterbalanced study
+  design; short surviving-claim register; and a task-coherence pilot with an explicit
+  paper go/no decision.
+
+- **Gate A done — the missing-premise novelty claim is refuted by the canonical book.**
+  Sommers and Englebretsen, *An Invitation to Formal Reasoning* (2000), Chapter 5,
+  §3, pp. 118–122 was read from a local primary copy. On pp. 119–120 the authors
+  introduce an unknown signed missing premise, place it in the validity equation, and
+  isolate it by subtracting the stated premise from the conclusion. On pp. 120–121 they
+  solve a two-missing-premise case by reducing the equation and enumerating candidate
+  pairs. This occupies the exact broad idea formerly described here as unpublished and
+  closed-form where others must search.
+  - **Disposition:** Phase 6.1 is cancelled. A multiplicity-aware OCaml implementation
+    could be useful engineering or a narrower formal generalization, but there is no
+    priority evidence strong enough to justify building it. It must also never be sold as
+    the real-world reason for an eligibility denial: it supplies a proposition sufficient
+    for derivation, not evidence that the proposition is true or relevant.
+  - Evidence and source provenance:
+    `docs/missing-premise-priority-audit-2026-08-08.md`. PLAN, README, the literature
+    synthesis, the original sweep, coverage report, scope notes, and related-work notes
+    were synchronized. No code or data changed, so no engine test was required.

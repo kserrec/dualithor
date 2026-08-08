@@ -118,10 +118,11 @@ sentences as one that does not, for reasons having nothing to do with looking
 like English. That is a correction to a motivation much of this subfield leans
 on, including our own.
 
-**Not touched:** the two contributions that were never coverage-dependent — the
-auditability study (Phase 9), which needs ~30 items and has 91 engine-verified
-ones already, and closed-form missing-premise computation (6.1), which works on
-whatever parses.
+**Not touched by this measurement:** the proposed auditability study, which needs
+roughly 30 items and has 91 engine-verified authored ones already. At the time of
+this report, closed-form missing-premise computation was also treated as a surviving
+contribution. That priority claim was retired on 2026-08-08 after the canonical TFL
+textbook was read; see `missing-premise-priority-audit-2026-08-08.md`.
 
 ## Why these numbers are worth anything
 

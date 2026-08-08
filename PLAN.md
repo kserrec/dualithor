@@ -1,12 +1,125 @@
 # TFL-Verify: Project Plan
 
-*Goal:* Build and evaluate a pipeline that verifies LLM outputs using term logic (TFL), producing (a) an open-source system and (b) an arXiv/workshop paper.
+## Current decision and bounded go/no plan — 2026-08-08
 
-*Core claims to test:*
-1. *Fidelity claim:* NL→TFL translation is more faithful and more human-auditable than NL→FOL translation, because TFL's variable-free plus-minus syntax mirrors natural-language surface form.
-2. *Router claim:* TFL fragment membership (does the sentence parse into TFL at all?) is a clean, mechanical escalation signal — parse success → verify cheaply; parse failure → flag/escalate. FOL pipelines have no equivalent signal.
+**Decision:** do not continue the former regulatory-verification roadmap. Preserve and
+release the OCaml engine as a narrow research and teaching tool, abandon the general
+regulatory product, retire missing-premise computation as a novelty claim, and risk only
+the five phases below on deciding whether a fair human-auditability paper remains viable.
+
+**Authority:** these five phases are the only scheduled work. Everything after
+`Superseded roadmap` is retained as a historical record and must not be selected by
+`$next`, implemented, or used as a statement of current scope unless a phase below
+explicitly revives it.
+
+**Not scheduled:** router implementation, policybench, benchmark expansion, regulatory
+coverage work, defeasible or numerical extensions, FOL-to-TFL transduction, a broad
+Python product, or missing-premise implementation. The existing engine release is the
+fallback outcome, not evidence that those product directions remain alive.
+
+**Execution order:** A → B → C → D → E. Complete one phase per pass. Do not
+begin downstream paper or product work before all five phases are resolved.
+
+### Phase A — Primary-source audit of missing-premise priority ✅ DONE (2026-08-08)
+
+1. Read Sommers and Englebretsen, *An Invitation to Formal Reasoning*, Chapter 5,
+   §3, "Enthymemes," from the primary book text.
+2. Compare the published method directly with the proposed `C − ΣPᵢ` contribution,
+   including the one- and two-missing-premise cases.
+3. Record the priority verdict and correct every living project document that calls the
+   operation unpublished or novel.
+
+**Outcome:** the novelty claim is retired. On pp. 119–121 the book introduces an unknown
+premise, constructs the validity equation, isolates the missing premise by subtracting
+the stated premise from the conclusion, and treats two missing premises as an equation
+with multiple candidate pairs. A broader multiplicity-aware implementation might still
+be useful engineering, but it cannot be presented as the project's novel idea without a
+new, narrower priority case. Evidence and disposition are in
+`docs/missing-premise-priority-audit-2026-08-08.md`.
+
+**Acceptance:** primary pages inspected; evidence recorded with edition and page numbers;
+the research feature cancelled; current claims synchronized. **Passed.**
+
+### Phase B — Re-audit the nine accepted regulatory sentences
+
+1. Freeze and enumerate the nine records currently labelled strictly in-fragment across
+   the normative, definitions, and standards-of-identity samples. Preserve duplicates in
+   the source dataset, but report a de-duplicated sensitivity count as well.
+2. For each accepted record, add the exact TFL formula, verify that it parses, and explain
+   why the formula expresses the complete sentence under the engine's documented fragment
+   and no-anaphora policy. A formula in a note does not satisfy this requirement.
+3. Have a second human annotator independently label the same source sentences without
+   seeing the first labels or formulas. Lock both passes before reconciliation; report
+   agreement and every disagreement rather than silently resolving them.
+4. Recompute strict coverage from the reconciled labels. Explicitly test the antecedent-
+   dependent `d47` record and the duplicated ADA sentence (`r41`/`d11`).
+
+**Acceptance:** nine formula-backed first-pass records; an independently locked second
+pass; reconciliation log; regenerated strict and de-duplicated counts. If no independent
+human annotator is available, this phase remains blocked rather than treating another
+model output as human agreement.
+
+### Phase C — Build a fair matched auditability comparison
+
+1. Define the smallest FOL fragment needed for the study items and implement a
+   deterministic FOL-to-English verbalizer for that fragment. This is a study control,
+   not a general FOL engine.
+2. Construct paired TFL and FOL representations of the same propositions and the same
+   formalization errors. Match vocabulary, explicit quantifiers and negation, number of
+   clauses, and information content; record any item that cannot be matched.
+3. Replace the former English-versus-raw-symbols design with a counterbalanced comparison
+   of deterministic TFL-derived English versus deterministic FOL-derived English. Use a
+   Latin-square assignment so each participant sees each semantic item once and each item
+   appears in both conditions across participants.
+4. Draft the complete instrument and pre-registration: primary outcome is correct
+   same-meaning judgment; response time and confidence are secondary; genuine model
+   errors and manufactured perturbations are tagged and reported separately. A power
+   analysis is required before any confirmatory panel, not before the coherence pilot.
+
+**Acceptance:** deterministic control covered by tests; semantically matched item table;
+counterbalanced instrument; frozen pre-registration draft. Raw FOL notation is not an
+acceptable control.
+
+### Phase D — Write the surviving-claim register
+
+1. Produce a self-contained register of at most 800 words. Classify every prospective
+   claim as `established`, `supported here`, `conditional on Phase E`, `engineering only`,
+   `retired`, or `unknown`.
+2. Give each non-retired research claim its exact evidence, nearest prior art, limitation,
+   and wording ceiling. Include the negative coverage result and distinguish deterministic
+   rendering from correct or fluent rendering.
+3. End with the smallest paper thesis that survives Phases A–C. If no defensible thesis
+   survives, record a no-paper decision instead of manufacturing one.
+
+**Acceptance:** one short claim register with no unsupported first/only/unique language;
+every paper sentence can be checked against it.
+
+### Phase E — Run a task-coherence pilot, then make the go/no call
+
+1. Freeze the participant-facing instrument and obtain Kyle's explicit approval before
+   anyone sees it. No participants are contacted and no external form is published without
+   that approval.
+2. Run a small pilot with roughly 8–12 adults who have not worked on this project. Label it
+   a pilot before recruitment. Its purpose is only to reveal task misunderstanding,
+   unreadable renderings, broken counterbalancing, and collection failures.
+3. Report completion problems, participant restatements of the task, per-item error
+   patterns, and qualitative feedback. Do not estimate a population effect or choose an
+   effect-size threshold from this sample.
+4. Make the terminal decision. Continue toward a powered study only if participants can
+   complete the task without coaching, both renderers are intelligible, condition assignment
+   is concealed, and the data path is complete. Otherwise stop the paper and move directly
+   to the narrow engine release.
+
+**Acceptance:** pilot materials and report persisted; limitations stated; explicit
+paper-go or paper-stop decision recorded. After this decision, plan the engine-release
+hardening separately; do not resurrect the regulatory product.
 
 ---
+
+## Superseded roadmap — historical record only
+
+The material below records what the project planned and learned through 2026-08-02. It is
+not current work. Where it conflicts with the 2026-08-08 plan above, the plan above wins.
 
 ## Scope amendment — 2026-08-02
 
@@ -32,9 +145,9 @@ FOL + general solvers. We do not compete there. Everything below is scoped to wh
    flag their own LLM-generated verbalization as an unverified artifact inside the audit
    path — **and putting that rendering in front of a person, which is Phase 9.** Never write
    "FOL structurally cannot do this."
-2. **Missing-premise / enthymeme completion** (Phase 6.1) — the sharpest pure novelty, and
-   **a build, not a port**; see the rewritten step for why the reference engine's version is
-   not the novel one and why the algebra is not plain subtraction.
+2. ~~**Missing-premise / enthymeme completion** (Phase 6.1) — the sharpest pure
+   novelty.~~ **Retired 2026-08-08:** the canonical 2000 book already publishes
+   algebraic recovery of one and two missing premises.
 3. **Fragment routing** (Phase 5.1) — real, thinnest of the three, and its value is gated by
    the unrun real-text coverage measurement (step 4.6).
 
@@ -110,9 +223,9 @@ whole project when it is load-bearing for exactly one framing:
 - **Phase 9, the auditability study.** Needs ~30 items; 91 engine-verified
   authored ones already exist. Three published groups name the gap and one
   designed the experiment and could not run it. Unaffected by 4.6.
-- **6.1, closed-form missing premise.** Works on whatever parses. Still
-  unclaimed in the literature. Still answers "why was I *not* found eligible",
-  which OWL justifications structurally cannot.
+- ~~**6.1, closed-form missing premise.**~~ **Retired 2026-08-08.** It was
+  coverage-independent but not novel; a derived sufficient premise is also not the
+  factual explanation of an eligibility denial.
 
 **Taxonomy is NOT the new product.** The six tractable sentences are all naming
 or class-inclusion statements, so the fragment fits the *taxonomic* layer of a
@@ -129,9 +242,10 @@ choose. **6.2 stays what it was: a tool feature, no paper claim.**
    (deontic 48%, cross-reference 35%, tense 27%, arithmetic 25%). Includes the
    finding that **defeasibility is the rarest blocker**, against the field's
    assumption that exceptions are the hard problem.
-2. **What a variable-free logic uniquely offers on the fragment it does reach**:
-   a deterministic verbalizer audited by actual humans against the original
-   source sentence (Phase 9), and closed-form enthymeme completion (6.1).
+2. **The remaining question about a variable-free presentation on the fragment it
+   reaches:** whether people audit a deterministic TFL-derived verbalization more
+   accurately than a matched deterministic FOL-derived verbalization. This remains
+   untested and must not be described as unique before the comparison.
 3. **Why surface-closeness does not buy coverage.** What blocks formalization is
    missing expressive primitives, not syntactic distance from English. A logic
    that looks like English fails on the same sentences as one that does not.
@@ -139,14 +253,13 @@ choose. **6.2 stays what it was: a tool feature, no paper claim.**
    included.
 
 **The risk to state rather than hide:** a reviewer can read this as "the system
-does not work". The defence is that (1) is a contribution in its own right and
-(2) is genuine novelty on a narrow, honestly-stated fragment — and that defence
-is only credible because the protocols were pre-registered. **The pre-registration
-discipline is now the most valuable thing in the repo.**
+does not work". The missing-premise novelty defence recorded here failed the
+2026-08-08 primary-source audit. Only a fair human study could now establish a
+paper contribution. **The pre-registration discipline remains valuable.**
 
 **Execution order from here.**
 
-> **6.1 missing premise** → **Phase 9 pilot** (design, pre-register, run) →
+> ~~**6.1 missing premise**~~ → **Phase 9 pilot** (design, pre-register, run) →
 > Phase 8 trimmed further (policybench only, as the in-fragment set) →
 > Phase 10 analysis → Phase 11 write-up.
 
@@ -490,15 +603,16 @@ It is valid on the repo's own stated reading of level 2 (`^2` = most; port-spec 
 
 ## Phase 6 — TFL-native capabilities (the "impact *with* TFL" phase)
 
-Everything here is pure term logic, adds no new formalism, and is available *because* the logic is algebraic. Prioritised above the defeasible layer on Kyle's clarification (2026-08-01) that the goal is impact **with TFL as the vehicle**, not impact generally — and after the 2026-08-02 amendment the defeasible layer is deferred outright, so this phase is where the project's own contributions live. 6.1 is the paper's; 6.2 is the tool's; 6.3 is cut.
+Everything here is pure term logic and was originally framed as the project's own
+contribution phase. That framing is superseded.
 
-*6.1 Missing-premise suggestion — enthymeme completion.* — **a novel contribution, and genuinely a build. Corrected 2026-08-02: it is not a port, and the algebra is not plain subtraction.**
-TFL's first validity condition is an equation over a free abelian group on signed terms, so the missing premise of an incomplete argument is `C − ΣPᵢ`, with the particular-count and level conditions as side constraints. **No publication states this** (lit sweep 4, Q3): Mozes 1989 lists "suggest missing rules" as a feature and is silent on method; two Castro-Manzano papers restate the idea and specify only the trigger.
-**Two corrections that change what this step costs and how it may be claimed.**
-1. **The reference engine's version is not the novel one.** `engine/tfl.js:1863` (`suggestMissingPremise`) delegates to `tacitCandidates` at `:1909`, which is bounded **brute force**: collect the argument's atomic term names (bail out above 8), enumerate every two-term proposition over them, and keep the candidates that are not already entailed, keep the base consistent, and make the query follow. That is guess-and-check, and guess-and-check *is* what abduction has always been — abductive logic programming, Poole's Theorist, ILP. Porting it is cheap and buys **zero novelty**. The closed-form version is implemented nowhere, including here.
-2. **"Subtraction" understates the problem.** The engine's own statement of P/Z (`tfl.js:389–396`) is that a set is inconsistent iff some way of resolving the wilds **and re-using universal premises** leaves exactly one particular and an algebraic sum of zero. Re-use means unknown multiplicities: you are solving a small integer equation with unknown coefficients under two side conditions, not doing arithmetic. The reference's own comment already knows it — *"in an isolated argument the algebra pins it down uniquely; in a fact base several rules may bridge the gap."*
-**How the claim must be worded.** "Computed in closed form where others must search." **Never "there is no FOL counterpart"** — FOL does this by search, and a reviewer who knows abductive logic programming would kill that sentence in one line. Lit sweep 3's own phrasing ("description logics need *separate abduction*") concedes abduction exists. What survives, and is worth the paper: OWL justifications explain *why yes* and cannot explain *why not*, and **"why was I not found eligible?" is the primary question in eligibility determination** — and our answer comes back rendered in English by machinery we already have (which is why 5.0 precedes this).
-Accept: the closed-form computation implemented for the categorical fragment, with its multiplicity handling stated and tested; returns `None` (never a guess) outside it; suggestions verified by re-running the completed argument to `Valid`; rendered in English; property test over generated arguments; a documented comparison against the reference's search on the cases where both apply.
+*6.1 Missing-premise suggestion — enthymeme completion.* — **CANCELLED
+2026-08-08.** Sommers and Englebretsen 2000, Chapter 5, §3, pp. 118–122,
+already introduces unknown signed premises, solves the validity equation by
+subtraction, and treats a two-missing-premise case. The proposed implementation's
+multiplicity handling and verification checks would be engineering details, not enough
+to support the broad novelty claim. Do not implement this step under the current plan;
+see `docs/missing-premise-priority-audit-2026-08-08.md`.
 
 *6.2 Definitions layer.* — **kept 2026-08-02 as a *tool* feature; cut from the paper.**
 The programs/queries layer (`parse_program`, `query_prop`, `check_program_consistency`) was ported in 1.7 and **nothing calls it**. A legal definitions section — *"'Qualified Person' means…"* — is a symbol table, and asking whether an entity falls under a defined term is exactly `query_prop`. This is also the natural home for **use case (b)**: auditing whether a rule set is self-consistent, which the engine already decides. Load programs only through `Safe.parse_program` (3.1).
@@ -634,11 +748,16 @@ Accept: figures render and are referenced.
 - ~~"no modal or temporal extension of TFL exists"~~ — Englebretsen, NDJFL 29(3), 1988.
 - The **GDPR Article 22** framing is also out: 22(3)'s contest right is scoped to decisions based on contract and consent, **not** statutory authorisation, which is the basis for most government eligibility decisions.
 
-**What the paper actually claims:** in the LLM-formalization setting there is, for the first time, an original source sentence to audit a machine's formalization *against*; TFL preserves that sentence's structure where controlled English reintroduces variables (ACE's robust paraphrase shatters one sentence into several and emits `X1 X2 X3`; its structure-preserving mode is documented "experimental"); the fragment is decidable where ACE is not (Fuchs, CNL 2010 §6: *"This means that ACE is undecidable"* — **condition discharged by 5.2, with a correction: say "our fragment has no anaphora", never "restricted anaphora", which would claim a NEXPTIME expressiveness we do not have**); the algebra yields the missing premise in closed form where others must search; and fragment membership is a mechanical abstention signal nobody else has.
+**Historical paper claim set, superseded 2026-08-08:** the missing-premise and
+unique-router clauses in the former claim set are withdrawn. The only research question
+still allowed forward is the matched human-auditability comparison in current Phase C.
 
 **Two further framings retired 2026-08-02, added to the dead list above.**
 - ~~"the back-translation round trip is ours"~~ — Amrollahi, Lopez & Barrett (arXiv:2604.25031, 2026) formalize → back-translate → re-formalize → check equivalence, on Texas statutes. **The mechanism is occupied.** Our claim is the *conjunction*: a **deterministic** verbalizer rather than a second language model (Vernie & Grabmair flag their own LLM verbalization as an unverified artifact inside the audit path), **shown to a person** (Phase 9). Never "FOL structurally cannot do this."
-- ~~"missing-premise suggestion has no FOL counterpart"~~ — FOL does it by search; that is what abduction is (abductive logic programming, Poole's Theorist, ILP). The claim is **closed form versus search**, plus the fact that it answers "why was I *not* found eligible", which OWL justifications cannot.
+- ~~"missing-premise suggestion has no FOL counterpart"~~ and ~~"TFL computes it
+  in closed form where others must search"~~ — both are retired. FOL has abduction,
+  and the canonical TFL textbook already gives the algebraic recovery method. A
+  sufficient formal premise is not automatically the real-world explanation for a denial.
 
 *11.1 Skeleton + background.* TFL primer with a worked engine trace; related work from `docs/related-work-notes.md` **and** `docs/lit-sweep-2026-08-01/`. Must-cite and differentiate: Vernie & Grabmair 2026, Amrollahi/Lopez/Barrett 2026 (roundtrip verification — difference: their back-translation is machine-consumed, never shown to a person), Lorenzo et al. NLLP 2025 (NL→Catala, surface metrics only), Horner et al. 2025, Blawx, Catala, OpenFisca.
 Strongest supporting citation, to sit in the motivation: **López & Hildebrandt (arXiv:2410.10906)**, systematic review of 46 studies — **89.13% of works treat regulatory formalization as manual effort; only 13.4% report operational deployment**; section titled *"Where are the lawyers?"*
