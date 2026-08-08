@@ -1,97 +1,90 @@
 # CLAUDE.md
 
-Guidance for Claude Code when working in this repository.
+Guidance for coding agents working in this repository.
 
 ## What this is
 
-TFL-Verify: an OCaml system that verifies LLM outputs using term logic (TFL) — translate
-natural language into TFL's plus-minus notation, check it symbolically, route on fragment
-membership. Deliverables: an open-source system and an arXiv/workshop paper. The goal is
-adding to knowledge and making things work better; there is no commercial angle.
+`tfl-language` is an OCaml implementation of a proof-producing logic programming language
+based on term logic (TFL). The existing parser, inference engine, program operations,
+renderer, and correctness harness are the language kernel. The active job is to build the
+complete language described in `PLAN.md` without silently replacing TFL semantics with
+those of another logic language.
 
-Everything here is public (MIT). `PLAN.md` is the canonical plan — read the current phase
-before doing nontrivial work. `LOG.md` records decisions and surprises; deviations from the
-plan get a one-line rationale there.
+`PLAN.md` is the only authoritative roadmap. Read its active decision, semantic
+commitments, execution rules, and current phase before nontrivial work. The former
+regulatory-verification and human-study roadmaps are discontinued; legacy translation,
+benchmark, and research assets remain historical evidence and are not selectable work.
+`LOG.md` records earlier decisions and surprises and should not be rewritten to make the
+old project look as though it never existed.
 
-**Naming convention:** the logic is called "term logic" or just "TFL" everywhere — code,
-comments, docs, commits. The spelled-out name "Term Functor Logic" appears only where the
-literature name matters: the README's first line, the paper, CITATION.cff, and outreach.
-The word "functor" is otherwise banned from this repo, because in OCaml it means a module
-functor — a construct we also avoid in the code unless there is a compelling concrete
-need, both for simplicity and to keep the word from ever being ambiguous here.
+**Naming convention:** the project and repository are `tfl-language`; the language is TFL;
+the eventual human executable is `tfl`. In ordinary code and documentation, call the logic
+“term logic” or “TFL.” Spell out the literature name only where it adds needed context,
+because “functor” otherwise means an unrelated OCaml module construct.
 
 ## Commands
 
 ```bash
-opam exec -- dune build              # build the OCaml project
-opam exec -- dune test               # full suite: units, paper cases, differential, oracle smoke (~4 min)
+opam exec -- dune build
+opam exec -- dune test
 
-# The two long gates. Both are required after any change to OCaml engine logic.
-opam exec -- dune exec test/test_oracle.exe -- -n 20000      # six fuzz suites vs the semantics (~25 min)
-opam exec -- dune exec test/test_differential.exe -- -mass   # 884k inputs vs the JS reference (~13 min)
+# Both long gates are required after a change to existing OCaml inference behavior.
+opam exec -- dune exec test/test_oracle.exe -- -n 20000
+opam exec -- dune exec test/test_differential.exe -- -mass
 
-node engine/tfl.test.js              # JS reference engine test suite (201 asserts)
-node engine/oracle.js -n 20000       # JS reference semantic fuzz gate (~2h; consulted, not required)
+node engine/tfl.test.js
+node engine/oracle.js -n 20000
 ```
 
-The opam switch is `default` (system OCaml 4.14.1); `opam exec --` supplies the
-environment, so no shell setup is needed. `dune test` caches results — use
-`--force` when you need to see the counts again.
+The opam switch is `default` with system OCaml 4.14.1. `opam exec --` supplies the
+environment. `dune test` caches results; use `--force` when a real rerun is required.
 
-## Correctness bar
+## Semantic and correctness bar
 
-The engine's job is to *certify validity* — a wrong verdict poisons the paper and anything
-built on it. The bar is absolute:
-
-- `engine/` (the JavaScript reference) is **frozen**: never extended, never "fixed," only
-  consulted. It is the executable specification for the OCaml port.
-- Before the differential handover (PLAN 1.12): every port step ends differential-clean
-  against the JS reference.
-- After the handover: any change touching OCaml engine logic lands only with the unit
-  suite, the ported oracle (20k iterations), and the paper-cases suite all green. A red
-  oracle is a stop-everything event: report to Kyle, do not patch around it.
-- Engine verdict semantics never change silently.
+- Existing verdict semantics never change silently. A changed result requires an explicit
+  language decision, documentation, focused regression cases, the 20,000-case OCaml oracle
+  gate, and the 884,000-input differential gate wherever the frozen reference applies.
+- `Unknown` is not false or invalid. An incomplete procedure says why it abstained.
+- Core TFL, conservative logical extensions, query-only syntax, and runtime features remain
+  distinguishable in implementation, documentation, and proof provenance.
+- Contradictory support cannot be hidden behind whichever proof the runtime found first.
+- `engine/` is frozen. It is a regression oracle for inherited behavior, not a place to add
+  new language features or manufacture agreement.
+- New features require their own independent semantics and tests. English readings are a
+  display aid, never the authority for a formal result.
 
 ## Engineering principles
 
-- **Lean; never over-engineer.** Build the smallest thing that satisfies the current PLAN
-  step. No abstraction before the second concrete use. No config systems, plugin points,
-  frameworks, or "flexibility" nobody asked for. Deleting code is a feature.
-- **Dependencies must earn their place.** Default is to write it ourselves. Take a
-  dependency only when it is (a) a security-hardened surface we must not hand-roll
-  (TLS/HTTP), (b) a spec with real depth where self-writing would be silly under time
-  constraints, or (c) extremely common and well-vetted. Current approved set, each with
-  its reason: `yojson` (JSON parsing is our security boundary with LLM output; well-vetted),
-  `cohttp` + TLS stack (never hand-roll TLS), `qcheck` (property testing with shrinking;
-  standard). Anything beyond these needs a one-line justification in LOG.md before it's
-  added. Dev-only conveniences count as dependencies too.
-- **Tests follow features, and every test earns its keep.** Write the feature for the
-  current PLAN step first; then write tests in response to the real failure modes that
-  feature introduced — a test should name the threat it guards against, not restate the
-  implementation. No coverage-chasing filler. The standing suites (unit tests,
-  paper-cases, oracle, differential harness) exist because they each answer a real threat:
-  wrong verdicts.
-- **Honest results, always.** Benchmark numbers are reported as measured. Negative results
-  go in the paper's limitations, never in the trash.
+- Implement exactly one PLAN phase per pass. If it is too large for one pass, split the
+  phase in the plan before changing code.
+- Build the smallest complete implementation of the current phase. Do not add plugin
+  systems, generalized frameworks, configuration, or abstractions without a current use.
+- A dependency must earn its place. Keep `yojson` for the JSON boundary, the existing
+  Cohttp/TLS stack for the legacy network client while that code remains, and `qcheck` for
+  property testing. Any new dependency needs a real use site and a one-line cost/reason
+  record before it is added.
+- Tests protect concrete threats: a wrong verdict, hidden incompleteness, changed proof,
+  unsafe input, nondeterministic build, or interface drift. Do not add coverage filler.
+- Public operations are total and bounded. User mistakes, resource limits, and internal
+  defects are different result classes.
+- Preserve legacy evidence unless a named phase explicitly migrates or removes it. Never
+  rewrite negative results or historical documents to improve the new project narrative.
 
-## Public-repo hygiene
+## Public-repository hygiene
 
-- No secrets, ever. `OPENROUTER_API_KEY` lives in `.env` (gitignored). Nothing odd or
-  opaque in the tree: no unexplained binaries, no encoded blobs, no private notes.
-- Keys never leak into logs: `data/usage.jsonl` and result files carry tokens/costs/ids,
-  never credentials.
-- **Never commit benchmark datasets.** `data/raw/` is gitignored; ProofWriter/FOLIO/etc.
-  carry their own licenses. Checked-in fixtures are tiny excerpted slices for tests only.
-  Our own authored data (policybench) is ours and is committed.
-- LLM spend: all calls cached to disk keyed by (model, item) — never re-spend on an
-  identical call; the cost ceiling in config is enforced in code and spend is reported
-  after every run.
+- No secrets, private notes, unexplained binaries, or encoded blobs are committed.
+- `.env`, licensed benchmark corpora, model caches, and raw external datasets remain
+  untracked under their existing rules.
+- New version-1 examples and tests run offline with no account, model, API key, or network
+  dependency.
 
 ## Workflow
 
-- One PLAN step per commit, message prefixed with the step id (`1.4: …`). Each step ends
-  with its acceptance check passing.
-- If a step turns out ambiguous or bigger than a single pass mid-execution, stop and ask
-  Kyle rather than guessing.
-- OCaml style: `ocamlformat` defaults, small plain modules, variants + exhaustive `match`
-  everywhere — the compiler's exhaustiveness check is this project's code review.
+- `$next` selects the first incomplete phase whose dependencies are complete, implements
+  it, verifies it, marks it complete in `PLAN.md`, and stops.
+- Each phase ends with its stated acceptance check and a descriptive commit that names the
+  phase.
+- If a semantic choice is ambiguous, stop with the competing meanings and their concrete
+  consequences rather than choosing by convenience.
+- OCaml style is plain modules, small functions, variants, and exhaustive matches. Use the
+  compiler to make invalid states difficult to represent.

@@ -1,8 +1,8 @@
-; The CLI (PLAN 11.4, pulled ahead): JSON over stdio. The release client wraps
-; this binary, and 4.6 and 6.1 both drive the engine through it.
+; The inherited JSON-over-stdio engine boundary. Phase 2 will expose all
+; program operations here; Phase 3 will add the separate human-facing CLI.
 
 (executable
  (name tfl_cli)
- (public_name tfl-verify)
+ (public_name tfl-language)
  (modules tfl_cli)
  (libraries tfl tfl_verify yojson))
