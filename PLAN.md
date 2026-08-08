@@ -17,8 +17,10 @@ coverage work, defeasible or numerical extensions, FOL-to-TFL transduction, a br
 Python product, or missing-premise implementation. The existing engine release is the
 fallback outcome, not evidence that those product directions remain alive.
 
-**Execution order:** A → B → C → D → E. Complete one phase per pass. Do not
-begin downstream paper or product work before all five phases are resolved.
+**Execution order:** A → B → C → D → E. Complete one phase per pass. A phase with an
+external human gate stops at its already-defined lock boundary and resumes only when the
+required independent evidence exists. Do not begin downstream paper or product work
+before all five phases are resolved.
 
 ### Phase A — Primary-source audit of missing-premise priority ✅ DONE (2026-08-08)
 
@@ -40,24 +42,37 @@ new, narrower priority case. Evidence and disposition are in
 **Acceptance:** primary pages inspected; evidence recorded with edition and page numbers;
 the research feature cancelled; current claims synchronized. **Passed.**
 
-### Phase B — Re-audit the nine accepted regulatory sentences
+### Phase B — Re-audit the nine accepted regulatory sentences ⏳ IN PROGRESS
 
-1. Freeze and enumerate the nine records currently labelled strictly in-fragment across
-   the normative, definitions, and standards-of-identity samples. Preserve duplicates in
-   the source dataset, but report a de-duplicated sensitivity count as well.
-2. For each accepted record, add the exact TFL formula, verify that it parses, and explain
-   why the formula expresses the complete sentence under the engine's documented fragment
-   and no-anaphora policy. A formula in a note does not satisfy this requirement.
-3. Have a second human annotator independently label the same source sentences without
-   seeing the first labels or formulas. Lock both passes before reconciliation; report
-   agreement and every disagreement rather than silently resolving them.
+1. ✅ **Done 2026-08-08.** Freeze and enumerate the nine records currently labelled
+   strictly in-fragment across the normative, definitions, and standards-of-identity
+   samples. Preserve duplicates in the source dataset, but report a de-duplicated
+   sensitivity count as well.
+2. ✅ **Done 2026-08-08.** For each accepted record, add the exact TFL formula, verify that
+   it parses, and explain why the formula expresses the complete sentence under the
+   engine's documented fragment and no-anaphora policy. A formula in a note does not
+   satisfy this requirement.
+3. ⏳ **Awaiting an independent human.** Have an independent human annotator label the
+   same source sentences without seeing the first labels or formulas. Lock both passes
+   before reconciliation; report agreement and every disagreement rather than silently
+   resolving them.
 4. Recompute strict coverage from the reconciled labels. Explicitly test the antecedent-
    dependent `d47` record and the duplicated ADA sentence (`r41`/`d11`).
 
-**Acceptance:** nine formula-backed first-pass records; an independently locked second
-pass; reconciliation log; regenerated strict and de-duplicated counts. If no independent
-human annotator is available, this phase remains blocked rather than treating another
-model output as human agreement.
+**First-pass outcome:** `data/fidelity/real/audit-pass-1.jsonl` contains all nine frozen
+accepted records and exact machine-verified formulas for the seven retained judgments.
+`d03` is provisionally rejected because its one noted A-form omits the converse required
+by exhaustive regulatory `means`; `d47` is provisionally rejected because “It” depends on
+the preceding sentence and the engine has no anaphora. Provisional sensitivity is 7/110
+with source duplicates retained and 6/107 after exact-text de-duplication. Full reasoning,
+including the two convention-dependent singular-description cases, is in
+`docs/regulatory-reaudit-pass-1-2026-08-08.md`. The standalone blinded human packet is
+`data/fidelity/real/SECOND-ANNOTATOR-PACKET.md`.
+
+**Acceptance:** all nine records adjudicated in the first pass, with every retained `in`
+record formula-backed; an independently locked human pass; reconciliation log; regenerated
+strict and de-duplicated counts. If no independent human annotator is available, this
+phase remains blocked rather than treating another model output as human agreement.
 
 ### Phase C — Build a fair matched auditability comparison
 

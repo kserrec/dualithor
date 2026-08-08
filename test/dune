@@ -204,6 +204,21 @@
  (modules test_anaphora)
  (libraries tfl tfl_verify test_support))
 
+; The Phase B first-pass re-audit. The original coverage labels remain frozen;
+; this pins the nine-row audit beside them, verifies every retained formula and
+; rendering through the engine, and regenerates raw/de-duplicated sensitivity
+; counts without pretending the independent-human gate has passed.
+
+(test
+ (name test_real_text_audit)
+ (modules test_real_text_audit)
+ (libraries tfl test_support yojson)
+ (deps
+  ../data/fidelity/real/labels.jsonl
+  ../data/fidelity/real/labels-defs.jsonl
+  ../data/fidelity/real/audit-pass-1.jsonl
+  ../data/fidelity/real/SECOND-ANNOTATOR-PACKET.md))
+
 ; The CLI process boundary (11.4, pulled ahead). A line protocol loses every
 ; queued request behind a crash, not just the one that caused it — so the batch
 ; interleaves garbage with real work and counts replies.

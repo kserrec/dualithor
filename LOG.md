@@ -1444,3 +1444,25 @@ Decisions and surprises, newest last. One-line rationale for any deviation from 
     `docs/missing-premise-priority-audit-2026-08-08.md`. PLAN, README, the literature
     synthesis, the original sweep, coverage report, scope notes, and related-work notes
     were synchronized. No code or data changed, so no engine test was required.
+
+- **Gate B first pass locked; the independent-human gate remains open.** The nine original
+  strict accepts are frozen and enumerated in `data/fidelity/real/audit-pass-1.jsonl` rather
+  than overwriting either pre-registered label file. Seven now have exact canonical TFL
+  formulas and engine-generated readings; two are provisionally rejected:
+  - `d03`: regulatory `means` is exhaustive, while the formula formerly embedded in its
+    note states only that every nonmedical source is a non-medical source of evidence. The
+    converse needs a second proposition, outside the one-proposition contract.
+  - `d47`: “It” refers to the sieve introduced by the preceding sentence. A primed or
+    starred term creates a constant but does not bind that antecedent; the engine's pinned
+    no-anaphora policy makes this record out of fragment.
+  - Provisional sensitivity: **7/110** raw versus the frozen 9/110, and **6/107** after
+    removing all three exact duplicate pairs versus the frozen 8/107. `r41`/`d11` remains
+    duplicated and receives one identical formula. `r25` and `d05` remain in but are
+    explicitly marked convention-dependent because fixed singular descriptions are an
+    engineering convention, not a sourced description theory.
+  - The standalone packet `data/fidelity/real/SECOND-ANNOTATOR-PACKET.md` exposes no first-
+    pass labels or formulas. Phase B cannot complete, and Phase C cannot start, until an
+    independent human returns and signs that packet. The focused verifier reports 7/7
+    checks passed; it pins the population, source text, parses, renderings, duplicate, and
+    both raw/de-duplicated counts, and prevents any first-pass formula from leaking into
+    the independent packet.
