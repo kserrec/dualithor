@@ -36,6 +36,14 @@ syntax before the runtime can use it.
 - ask ground questions and questions containing answer variables;
 - work with classifications, explicit exclusions, singular objects, and multi-place
   relations;
+- state and infer published numerical quantities, including at-least, at-most, all-but,
+  exact, comparative, and fractional quantities where the selected numerical profile
+  defines them;
+- express published de re and de dicto necessity and possibility without mislabeling
+  alethic modality as obligation, permission, or time;
+- select an explicit TFL profile for assertoric, numerical, modal, relevance-sensitive,
+  free-term, or supported synthetic reasoning rather than having extensions silently alter
+  one another;
 - define reusable derived rules and use recursion where its semantics are well-defined;
 - receive an honest `true`, `false`, `both`, or `unknown` result rather than having lack of
   proof silently treated as falsity;
@@ -66,7 +74,7 @@ These rules govern every phase.
    positive information.
 4. **Contradictions are visible.** If both a proposition and its contradictory are
    supported, the public result must not hide one. The language will either report `both`
-   or refuse execution under a precisely documented consistency policy; Phase 14 fixes the
+   or refuse execution under a precisely documented consistency policy; Phase 25 fixes the
    final contract.
 5. **`Unknown` is never advertised as a decision.** A bounded or incomplete search reports
    why it did not decide. Numerical and relational incompleteness stay explicit until a
@@ -76,20 +84,70 @@ These rules govern every phase.
    record; they never replace it.
 7. **No usefulness claims by intuition.** Claims about readability, concision,
    explainability, performance, or practical advantage require concrete comparisons in
-   Phase 24.
+   Phase 37.
+8. **Published systems are implemented as named systems.** Murphree Numerical Term Logic,
+   Szabolcsi Numerical Term Logic, Peterson's intermediate quantities, Englebretsen modal
+   TFL, free-term TFL, relevance TFL, and their published combinations are not flattened
+   into one undocumented dialect. Source, profile, and rule identity remain visible.
+9. **Power cannot outrun verification.** A construct enters the stable language only when
+   its syntax, consequence relation, proof procedure, interaction boundaries, and known
+   completeness limits are fixed against primary sources and independent tests. Merely
+   finding a paper or being able to parse notation is not implementation.
 
 Negation-as-failure and an implicit closed-world mode are not part of version 1. They can be
 considered after version 1 only as an explicitly marked, stratified extension. This avoids
 turning “not currently known” into “known not to be true” inside a language whose central
 contract is open-world reasoning.
 
+## Published extension target and reasonable boundary
+
+The stable language target is the strongest source-grounded member of the Sommers-
+Englebretsen TFL family that can be implemented and tested honestly. “As powerful as
+reasonably possible” therefore means implementing mature published calculi and their
+documented combinations, not accumulating unrelated operators under the TFL name.
+
+The required extension baseline is:
+
+- **Numerical TFL:** Wallace Murphree's 1998 Numerical Term Logic and its later tableaux,
+  including at-least, at-most, all-but, derived exact quantities, and numerical relational
+  complexes. Lorne Szabolcsi's numerical system and Peterson's five-quantity,
+  comparative, and fractional work are separate profiles wherever their rules differ.
+- **Modal TFL:** Englebretsen's 1988 modal term logic and the 2020 tableaux treatment,
+  including de re and de dicto necessity and possibility. This is alethic modality; a
+  deontic or temporal reading requires a separately justified logic and is not implied.
+- **Relevance TFL:** the 2022/2024 relevance-sensitive tableaux that distinguish ordinary
+  TFL validity from the stronger requirement that every premise genuinely contribute.
+- **Synthetic TFL:** Castro-Manzano's 2023 profile lattice combining assertoric (`alpha`),
+  Murphree-numerical (`nu`), modal (`mu`), and relevance (`rho`) TFL, up through the
+  published top system `TFLανμρ`, exposed under the ASCII profile name
+  `tfl-alpha-nu-mu-rho`. Each component and smaller combination remains independently
+  selectable and testable.
+- **Free and empty-term TFL:** the published 2020/2023 treatments of possibly empty or
+  non-denoting terms, with existential-import policy explicit rather than accidental.
+- **Full published term operations:** source-verified compound-term operations, identity,
+  relational passives, associative shift, polyadic simplification, and arbitrary published
+  relation arities.
+- **Current natural-logic bridge:** the 2026 tableaux translation of Moss's decidable
+  natural-logic hierarchy into Sommers TFL, implemented as a compatibility/conformance
+  profile rather than falsely presented as newly invented core syntax.
+
+Statistical/probabilistic syllogistic, inductive or abductive tableaux, defeasibility,
+deontic logic, temporal logic, mass terms, and cross-sentence anaphora remain candidates,
+not version-1 promises. The present literature supplies only a fragment, a preliminary
+proposal, a conference abstract, or a different logical family for at least one essential
+part of each. Phase 6 applies a written admission test and the release phase repeats the
+literature search; any candidate that by then has a precise source semantics, proof method,
+and credible validation plan must either receive its own phase or be named explicitly as
+post-version-1 work. Nothing is silently called supported.
+
 ## Starting point
 
 The repository already contains considerably more than a parser experiment:
 
 - a Unicode and ASCII-compatible parser, canonical printer, and abstract syntax tree;
-- categorical, relational, propositional-term, and numerical TFL representations;
-- direct, indirect, relational, and consistency inference;
+- categorical, relational, propositional-term, and TFL+ intermediate-quantity
+  representations;
+- direct, indirect, relational, limited intermediate-quantity, and consistency inference;
 - multi-line programs with comments and per-line parse errors;
 - ground proposition queries returning yes, no, or unknown;
 - “what is this term?” classification queries;
@@ -102,9 +160,10 @@ The repository already contains considerably more than a parser experiment:
 
 That is the language kernel, not yet a complete language product. Important missing pieces
 include a public program runtime, `.tfl` file execution, a human command line, a REPL,
-answer variables, a defined user-rule layer, recursion, modules, source-level diagnostics,
-incremental evaluation, a debugger, data interfaces, editor tooling, packaging, and real
-application evidence.
+answer variables, full Numerical Term Logic, modal and relevance profiles, free-term
+semantics, the published synthetic profile family, a defined user-rule layer, recursion,
+modules, source-level diagnostics, incremental evaluation, a debugger, data interfaces,
+editor tooling, packaging, and real application evidence.
 
 The frozen JavaScript engine remains a regression oracle for the behavior it already
 covers. New language features belong in the OCaml implementation and receive their own
@@ -220,9 +279,204 @@ REPL operation has the same semantics and data as the program API.
 never mislabeled as character columns; internal failures are never presented as bad user
 input.
 
-## Milestone II — Add answer generation without corrupting TFL semantics
+## Milestone II — Implement the published TFL extension family
 
-### Phase 6 — Declarations and the finite program domain
+### Phase 6 — Lock extension sources, semantics, and profiles
+
+1. Build a versioned source manifest for assertoric TFL, Murphree and Szabolcsi Numerical
+   Term Logic, Peterson's intermediate quantities, Englebretsen modal TFL, free-term TFL,
+   relevance TFL, the 2023 synthetic system, and the 2026 Moss translation. Record exact
+   editions, pages, notation, rules, corrections, and source-access gaps.
+2. Write a capability matrix for every proposed profile: accepted syntax, consequence
+   relation, proof procedure, completeness claim, computational boundary, and permitted
+   compositions. Resolve conflicting published rules by separate profiles, never by
+   silently choosing one.
+3. Define how source files and APIs select a language profile, how the default core behaves,
+   how proofs name every contributing profile, and how unsupported mixtures are rejected.
+4. Apply a written admission test to the remaining literature candidates: a stable feature
+   requires primary-source semantics, implementable proof or decision rules, an independent
+   validation strategy, and a clear relationship to TFL. Add a new phase before coding any
+   candidate that passes; record the concrete missing requirement for every candidate that
+   does not.
+
+**Acceptance:** another implementer can reproduce every stable profile from the pinned
+sources without guessing; every conflict and claimed completeness boundary is explicit; no
+extension syntax is implemented before this contract and its conformance examples agree.
+
+### Phase 7 — Complete compound and relational TFL
+
+1. Audit the existing compound and relational implementation against the pinned Sommers,
+   Englebretsen, tableaux, and implementation sources, including relation arity, polarity,
+   pairing indices, and nesting.
+2. Implement every admitted compound-term operation, including disjunctive or implicational
+   compounds only where Phase 6 verifies their formal rules; preserve canonical notation and
+   unambiguous English readings.
+3. Complete the published relational transformations: passive voice, associative shift,
+   polyadic simplification, and arbitrary admitted relation arities.
+4. Add source-linked conformance cases, generated round trips, valid derivations, and nearby
+   invalid cases for every operation and transformation.
+
+**Acceptance:** every Phase 6 assertoric, compound, and relational construction either
+parses, prints, decides, and produces a replayable proof, or is rejected as outside the
+selected profile with the exact source-bound reason; no transformation assumes an invalid
+converse or changes relation orientation.
+
+### Phase 8 — Existence, empty terms, and identity
+
+1. Define named existential-import profiles using the published model-adaptive,
+   language-adaptive, and free-term treatments; state exactly what universal propositions
+   imply when a subject or predicate class is empty.
+2. Implement free and empty-term syntax, validation, models, and tableaux without changing
+   the existing core profile's results.
+3. Implement identity as the exact source-supported TFL reduction or distinguished relation,
+   keeping logical identity separate from query-variable equality and textual name equality.
+4. Test denoting, non-denoting, empty-class, singular, and identity cases against independent
+   finite models and published examples.
+
+**Acceptance:** the same source program can be checked under an explicitly selected
+existential-import policy with predictable differences; empty terms never manufacture
+existence; identity proofs state which identity semantics they use.
+
+### Phase 9 — Murphree Numerical Term Logic
+
+1. Add the Murphree profile and exact source syntax for at least, at most, all but, and the
+   four proposition polarities, freezing every strict/non-strict and off-by-one convention.
+2. Implement derived exact quantities, numerical negation, arithmetic side conditions, and
+   the published numerical tableaux with the numerical vector visible in proof objects.
+3. Integrate numerical propositions with ordinary categorical and compound terms so
+   universal and particular TFL are verified special cases at zero and one rather than a
+   separate evaluator.
+4. Reproduce the published examples and counterexamples, then check small cases against an
+   independent cardinality-model oracle instead of treating agreement with our own tableau
+   as validation.
+
+**Acceptance:** the language faithfully executes Murphree Numerical Term Logic and labels
+the result as that profile; all supported arithmetic is exact; the interface distinguishes
+Murphree-rule validity from any stronger standard-cardinality entailment not yet decided.
+
+### Phase 10 — Szabolcsi and Peterson quantity profiles
+
+1. Lock the primary Szabolcsi and Peterson contracts before implementation, recording where
+   their validity conditions differ from Murphree and from the existing level-based TFL+
+   engine.
+2. Implement separately named support for exact, comparative, fractional, proportional,
+   and five-quantity propositions wherever the source supplies determinate syntax and
+   inference rules.
+3. Reconcile “few,” “many,” “most,” and related subjective quantities with the current
+   levels without pretending that a context-sensitive quantity has an unqualified numeric
+   value.
+4. Add paired cases that deliberately produce different results under Murphree, Szabolcsi,
+   Peterson, and legacy TFL+ profiles, with the selected rule set present in each proof.
+
+**Acceptance:** every stable published numerical construction admitted in Phase 6 is
+usable, every semantic disagreement selects a visible profile, and no result is obtained by
+an undocumented blend of numerical calculi.
+
+### Phase 11 — Complete monadic numerical decision
+
+1. Give the supported monadic numerical fragment an independent set/cardinality semantics
+   covering positive and negative predicates, empty classes, exact counts, and admitted
+   proportional constraints.
+2. Implement an exact decision procedure for that documented fragment, choosing an
+   internal algorithm or external solver only after the dependency earns its correctness,
+   security, size, and proof-certificate cost.
+3. Produce checkable entailment certificates or finite countermodels and differentially
+   compare the procedure with exhaustive small finite models and the profile-specific
+   syllogistic calculi.
+4. Measure and document complexity and resource limits; an exhausted search returns
+   incomplete metadata rather than a false logical verdict.
+
+**Acceptance:** every in-fragment monadic cardinality query is decided soundly and
+completely under the documented semantics, including cases no finite collection of
+syllogistic rules can cover; profile-rule validity and semantic entailment remain separately
+inspectable.
+
+### Phase 12 — Numerical relational complexes
+
+1. Parse and represent published numerical quantifiers inside multi-place relational
+   complexes, including independently quantified subjects and object positions.
+2. Implement the source-supported relational transformations and inferences without moving
+   a count across a relation position or modal scope illicitly.
+3. Provide complete evaluation over an explicitly supplied finite kernel domain and the
+   strongest sound general procedure justified by the sources; Phase 17 later exposes that
+   domain through language declarations. Report the remaining relational numerical
+   fragment as incomplete rather than guessing.
+4. Test nested numerical relation examples, converse traps, empty positions, mixed
+   quantities, and bounded-domain results against exhaustive enumeration.
+
+**Acceptance:** published examples such as numerically quantified teachers, books, and
+students are executable with proofs; every answer states whether it is generally complete,
+finite-domain complete, or only sound for the attempted procedure.
+
+### Phase 13 — Modal Term Functor Logic
+
+1. Add Englebretsen's de dicto and de re necessity and possibility syntax, with Unicode and
+   ASCII forms and canonical placement on propositions or terms.
+2. Implement modal strength, the published modal validity conditions, and the later tableau
+   rules with modal steps explicit in proofs.
+3. Expose assertoric, modal, and permitted mixed profiles without allowing an alethic box or
+   diamond to be called obligation, permission, tense, or probability.
+4. Reproduce published valid and invalid modal arguments and add countermodels or an
+   independent oracle for the supported fragment wherever the source semantics permits.
+
+**Acceptance:** de re and de dicto readings remain distinct through parsing, inference,
+printing, and proof replay; every modal verdict identifies its exact calculus and
+completeness boundary.
+
+### Phase 14 — Relevance Term Logic
+
+1. Implement the published premise/conclusion flags and causal-relevance conditions on top
+   of the kernel's proof provenance rather than inferring relevance from a prettified proof;
+   Phase 29 later incorporates this record into the stable public proof schema.
+2. Return ordinary logical validity and relevance-sensitive validity as separate named
+   judgments, including which premise was unused or which relevance condition failed.
+3. Cover the published exclusions of ex falso, verum ad, petitio principii, and non causa
+   ut causa without changing the consequence relation of profiles that do not request
+   relevance.
+4. Test relevance under reordered premises, duplicate premises, multiple proofs, numerical
+   reasoning, and modal reasoning.
+
+**Acceptance:** a user can tell whether an argument is invalid, valid but irrelevant, or
+valid and relevant, and can inspect the exact proof dependency that supports that answer.
+
+### Phase 15 — Synthetic TFL profile lattice
+
+1. Implement the published profile lattice over assertoric (`alpha`), Murphree-numerical
+   (`nu`), modal (`mu`), and relevance (`rho`) TFL, including every documented
+   intermediate combination and the top `TFLανμρ` system, exposed as
+   `tfl-alpha-nu-mu-rho` in ASCII interfaces.
+2. Compile combined propositions only when their placement of quantities, modalities,
+   terms, relations, and relevance flags is licensed by the synthetic grammar.
+3. Implement the synthetic tableau and its arithmetic, modal-strength, and flag-closure
+   conditions while preserving the independently testable behavior of every base profile.
+4. Reproduce the paper's combined examples and add cross-profile metamorphic tests showing
+   that removing an unused extension collapses to the appropriate smaller profile.
+
+**Acceptance:** the top published synthetic system can execute a relational argument that
+combines counts, de re/de dicto modality, and relevance and return a replayable proof;
+selecting any smaller profile rejects or ignores no feature silently.
+
+### Phase 16 — Moss natural-logic compatibility
+
+1. Freeze the exact 2026 tableaux translations for Moss's `A`, `S`, `S-dagger`,
+   `R`, `R-dagger`, relative-clause, transitive-relation, and opposite-relation
+   fragments that the paper actually covers.
+2. Add an opt-in compatibility surface or compiler adapter that translates those forms to
+   ordinary TFL while retaining both the source proposition and generated TFL in proof
+   provenance.
+3. Turn the translated rules and examples into a conformance corpus, preserving
+   decidability or completeness claims only for the exact source fragment that establishes
+   them.
+4. Differentially compare translated execution with the equivalent direct TFL programs and
+   expose any TFL inference that goes beyond the selected Moss fragment as such.
+
+**Acceptance:** every covered member of the 2026 hierarchy can be written or imported,
+translated, queried, and explained without changing core TFL semantics; the adapter never
+advertises unsupported generalized quantifiers or relative constructions.
+
+## Milestone III — Add answer generation without corrupting TFL semantics
+
+### Phase 17 — Declarations and the finite program domain
 
 1. Define optional declarations for singular objects, terms, and relation names while
    preserving declaration-free core programs.
@@ -235,7 +489,7 @@ input.
 **Acceptance:** the compiler produces one deterministic domain catalog for every valid
 program, and every catalog entry points back to its declarations or first occurrence.
 
-### Phase 7 — Query-variable semantic contract
+### Phase 18 — Query-variable semantic contract
 
 1. Design variables as query-only placeholders first; they do not become new TFL terms or
    alter the truth conditions of stored propositions.
@@ -247,7 +501,7 @@ program, and every catalog entry points back to its declarations or first occurr
 **Acceptance:** a written operational specification and executable table of examples cover
 every variable behavior before the evaluator accepts variable syntax.
 
-### Phase 8 — Unary answer generation
+### Phase 19 — Unary answer generation
 
 1. Implement one-variable classification queries over the compiled finite domain.
 2. Return positive, negative, both, and unresolved bindings separately; never discard a
@@ -260,7 +514,7 @@ every variable behavior before the evaluator accepts variable syntax.
 the ground decision procedure’s stated completeness; any weaker guarantee is explicit in
 the result.
 
-### Phase 9 — Relational answer generation
+### Phase 20 — Relational answer generation
 
 1. Extend query variables to relational subjects and objects with more than one binding.
 2. Implement deterministic join order, repeated-variable equality, projection, and
@@ -272,7 +526,7 @@ the result.
 **Acceptance:** finite relational queries return the same tuples as exhaustive ground
 enumeration, including negative and unresolved cases, with reproducible ordering.
 
-### Phase 10 — Query filters and answer projection
+### Phase 21 — Query filters and answer projection
 
 1. Add conjunction of query conditions, named projection, and equality/inequality filters
    over already-bound finite-domain variables.
@@ -285,9 +539,9 @@ enumeration, including negative and unresolved cases, with reproducible ordering
 **Acceptance:** multi-condition queries have compositional four-state semantics and expose
 whether the returned answer set is complete.
 
-## Milestone III — A real programmable rule layer
+## Milestone IV — A real programmable rule layer
 
-### Phase 11 — Rule-layer boundary and semantics
+### Phase 22 — Rule-layer boundary and semantics
 
 1. Determine exactly which reusable rules cannot already be expressed as TFL
    propositions, using concrete unary, relational, and recursive examples.
@@ -300,9 +554,9 @@ whether the returned answer set is complete.
 **Acceptance:** the rule extension has a precise model and operational semantics, a clear
 surface distinction from core TFL, and no implementation until those artifacts agree.
 
-### Phase 12 — Non-recursive derived rules
+### Phase 23 — Non-recursive derived rules
 
-1. Parse, validate, and compile safe non-recursive rules under the Phase 11 contract.
+1. Parse, validate, and compile safe non-recursive rules under the Phase 22 contract.
 2. Evaluate rules over finite bindings and feed derived TFL propositions into the ordinary
    inference kernel.
 3. Record the rule instance, substitutions, and parent propositions in proof provenance.
@@ -311,7 +565,7 @@ surface distinction from core TFL, and no implementation until those artifacts a
 **Acceptance:** non-recursive rules derive exactly the specified ground propositions;
 removing the extension leaves all core-only behavior unchanged.
 
-### Phase 13 — Recursion and fixed-point evaluation
+### Phase 24 — Recursion and fixed-point evaluation
 
 1. Add positive recursion using a monotone least-fixed-point evaluator.
 2. Detect strongly connected rule components and iterate only the affected component.
@@ -322,7 +576,7 @@ removing the extension leaves all core-only behavior unchanged.
 **Acceptance:** recursive results match a small independent fixed-point oracle; proof output
 is finite and does not erase the recursive derivation path.
 
-### Phase 14 — Contradictions and integrity constraints
+### Phase 25 — Contradictions and integrity constraints
 
 1. Define the public four-state query contract: supported only, contradicted only, both,
    or neither, with incompleteness represented separately.
@@ -337,9 +591,9 @@ is finite and does not erase the recursive derivation path.
 **Acceptance:** no inconsistent program can produce a one-sided answer that hides known
 support for the other side; every explosion-prone boundary is tested and documented.
 
-## Milestone IV — Programs larger than one file
+## Milestone V — Programs larger than one file
 
-### Phase 15 — Modules, imports, and namespaces
+### Phase 26 — Modules, imports, and namespaces
 
 1. Define module names, exported declarations, private declarations, qualified names, and
    imports.
@@ -352,7 +606,7 @@ support for the other side; every explosion-prone boundary is tested and documen
 **Acceptance:** a multi-file program builds reproducibly from any working directory and
 cannot change meaning because an unrelated file appears on the machine.
 
-### Phase 16 — Project manifests and reproducible builds
+### Phase 27 — Project manifests and reproducible builds
 
 1. Define the minimal project manifest for source roots, entry modules, language version,
    and declared external data.
@@ -364,7 +618,7 @@ cannot change meaning because an unrelated file appears on the machine.
 **Acceptance:** the same checked-out project produces the same compiled program and build
 fingerprint on two clean runs; missing configuration never changes semantics silently.
 
-### Phase 17 — Incremental sessions
+### Phase 28 — Incremental sessions
 
 1. Add an immutable compiled-program value plus a session layer for adding, retracting,
    and replacing source units.
@@ -377,9 +631,9 @@ fingerprint on two clean runs; missing configuration never changes semantics sil
 **Acceptance:** every incremental state agrees with recompiling its current sources from
 scratch, including after errors and retractions.
 
-## Milestone V — Explanations and debugging as language features
+## Milestone VI — Explanations and debugging as language features
 
-### Phase 18 — Stable proof objects and provenance
+### Phase 29 — Stable proof objects and provenance
 
 1. Define a versioned public proof schema covering core inference, rule instantiation,
    recursion, contradiction, and source provenance.
@@ -392,7 +646,7 @@ scratch, including after errors and retractions.
 **Acceptance:** every supported answer has a schema-valid proof that replays to the claimed
 ground proposition; unknown answers never carry fabricated proof support.
 
-### Phase 19 — `why`, `why-not`, and proof debugging
+### Phase 30 — `why`, `why-not`, and proof debugging
 
 1. Add `why` views that show the smallest available proof without claiming global
    minimality unless it is actually computed.
@@ -404,7 +658,7 @@ ground proposition; unknown answers never carry fabricated proof support.
 **Acceptance:** for a curated set of failed queries, `why-not` identifies an actionable and
 truthful reason without presenting heuristic suggestions as logical necessities.
 
-### Phase 20 — Test assertions for TFL programs
+### Phase 31 — Test assertions for TFL programs
 
 1. Add source-level assertions for expected support, contradiction, both, neither,
    consistency, and answer sets.
@@ -415,9 +669,9 @@ truthful reason without presenting heuristic suggestions as logical necessities.
 **Acceptance:** example applications can carry deterministic regression tests that fail on
 wrong logical results, changed completeness, or changed proof contracts.
 
-## Milestone VI — Scale, integration, and ordinary developer tooling
+## Milestone VII — Scale, integration, and ordinary developer tooling
 
-### Phase 21 — Indexes and query planning
+### Phase 32 — Indexes and query planning
 
 1. Measure the current compiler, ground queries, answer generation, and recursive rules on
    fixed representative workloads before optimizing.
@@ -430,7 +684,7 @@ wrong logical results, changed completeness, or changed proof contracts.
 claims, with recorded improvement on at least one workload and no unsupported performance
 claim.
 
-### Phase 22 — Resource control and operational safety
+### Phase 33 — Resource control and operational safety
 
 1. Centralize limits for source size, nesting, compiled facts, rule groundings, recursion
    rounds, proof size, query work, and wall time where enforceable.
@@ -442,7 +696,7 @@ claim.
 **Acceptance:** every public operation terminates, returns, or can be cancelled under its
 documented limit; the process remains usable after refusal or cancellation.
 
-### Phase 23 — External data and stable embedding APIs
+### Phase 34 — External data and stable embedding APIs
 
 1. Define explicit, typed import of CSV and JSON records into declared TFL symbols without
    inventing classifications from field names.
@@ -454,7 +708,7 @@ documented limit; the process remains usable after refusal or cancellation.
 **Acceptance:** an external program can load declared data, run repeated queries in one
 session, trace every result to its source record, and negotiate an API version.
 
-### Phase 24 — Formatter and editor support
+### Phase 35 — Formatter and editor support
 
 1. Add a semantics-preserving formatter with an idempotence and parse/print/parse property
    suite.
@@ -468,11 +722,12 @@ session, trace every result to its source record, and negotiate an API version.
 **Acceptance:** formatting twice is identical to formatting once; editor results agree with
 `tfl check`; no editor-only interpretation of the language exists.
 
-## Milestone VII — Prove what the language is actually good for and release it
+## Milestone VIII — Prove what the language is actually good for and release it
 
-### Phase 25 — Standard examples and libraries
+### Phase 36 — Standard examples and libraries
 
 1. Build small, tested examples for classification, family/organizational relations,
+   full numerical quantities, free terms, modality, relevance, a synthetic profile,
    recursive reachability, contradiction diagnosis, and data import.
 2. Add only reusable definitions that occur in at least two real examples to a versioned
    standard library.
@@ -482,11 +737,12 @@ session, trace every result to its source record, and negotiate an API version.
 **Acceptance:** a new user can learn every version-1 feature from executable programs, and
 the standard library contains no speculative abstractions without real use sites.
 
-### Phase 26 — Comparative real-world application trials
+### Phase 37 — Comparative real-world application trials
 
 1. Choose three bounded applications where TFL might plausibly matter: one
    classification-heavy knowledge base, one relational/recursive program, and one
-   explanation-heavy rule system.
+   extension-heavy explanation system that genuinely exercises numerical, modal, or
+   relevance reasoning.
 2. Implement the same concrete outcomes in TFL and the closest established alternative,
    normally Datalog, Prolog, or a description-logic tool.
 3. Compare expressiveness, source size, query clarity, explanation quality, correctness,
@@ -497,29 +753,40 @@ the standard library contains no speculative abstractions without real use sites
 **Acceptance:** a self-contained report and reproducible programs support every claimed
 advantage or conclude that no unique practical advantage was demonstrated.
 
-### Phase 27 — Documentation, packaging, and version 1 release
+### Phase 38 — Documentation, packaging, and version 1 release
 
-1. Finish the language reference, tutorial, command reference, embedding guide, error
+1. Repeat the targeted primary-source search through a recorded release cutoff date and
+   reapply Phase 6's admission test. Add and complete a roadmap phase for any newly mature,
+   in-scope TFL extension, or record the exact reason it is not reasonably implementable in
+   version 1.
+2. Finish the language reference, tutorial, command reference, embedding guide, error
    reference, semantics/extension boundary, and migration/versioning policy.
-2. Package `tfl` for a clean supported environment and verify install, uninstall, and a
+3. Package `tfl` for a clean supported environment and verify install, uninstall, and a
    first program from outside the source tree.
-3. Run the full unit, conformance, property, oracle, differential, fuzz, integration,
+4. Run the full unit, conformance, property, oracle, differential, fuzz, integration,
    example, and application suites; publish exact known limitations.
-4. Tag version 1 only after the repository, package metadata, changelog, license, and
+5. Tag version 1 only after the repository, package metadata, changelog, license, and
    release artifacts all name `tfl-language` consistently.
 
 **Acceptance:** a clean machine can install TFL, complete the tutorial, run and test a
-multi-file variable-and-recursion program, inspect its proof, and reproduce the published
-application comparisons. All tests pass and all incomplete procedures are plainly labeled.
+multi-file variable-and-recursion program, use every stable profile, inspect its proof, and
+reproduce the published application comparisons. The source manifest has a release cutoff
+date; all tests pass; all incomplete procedures and deferred candidates are plainly labeled.
 
 ---
 
 ## Version 1 completion checklist
 
-Version 1 is complete only when all 27 phases are complete and the following are true:
+Version 1 is complete only when all 38 phases are complete and the following are true:
 
 - the language has a normative, versioned semantics and conformance suite;
 - core TFL and every extension are distinguishable in source, runtime state, and proofs;
+- Murphree numerical, admitted Szabolcsi/Peterson quantity, free-term, modal, relevance, and
+  every published synthetic profile work independently and in every licensed combination;
+- the documented monadic numerical fragment has a complete semantic decision procedure,
+  while numerical-relational limits are stated separately and never hidden;
+- the covered 2026 Moss natural-logic hierarchy translates to TFL with checked provenance
+  and fragment-accurate decidability or completeness claims;
 - `.tfl` files, projects, modules, imports, the CLI, REPL, formatter, tests, and editor
   diagnostics work together;
 - ground, variable, relational, filtered, and recursive queries expose four-state truth and
@@ -527,6 +794,8 @@ Version 1 is complete only when all 27 phases are complete and the following are
 - every supported answer has source provenance and a replayable proof;
 - contradictions, limits, malformed input, and internal errors cannot masquerade as
   ordinary false answers;
+- a dated pre-release literature refresh has either incorporated every newly mature,
+  in-scope TFL extension or documented why it falls outside the reasonable stable boundary;
 - installation and embedding work outside the repository;
 - executable real-world comparisons establish exactly what practical value was and was not
   demonstrated.
