@@ -17,6 +17,12 @@ benchmark, and research assets remain historical evidence and are not selectable
 `LOG.md` records earlier decisions and surprises and should not be rewritten to make the
 old project look as though it never existed.
 
+`docs/core-language.md` is the normative contract for the inherited `core-0.1` language;
+`docs/port-spec.md` is its detailed mechanics appendix, and
+`data/conformance/core-0.1.json` is its executable, language-neutral example corpus. An
+implementation disagreement with those artifacts is a contract defect, not an implicit
+language change.
+
 **Naming convention:** the project and repository are `tfl-language`; the language is TFL;
 the eventual human executable is `tfl`. In ordinary code and documentation, call the logic
 “term logic” or “TFL.” Spell out the literature name only where it adds needed context,
@@ -27,6 +33,7 @@ because “functor” otherwise means an unrelated OCaml module construct.
 ```bash
 opam exec -- dune build
 opam exec -- dune test
+opam exec -- dune exec test/test_conformance.exe
 
 # Both long gates are required after a change to existing OCaml inference behavior.
 opam exec -- dune exec test/test_oracle.exe -- -n 20000

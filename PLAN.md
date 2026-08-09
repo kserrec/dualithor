@@ -13,7 +13,7 @@ select work from an old roadmap. Git history preserves the superseded plan.
 The repository and project are now named **`tfl-language`**. The language is called **TFL**
 and its eventual human-facing executable is **`tfl`**.
 
-No implementation phase in this plan has started.
+Phase 1 is complete. Phase 2 is the next implementation phase.
 
 ## What we are building
 
@@ -208,7 +208,7 @@ both, but it cannot change a verdict.
 
 ## Milestone I — Turn the kernel into a language people can run
 
-### Phase 1 — Freeze the core language contract ⏭ NEXT
+### Phase 1 — Freeze the core language contract ✅ COMPLETE — 2026-08-09
 
 1. Write the normative core-language reference for the syntax and semantics that already
    exist: signs, quantity levels, singulars, compounds, propositional terms, relational
@@ -224,7 +224,11 @@ both, but it cannot change a verdict.
 the OCaml source; every normative example is executable and green; no documented result
 collapses unknown into false.
 
-### Phase 2 — Public program runtime
+**Delivered:** `docs/core-language.md` plus its corrected mechanics appendix define
+contract `core-0.1`; `data/conformance/core-0.1.json` contains 18 language-neutral examples
+checked by `test/test_conformance.ml`. The focused corpus and forced full suite are green.
+
+### Phase 2 — Public program runtime ⏭ NEXT
 
 1. Add one total production API that compiles a complete program and refuses execution if
    any source line is malformed.

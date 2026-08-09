@@ -12,9 +12,12 @@ REPL, answer variables, a defined rule and recursion layer, modules, diagnostics
 provenance, debugging, data interfaces, editor support, packaging, and real application
 comparisons.
 
-**Current status (2026-08-08):** the replacement roadmap is complete, but no implementation
-phase has started. [PLAN.md](PLAN.md) is the only active plan. It completely supersedes the
-old regulatory-verification product and proposed human study.
+**Current status (2026-08-09):** Phase 1 is complete. The inherited core now has a
+[normative language reference](docs/core-language.md) and an 18-case executable
+conformance corpus covering its notation, results, completeness boundaries, and proof
+shapes. Phase 2, the public program runtime, is next. [PLAN.md](PLAN.md) is the only active
+plan; it completely supersedes the old regulatory-verification product and proposed human
+study.
 
 ## What TFL is intended to provide
 
@@ -65,10 +68,14 @@ printf '%s\n' '{"cmd":"check","premises":["-M+P","-S+M"],"conclusion":"-S+P"}' |
 ## Repository layout
 
 - `PLAN.md` — the authoritative language roadmap and acceptance checks.
+- `docs/core-language.md` — the normative `core-0.1` syntax, semantics, result, and limits
+  reference; `docs/port-spec.md` is its detailed mechanics appendix.
+- `data/conformance/core-0.1.json` — language-neutral normative examples checked by the
+  test suite.
 - `lib/tfl/` — syntax, inference, program, rendering, and safety kernel.
 - `lib/verify/` — the current proof-trace verification API, retained as a foundation.
 - `bin/` — the current JSON-lines process boundary.
-- `test/` — unit, conformance precursor, literature, oracle, differential, and robustness
+- `test/` — unit, core conformance, literature, oracle, differential, and robustness
   suites.
 - `engine/` — the frozen JavaScript reference inherited from the original implementation.
 - `translate/`, `router/`, `bench/`, `analysis/`, and much of `data/` and `docs/` — legacy

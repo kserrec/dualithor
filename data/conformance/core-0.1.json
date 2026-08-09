@@ -1,0 +1,361 @@
+{
+  "contract": "core-0.1",
+  "cases": [
+    {
+      "id": "categorical-barbara",
+      "rule": "Complete P/Z closure over level-0 atomic categorical A propositions",
+      "focus": "-S+P",
+      "operation": {
+        "kind": "argument",
+        "premises": ["-M+P", "-S+M"],
+        "conclusion": "-S+P"
+      },
+      "expected": {
+        "printed": "−S+P",
+        "canonical": "−S+P",
+        "reading": "every s is p",
+        "result": "valid",
+        "method": "PZ",
+        "complete": true,
+        "proof": {"kind": "certificate", "rules": [], "final": null}
+      }
+    },
+    {
+      "id": "universal-has-no-existential-import",
+      "rule": "A universal premise does not establish a particular conclusion",
+      "focus": "-A+B",
+      "operation": {
+        "kind": "argument",
+        "premises": ["-A+B"],
+        "conclusion": "+A+B"
+      },
+      "expected": {
+        "printed": "−A+B",
+        "canonical": "−A+B",
+        "reading": "every a is b",
+        "result": "invalid",
+        "method": "PZ",
+        "complete": true,
+        "proof": {"kind": "none", "rules": [], "final": null}
+      }
+    },
+    {
+      "id": "fixed-reference-wild-quantity",
+      "rule": "A starred singular is a fixed reference whose universal and particular readings coincide",
+      "focus": "+-Socrates*+Man",
+      "operation": {
+        "kind": "argument",
+        "premises": ["+-Socrates*+Man", "-Man+Mortal"],
+        "conclusion": "+-Socrates*+Mortal"
+      },
+      "expected": {
+        "printed": "±Socrates*+Man",
+        "canonical": "+Man+Socrates*",
+        "reading": "Socrates is a man",
+        "result": "valid",
+        "method": "PZ",
+        "complete": true,
+        "proof": {"kind": "certificate", "rules": [], "final": null}
+      }
+    },
+    {
+      "id": "compound-dictum-de-omni",
+      "rule": "A compound is one term and DON substitutes a universal classification at its positive occurrence",
+      "focus": "-(+White+Horse)+Gentle",
+      "operation": {
+        "kind": "argument",
+        "premises": ["+Knight+(+White+Horse)", "-(+White+Horse)+Gentle"],
+        "conclusion": "+Knight+Gentle"
+      },
+      "expected": {
+        "printed": "−(+White+Horse)+Gentle",
+        "canonical": "−(+Horse+White)+Gentle",
+        "reading": "every white horse is gentle",
+        "result": "valid",
+        "method": "derivation",
+        "complete": false,
+        "proof": {
+          "kind": "direct",
+          "rules": ["premise", "premise", "DON"],
+          "final": "+Gentle+Knight"
+        }
+      }
+    },
+    {
+      "id": "relational-object-substitution",
+      "rule": "DON reaches a positive relational object without reversing relation orientation",
+      "focus": "+S+(Lov+Girl)",
+      "operation": {
+        "kind": "argument",
+        "premises": ["+S+(Lov+Girl)", "-Girl+Human"],
+        "conclusion": "+S+(Lov+Human)"
+      },
+      "expected": {
+        "printed": "+S+(Lov+Girl)",
+        "canonical": "+(Lov+Girl)+S",
+        "reading": "some s lov some girl",
+        "result": "valid",
+        "method": "derivation",
+        "complete": false,
+        "proof": {
+          "kind": "direct",
+          "rules": ["premise", "premise", "DON"],
+          "final": "+(Lov+Human)+S"
+        }
+      }
+    },
+    {
+      "id": "relational-contradicted",
+      "rule": "A proved contradictory yields contradicted after the requested non-atomic conclusion is not proved",
+      "focus": "-S-(Lov+Human)",
+      "operation": {
+        "kind": "argument",
+        "premises": ["+S+(Lov+Girl)", "-Girl+Human"],
+        "conclusion": "-S-(Lov+Human)"
+      },
+      "expected": {
+        "printed": "−S−(Lov+Human)",
+        "canonical": "−(Lov+Human)−S",
+        "reading": "no s lov some human",
+        "result": "contradicted",
+        "method": "derivation",
+        "complete": false,
+        "proof": {
+          "kind": "direct-contradictory",
+          "rules": ["premise", "premise", "DON"],
+          "final": "+(Lov+Human)+S"
+        }
+      }
+    },
+    {
+      "id": "relational-search-abstains",
+      "rule": "Failure of bounded non-atomic search is unknown rather than invalid",
+      "focus": "+Girl+Coward",
+      "operation": {
+        "kind": "argument",
+        "premises": ["+Boy+(Lov+Girl)", "-Boy-(Lov+Coward)"],
+        "conclusion": "+Girl+Coward"
+      },
+      "expected": {
+        "printed": "+Girl+Coward",
+        "canonical": "+Coward+Girl",
+        "reading": "some girl is coward",
+        "result": "unknown",
+        "method": "derivation",
+        "complete": false,
+        "proof": {"kind": "none", "rules": [], "final": null}
+      }
+    },
+    {
+      "id": "numerical-sufficient-condition",
+      "rule": "A levelled atomic argument is valid when all three numerical conditions hold",
+      "focus": "+C^3-H",
+      "operation": {
+        "kind": "argument",
+        "premises": ["+C^3-H", "-C+E"],
+        "conclusion": "+E-H"
+      },
+      "expected": {
+        "printed": "+C³−H",
+        "canonical": "+C−H",
+        "reading": "few c is h",
+        "result": "valid",
+        "method": "numerical",
+        "complete": false,
+        "proof": {"kind": "numerical-decision", "rules": [], "final": null}
+      }
+    },
+    {
+      "id": "numerical-failure-abstains",
+      "rule": "Failure of a numerical sufficient condition is unknown rather than invalid",
+      "focus": "+S^2+P",
+      "operation": {
+        "kind": "argument",
+        "premises": ["+S^2+P", "+S^2+Q"],
+        "conclusion": "+P+Q"
+      },
+      "expected": {
+        "printed": "+S²+P",
+        "canonical": "+P+S",
+        "reading": "most s is p",
+        "result": "unknown",
+        "method": "numerical",
+        "complete": false,
+        "proof": {"kind": "numerical-decision", "rules": [], "final": null}
+      }
+    },
+    {
+      "id": "program-ground-query-yes",
+      "rule": "Programs ignore comments and a complete atomic ground query can establish support",
+      "focus": "+-Socrates*+Mortal",
+      "operation": {
+        "kind": "ground-query",
+        "program": "-- fixed individuals\n+-Socrates*+Man\n+-Fido*+Dog\n\n-Man+Animal -- classifications\n-Dog+Animal\n-Man+Mortal\n",
+        "query": "+-Socrates*+Mortal"
+      },
+      "expected": {
+        "printed": "±Socrates*+Mortal",
+        "canonical": "+Mortal+Socrates*",
+        "reading": "Socrates is a mortal",
+        "result": "yes",
+        "method": "PZ",
+        "complete": true,
+        "proof": {"kind": "certificate", "rules": [], "final": null}
+      }
+    },
+    {
+      "id": "program-ground-query-no",
+      "rule": "A complete atomic ground query returns no when the contradictory is supported",
+      "focus": "+-Socrates*-Animal",
+      "operation": {
+        "kind": "ground-query",
+        "program": "+-Socrates*+Man\n-Man+Animal\n",
+        "query": "+-Socrates*-Animal"
+      },
+      "expected": {
+        "printed": "±Socrates*−Animal",
+        "canonical": "−Animal−Socrates*",
+        "reading": "Socrates is not an animal",
+        "result": "no",
+        "method": "PZ",
+        "complete": true,
+        "proof": {"kind": "certificate", "rules": [], "final": null}
+      }
+    },
+    {
+      "id": "program-ground-query-open-world-neither",
+      "rule": "Atomic ground-query unknown can completely establish that neither side follows",
+      "focus": "+-Fido*+Mortal",
+      "operation": {
+        "kind": "ground-query",
+        "program": "+-Fido*+Dog\n-Dog+Animal\n-Man+Mortal\n",
+        "query": "+-Fido*+Mortal"
+      },
+      "expected": {
+        "printed": "±Fido*+Mortal",
+        "canonical": "±Fido*+Mortal",
+        "reading": "Fido is a mortal",
+        "result": "unknown",
+        "method": null,
+        "complete": true,
+        "proof": {"kind": "none", "rules": [], "final": null}
+      }
+    },
+    {
+      "id": "program-ground-query-search-unknown",
+      "rule": "Non-atomic ground-query unknown retains bounded-search incompleteness",
+      "focus": "+Girl+Coward",
+      "operation": {
+        "kind": "ground-query",
+        "program": "+Boy+(Lov+Girl)\n-Boy-(Lov+Coward)\n",
+        "query": "+Girl+Coward"
+      },
+      "expected": {
+        "printed": "+Girl+Coward",
+        "canonical": "+Coward+Girl",
+        "reading": "some girl is coward",
+        "result": "unknown",
+        "method": null,
+        "complete": false,
+        "proof": {"kind": "none", "rules": [], "final": null}
+      }
+    },
+    {
+      "id": "term-description-query",
+      "rule": "A bounded term query returns strongest supported descriptions in deterministic order",
+      "focus": "+-Socrates*+Man",
+      "operation": {
+        "kind": "term-query",
+        "program": "+-Socrates*+Man\n-Man+Animal\n-Man+Mortal\n",
+        "term": "Socrates*"
+      },
+      "expected": {
+        "printed": "±Socrates*+Man",
+        "canonical": "+Man+Socrates*",
+        "reading": "Socrates is a man",
+        "result": ["±Socrates*+Animal", "±Socrates*+Man", "±Socrates*+Mortal"],
+        "method": "bounded-saturation",
+        "complete": false,
+        "proof": {"kind": "not-exposed", "rules": [], "final": null}
+      }
+    },
+    {
+      "id": "atomic-program-inconsistency",
+      "rule": "Atomic consistency closure is complete and an inconsistency carries a refutation",
+      "focus": "+-Socrates*-Mortal",
+      "operation": {
+        "kind": "consistency",
+        "program": "+-Socrates*+Man\n-Man+Mortal\n+-Socrates*-Mortal\n"
+      },
+      "expected": {
+        "printed": "±Socrates*−Mortal",
+        "canonical": "−Mortal−Socrates*",
+        "reading": "Socrates is not a mortal",
+        "result": "inconsistent",
+        "method": "PZ",
+        "complete": true,
+        "proof": {
+          "kind": "refutation",
+          "rules": ["fact", "fact", "fact", "DON", "contradiction"],
+          "final": "⊥"
+        }
+      }
+    },
+    {
+      "id": "non-atomic-consistency-abstains",
+      "rule": "A failed non-atomic refutation search does not establish consistency",
+      "focus": "+Boy+(Lov+Girl)",
+      "operation": {
+        "kind": "consistency",
+        "program": "+Boy+(Lov+Girl)\n"
+      },
+      "expected": {
+        "printed": "+Boy+(Lov+Girl)",
+        "canonical": "+(Lov+Girl)+Boy",
+        "reading": "some boy lov some girl",
+        "result": "no-contradiction-found",
+        "method": "refutation-search",
+        "complete": false,
+        "proof": {"kind": "none", "rules": [], "final": null}
+      }
+    },
+    {
+      "id": "rewrite-equivalence-witness",
+      "rule": "Contraposition supplies a sound rewrite witness without making rewrite failure complete",
+      "focus": "-Dog+Mammal",
+      "operation": {
+        "kind": "equivalence",
+        "left": "-Dog+Mammal",
+        "right": "-(−Mammal)+(−Dog)"
+      },
+      "expected": {
+        "printed": "−Dog+Mammal",
+        "canonical": "−Dog+Mammal",
+        "reading": "every dog is mammal",
+        "result": true,
+        "method": "rewrite",
+        "complete": false,
+        "proof": {"kind": "rewrite-path", "rules": ["contrapositive"], "final": null}
+      }
+    },
+    {
+      "id": "propositional-term-truth-table-equivalence",
+      "rule": "Eligible propositional terms receive complete one-member truth-table equivalence semantics",
+      "focus": "-[p]+[q]",
+      "operation": {
+        "kind": "equivalence",
+        "left": "-[p]+[q]",
+        "right": "-p+q"
+      },
+      "expected": {
+        "printed": "−[p]+[q]",
+        "canonical": "−[p]+[q]",
+        "reading": "every p is q",
+        "result": true,
+        "method": "dnf",
+        "complete": true,
+        "proof": {"kind": "truth-table", "rules": [], "final": null}
+      }
+    }
+  ]
+}

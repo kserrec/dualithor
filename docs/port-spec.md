@@ -1,18 +1,21 @@
-# Port specification: JS reference engine → OCaml
+# TFL core mechanics appendix
 
-This document is the contract for the OCaml port (PLAN Phase 1). It was written by reading
-`engine/tfl.js` (2,034 lines) in full. The JS engine is the executable specification: where
-this document and the code disagree, **the code wins** — fix the document, never the code.
-Every behavioral claim below is stated so the differential harness (PLAN 1.3) can check it.
+This is the detailed operational appendix to the normative
+[core language reference](core-language.md). It began as the contract for porting the
+frozen JavaScript engine to OCaml, which explains the filename and historical function
+names. As of contract `core-0.1`, neither implementation silently overrides this appendix.
+A disagreement with the public reference or executable conformance corpus is a contract
+defect that must be resolved explicitly.
 
-Layer names D1–D9 below are the JS engine's own internal milestones (from the courseware it
-was built for); they are kept as convenient labels for grouping, nothing more.
+Historical comparisons with `engine/tfl.js` remain because they explain compatibility
+choices. The authoritative current choices are the ones stated here and in
+`core-language.md`.
 
 ---
 
 ## 1. Notation accepted by the parser
 
-Transcribed from the `tfl.js` header, verified against the tokenizer/parser code.
+The accepted concrete notation is:
 
 | Notation | Meaning |
 |---|---|
@@ -20,7 +23,7 @@ Transcribed from the `tfl.js` header, verified against the tokenizer/parser code
 | `+` `−` `-` `±` `+-` | signs: plus; minus (typographic U+2212 or ASCII); wild quantity (`±` or the ASCII alias `+-`) |
 | `Socrates*`, `±s*` | singular terms carry a trailing star |
 | `Boy'`, `A″`, `Girl′` | proterm primes: `′` → `'` and `″` → `''` are normalized into the name |
-| `Wise`, `German_Shepherd`, `H2O`, `S₁₂` | bare term names: a Unicode letter, then letters, digits, `_`, subscript digits (`₀`–`₉`), primes. **No hyphens** — ASCII `-` and typographic `−` are always the minus sign, so `non-smoker` cannot lex as one term |
+| `Wise`, `German_Shepherd`, `H2O`, `S₁₂` | bare term names: an ASCII letter, then ASCII letters, digits, `_`, subscript digits (`₀`–`₉`), primes. **No hyphens** — ASCII `-` and typographic `−` are always the minus sign, so `non-smoker` cannot lex as one term |
 | `"non-smoker"`, `"head of a horse"` | quoted terms allow anything except the quote char and newline; may take a trailing `*` after the closing quote |
 | `(−T)` | negative term (single minus-signed group) |
 | `(+White+Horse)` | compound (conjunctive) term — first element signed; 2+ elements, all signed |
@@ -31,15 +34,14 @@ Transcribed from the `tfl.js` header, verified against the tokenizer/parser code
 ASCII aliases exist so plain-keyboard input works: `-` for `−`, `+-` for `±`, `^n` for
 superscript levels, `'`/`''` for `′`/`″`.
 
-> **Port note (decided 2026-07-29):** the JS reference accepts any Unicode letter in bare
-> names; the OCaml engine narrows bare-name letters to ASCII (quoted terms still carry
-> arbitrary text). See hazard §16.4 for the full decision and its consequences.
+Non-ASCII names remain expressible through quoted terms.
 
-### Tokenizer details a port must reproduce
+### Tokenizer details
 
 Token kinds: `plus` `minus` `wild` `lparen` `rparen` `lbracket` `rbracket`
 `name`(text, singular) `level`(value) `eof`. Each token carries `pos`, the 0-based index of
-its first character in the source string. Whitespace (anything matching `\s`) is skipped.
+its first Unicode code point in the source string. The fixed whitespace set listed in
+`core-language.md` is skipped.
 
 - `+-` and `+−` lex as one `wild` token (a bare minus after `+` could never start a term —
   negative terms are parenthesized).
@@ -98,9 +100,8 @@ Notable rules:
 - A level on the single element of a bare signed group — `(+T^1)` — is a ParseError.
 - `[...]` contains either a full proposition (first token is a sign) or a single bare name;
   anything else is an error.
-- Error messages are specific and positional; the port should reproduce the *classification
-  and position* exactly. (The differential harness compares error presence and position;
-  message texts should match too since they're few and fixed.)
+- Error messages are specific and positional; implementations must reproduce their
+  classification and Unicode-code-point position exactly.
 
 **ParseError**: carries `pos` (0-based index into source) and a message suffixed
 `" (at position N)"`.
@@ -110,14 +111,14 @@ Notable rules:
 - `printTerm` / `printProposition` / `printST` emit the canonical concrete syntax:
   typographic `−` and `±`, compact spacing (no spaces at all), superscript levels with
   level 0 omitted.
-- A name is printed bare iff `isBareName`: nonempty, starts with a Unicode letter, every
-  char is a name char (letter, digit, `_`, `'`, subscript digit). Otherwise it is wrapped
+- A name is printed bare iff `isBareName`: nonempty, starts with an ASCII letter, every
+  char is an ASCII letter, digit, `_`, `'`, or subscript digit. Otherwise it is wrapped
   in double quotes (contents not escaped — a name containing `"` cannot round-trip; the
   tokenizer can't produce one).
 - Round-trip contract: `parse (print x)` is structurally equal to `x` for every AST the
   parser can produce.
 - `printHtmlTerm`/`printHtmlProposition`: same output with atom names HTML-escaped —
-  **courseware-only, not ported** (§13).
+  **courseware-only and outside `core-0.1`** (§13).
 
 ## 5. Engine-fragment validation
 
@@ -150,14 +151,14 @@ canonical printed string is the identity key everywhere** (`propKey`, `termKey`)
 through the 2-arg `ST(sign, term)`, whose level defaults to 0 — so canonicalization
 silently drops quantity levels (`propKey('+V²+C')` = `'+V+C'`). This is safe only because
 `checkArgument` routes any nonzero level to `numericalDecision` *before* canonical form
-matters; the port reproduces the drop exactly.
+matters. The level drop is a recorded limit, not numerical semantic equality.
 
 `canonTerm`:
 - `Neg(Neg t)` strips (DN); recursion first, so any even stack vanishes.
 - Compounds: recursively canonicalize elements; a `+`-signed element that is itself a
   compound splices its elements in (Assoc); a **singleton** result collapses (a `-`
   singleton becomes `Neg`, canonicalized again); otherwise elements **sort by their printed
-  form** (`printST`), JS `<`/`>` string comparison (see hazard §14.1).
+  form** (`printST`), using byte-wise UTF-8 string comparison.
 - Rel: objects canonicalize; an object whose term is a fixed reference gets its sign
   normalized to `±`. The head canonicalizes; an Atom head whose trailing subscript run is
   the **identity pairing** for its arity gets the run stripped (bare head is canonical).
@@ -307,8 +308,8 @@ printed proposition.
   (obverse), `Contrap` (contrapositive, skipping null), `Simp` (all `applySimp`), `Pass`
   (all `equivalent` passives, canonicalized) — then binary against every earlier line j<i:
   `DON` both directions, `Add`.
-- Line order (hence proof shape) is fully deterministic given this iteration order — the
-  port must reproduce it (see hazard §14.2).
+- Line order (hence proof shape) is fully deterministic given this iteration order and is
+  part of conformance output.
 
 ### `derive premises goal` — direct derivation
 
@@ -376,7 +377,9 @@ fall back to the all-`+`-reading resolution). For each resolution: pick each par
 turn; search (DFS) over using each universal 0–3 times such that the algebraic sum of all
 term occurrences is zero for every term key (`zOccurrences`: flatten each side through
 negations with sign multiplication, subject/predicate occurrence sign from the ST sign).
-Returns `{particular, universals: [{prop, times>0}]}` or null.
+The whole call shares a 500,000-node budget; exhausting it returns no decoration. Returns
+`{particular, universals: [{prop, times>0}]}` or null. The verdict was already decided and
+is unchanged by this result.
 
 ## 12. Verdicts: `checkArgument`, and the TFL⁺ numerical decision
 
@@ -392,15 +395,19 @@ method  : 'PZ' | 'derivation' | 'indirect' | 'numerical'
 - Outside that fragment the engine reports what proof search establishes within fuel:
   `valid` (direct derivation, else indirect proof), `contradicted` (the conclusion's
   contradictory is derivable — direct, else indirect), else **`unknown`**.
-- **`unknown` ≠ `invalid`.** It means the bounded derivation search found neither a proof
-  nor a refutation. This distinction is load-bearing for the whole project (the router's
-  abstention semantics) and must never be collapsed.
+- Under the numerical method, satisfying all three conditions gives `valid`; failure gives
+  `unknown` because the procedure is sound but incomplete and never establishes
+  invalidity.
+- **`unknown` ≠ `invalid`.** It means bounded derivation found neither side, or the
+  numerical sufficient conditions did not establish the conclusion. It must never be
+  collapsed into falsehood.
 
 ### `checkArgument premises conclusion opts`
 
 Order of decision (opts `{maxLines, slack}` thread into the searches):
-1. Any nonzero quantity level anywhere → `numericalDecision`; verdict `valid`/`invalid`,
-   method `numerical`, with the full `decision` record attached.
+1. Any nonzero quantity level anywhere → `numericalDecision`; verdict `valid` if all
+   conditions pass and `unknown` otherwise, method `numerical`, with the full `decision`
+   record attached.
 2. Premises + contradictory(conclusion) all atomic-categorical → counterclaim test:
    inconsistent → `{verdict:'valid', method:'PZ', certificate}`; consistent →
    `{verdict:'invalid', method:'PZ'}`.
@@ -432,8 +439,8 @@ particularPremises, particularConclusions}` with `valid = sum && particular && l
   about "most honest people" — so a level riding the middle term licenses nothing. This
   agrees with Castro-Manzano et al. 2018's own Tables 10–13 and with the finite-model
   semantics (att-3 with a "most" conclusion is invalid), and is a **deliberate, documented
-  deviation** from the loose reading of the paper's condition (iii). The port must
-  implement the term-matched version exactly.
+  deviation** from the loose reading of the paper's condition (iii). An implementation
+  must use the term-matched version exactly.
 
   Worked discriminator (why term-matched, not "≤ max premise level"):
   - **att-1**: All M are P; **Most S** are M ⊢ Most S are P. The "most" rides S — the
@@ -442,24 +449,26 @@ particularPremises, particularConclusions}` with `valid = sum && particular && l
   - **att-3**: All M are P; **Most M** are S ⊢ Most S are P. Same letters, but the "most"
     rides the middle term M; nothing quantifies S beyond bare "some". The loose reading
     (conclusion level 2 ≤ max premise level 2) would wrongly pass it; term-matched gives
-    carriedLevel 0 and rejects. Invalid (and absent from Table 9, figure 3).
+    carriedLevel 0 and fails the sufficient condition. The literature classifies the
+    pattern as invalid, but this incomplete runtime returns `unknown` (it is absent from
+    Table 9, figure 3).
 
   **Source verification (2026-07-29).** The engine was checked mechanically against the
   primary source (Castro-Manzano, Lozano-Cobos & Reyes-Cárdenas 2018, *BRAIN* 9(3)): all
   4,000 two-premise patterns (10 moods³ × 4 figures) agree exactly with the paper's
   Table 9 valid-pattern lists plus the 15 classically valid moods without existential
-  import — zero mismatches; the four worked examples (Tables 10–13: kaa-1 invalid, akt-4
-  invalid, bao-3 valid, ekg-2 valid) all reproduce; and the att-1/att-3 pair confirms the
-  term-matched condition is what produces the agreement. See LOG.md; these cases feed the
-  1.13 paper-cases suite.
+  import — zero condition mismatches; the four worked examples (Tables 10–13: kaa-1 and
+  akt-4 fail their stated conditions, bao-3 and ekg-2 pass) all reproduce; and the
+  att-1/att-3 pair confirms the term-matched condition. Runtime condition failure is
+  surfaced as `unknown`. See LOG.md and the paper-cases suite.
 
 ## 13. Programs, queries, equivalence
 
 ### `parseProgram src`
 
-Line-oriented; comments run from `--` (any mix of ASCII/typographic minus, two adjacent) to
-end of line — two adjacent minuses can never occur in valid notation, since negative terms
-are always parenthesized. Blank/comment-only lines are skipped. Returns
+Line-oriented; comments run from `--` (any mix of ASCII/typographic minus, two adjacent)
+outside quoted or bare names to end of line. A `--` sequence inside a quoted term remains
+name content. Blank/comment-only lines are skipped. Returns
 `{propositions: [{prop, text, line}], errors: [{line, message, pos}]}` — per-line
 ParseErrors are collected, not thrown, so one bad line doesn't sink the rest. **Note:
 `parseProgram` does not validate** — fragment validation happens in the query functions.
@@ -512,21 +521,22 @@ string of `+atom`/`−atom` (typographic minus) with true atoms first. Otherwise
 the rewrite closure of `a`: `{equivalent, method:'rewrite', path | null}`.
 
 `statementModel prop`: non-null only when the prop is purely propositional — every atom
-lowercase-initial (`\p{Ll}`), non-singular; no relational complexes anywhere; 1–16 atoms.
+lowercase-initial ASCII, non-singular; no relational complexes anywhere; 1–16 atoms.
 Propterm inners recurse. Semantics: one-member universe — compound = signed conjunction;
 universal `S → qual` (no import), particular `S ∧ qual`; quality `-` negates the
 predicate's value.
 
 ## 14. NL rendering (exact-string contract)
 
-The pipeline's back-translation check depends on **byte-exact deterministic rendering** —
-the port must match these strings exactly (PLAN 1.9).
+The audit surface depends on **byte-exact deterministic rendering**. Implementations must
+match these strings exactly.
 
 ### `readTerm`
 
 - Atom: strip trailing primes for display (`baseName`); singular → name as-is (proper
   name keeps case); proterm → `that <lowercased base>`; general → lowercased name.
-- Neg → `non-<reading>`; compound → elements joined ` and `, `-`-signed as `non-…`.
+- Neg → `non-<reading>`; compound → elements joined by one space, `-`-signed as
+  `non-…`. A compound is one term, so the renderer does not insert `and`.
 - Rel → `<lowercased head reading> <objects>`, each object prefixed `every ` (−) /
   `some ` (+) / nothing (±), joined by spaces, trimmed.
 - PropTerm(prop) → the reading wrapped in typographic double quotes `“…”`; bare inner →
@@ -543,14 +553,15 @@ First re-orient so a fixed-reference term is the subject if any orientation allo
   predicate.
 - Universal subject (−): quality + → `every <S> <relTail pred false>`; quality − →
   `no <S> is <reading>` (or `no <S> <rel reading>` for a relational predicate).
-- Particular subject with nonzero level (non-relational predicate): quantifier word
+- Particular subject with nonzero level, including a relational predicate: quantifier word
   `many`/`most`/`few`; **`few` inverts the English polarity** — few = predominant
   complement. Exact strings (corrected 2026-07-30; `relTail` says "is", never "are"):
   `+S³+P` → `few s is not p`, `+S³−P` → `few s is p`.
 - Otherwise: `some <S> <relTail pred (quality = '-')>`.
 - `relTail pred neg`: relational → `[does not ]<rel reading>`; else `is[ not] <reading>`.
-  (Note: no article in general-subject readings — "every man is mortal thing"-style
-  output is what the engine emits and what the port must reproduce.)
+  When both the subject and predicate readings end or begin with relational text and no
+  negative `does not` marks their boundary, insert `, ` between them. (No article appears
+  in general-subject readings.)
 
 ### `explainProof proof`
 
@@ -564,9 +575,9 @@ lines resolved from the closing line's parents). Otherwise: `Because …, <last 
 `numericalExplanation` and `levelName` are helpers of the Aristotelian `answer` layer and
 are deferred with it.
 
-## 15. Export inventory and port disposition
+## 15. Core implementation inventory
 
-**Ported** (grouped by PLAN step):
+**Implemented in `core-0.1`** (historical PLAN numbers show when each group landed):
 
 | PLAN | Functions |
 |---|---|
@@ -579,58 +590,38 @@ are deferred with it.
 | 1.8 numerical | `hasLevel numericalDecision` |
 | 1.9 NL | `readTerm readProp explainProof` |
 
-**Not ported** (courseware-only):
+**Outside the language** (courseware-only):
 - `printHtmlTerm` / `printHtmlProposition` — HTML-escaping printers for the course DOM.
 - `checkExpression` — exercise grading (transcribe/derive/premise modes).
 
-**Deferred** unless a later phase needs them (Aristotelian database extras):
+**Not part of `core-0.1`** (legacy database extras):
 - `answer`, `strongerAnswer`, `possibility`, `suggestMissingPremise`, plus their private
   helpers `tacitCandidates`, `numericalExplanation`, `levelName`.
 
-## 16. Port hazards — JS semantics the OCaml side must consciously match
+## 16. Determinism, representation, and bounds
 
-1. **String ordering.** Canonical sorting (compound elements, conversion's side swap,
-   `decideEquivalence` atom sort, `queryTerm` final sort) uses JS `<` — **UTF-16 code-unit
-   order**. OCaml's byte-wise UTF-8 `String.compare` agrees with it on all BMP characters
-   (both equal code-point order there) but diverges for astral-plane characters (UTF-16
-   surrogates sort astral chars below U+E000..U+FFFF). Term names admit any `\p{L}` letter,
-   astral included. **Decided (Kyle, 2026-07-29): the OCaml engine uses plain byte-wise
-   UTF-8 comparison (code-point order) — no UTF-16 emulation.** Sort order never affects
-   verdicts, only which equivalent canonical spelling wins. QCheck name generators stay
-   inside the BMP so the differential corpus never straddles the divergence; the 1.12
-   report documents the deliberate ordering difference. JS-isms live in the harness, never
-   the engine.
-2. **Iteration order is semantics.** JS `Map`/`Set` iterate in insertion order, and
-   `Array.prototype.sort` is stable. Proof line order, It-line seeding order
-   (`mentionedTerms`), point construction, and `queryTerm`'s answer order all inherit from
-   this. The port must use order-preserving structures (or explicit ordering) wherever a
-   Map/Set feeds output.
-3. **Numbers.** Quantity levels are parsed with `parseInt` / digit accumulation into JS
-   doubles; huge levels (>2^53, or ≥1e21 where `String(n)` goes scientific) lose
-   round-trip fidelity in JS. Validation caps meaningful levels at 3; treat huge levels as
-   out-of-contract (generators cap them; differential harness doesn't probe them).
-4. **Unicode classes and case.** `isNameStart`/`isNameChar` use `\p{L}` and the
-   lowercase-initial check uses `\p{Ll}`; `readTerm` uses full `toLowerCase()`. **Decided
-   (Kyle, 2026-07-29): bare-name letters are ASCII-only in the OCaml engine — no Unicode
-   tables dependency.** The notation's fixed non-ASCII symbols (−, ±, sub/superscripts,
-   primes) are unaffected, and quoted terms still accept arbitrary text, so no expressive
-   power is lost; the translation prompt (4.2) teaches quoting for non-ASCII names. A
-   non-ASCII letter in bare-name position raises a `Lexical`-class error advising quoting
-   (1.14 taxonomy). Renderer lowercasing and the `statementModel` lowercase-initial check
-   are ASCII-only; differential corpora keep names ASCII; the residual divergences from
-   the JS reference are documented in the differential report.
-5. **Deep nesting.** The JS engine recurses freely; pathologically deep input dies with a
-   stack-overflow `RangeError`, not a ParseError. The port's 1.14 `Safe` API must instead
-   return a structured error (depth cap); before 1.14, differential fuzzing should cap
-   generated depth so both engines stay in their sound range.
-6. **Search fuel defaults.** `maxLines` 400 (saturate default) / 300 (`queryTerm`) / 60
-   (`queryTerm.implies`); `slack` 8 (derive/refute) / 6 (`queryTerm`) / 2 (`implies`);
-   `equivalents` node cap 64; passive participant cap 9; cancellation combo cap 256;
-   universal reuse cap 3; `statementModel` atom cap 16; `tacitCandidates` atom cap 8
-   (deferred). Identical fuel is required for verdict-level agreement on the relational
-   fragment — an `unknown` is a function of fuel.
+1. **String ordering.** Canonical sorting, conversion, equivalence atom order, and final
+   term-query order use byte-wise UTF-8 string comparison. This differs from the frozen
+   JavaScript reference only on some non-BMP ordering cases and affects canonical spelling,
+   not verdicts.
+2. **Iteration order is observable.** Proof line order, tautology seeding, point
+   construction, and answer order preserve first-seen insertion order. Implementations
+   must use ordered structures or explicit order wherever those values become output.
+3. **Quantity numbers saturate during tokenization.** Digit accumulation saturates at
+   1,000,000,000 rather than overflowing. Validation accepts only levels 0 through 3.
+4. **Names and case are ASCII at the bare-name boundary.** Fixed non-ASCII notation
+   symbols remain accepted, quoted names carry arbitrary UTF-8 except quote/newline, and
+   display lowercasing is ASCII-only.
+5. **Deep nesting is a structured refusal.** The total boundary rejects the 65th opening
+   parenthesis or bracket as syntactic input before recursive descent.
+6. **Search bounds are semantic metadata.** `maxLines` is 400 for ordinary saturation,
+   300 for `queryTerm`, and 60 for its local implication checks. Size slack is 8 for
+   derive/refute, 6 for `queryTerm`, and 2 for its implication checks. Equivalence has a
+   64-node cap; passives have a nine-participant cap; cancellation has a 256-combination
+   cap, three uses per universal, and 500,000 total search nodes; `statementModel` has a
+   16-atom cap. A non-atomic or numerical `unknown` retains these limits.
 
-## 17. Verdict/result record shapes (for the differential shim)
+## 17. Verdict/result record shapes
 
 ```
 checkArgument → { verdict, method }
@@ -647,6 +638,6 @@ decideEquivalence → { equivalent, method: 'dnf'|'rewrite', atoms?, dnf?, path?
 derive/refuteSet/indirectProof → { found, lines }
 ```
 
-The shim (1.3) serializes these as JSON; ASTs serialize with their type tags exactly as the
-JS objects are shaped (`{type:'atom', name, singular}` etc.), signs in ASCII form, so both
-sides compare structurally.
+The development differential shim serializes these records as JSON. AST objects carry
+explicit type tags (`{type:'atom', name, singular}` and corresponding compound forms) and
+store signs in ASCII form so structural comparison remains language-neutral.

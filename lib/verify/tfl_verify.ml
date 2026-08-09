@@ -3,12 +3,13 @@
    total result record, and JSON in both directions.
 
    ── Unknown is NOT Invalid ──────────────────────────────────────────────
-   [Valid], [Contradicted], and [Invalid] under the P/Z and numerical methods
-   are exact decisions. [Unknown] is different in kind: the derivation search
-   is incomplete outside the categorical fragment, so [Unknown] means the
-   search found neither a proof nor a refutation — the argument may still be
-   valid. Anything routing on this record must treat [Unknown] as "abstain or
-   escalate", never as "the argument is bad". *)
+   [Valid] and [Contradicted] carry established support; [Invalid] is exact and
+   is returned only by the complete level-0 atomic-categorical P/Z method.
+   [Unknown] is different in kind: either bounded derivation found neither a
+   proof nor a refutation, or the sound-but-incomplete numerical conditions did
+   not establish the conclusion. The argument may still be valid. Anything
+   routing on this record must treat [Unknown] as "abstain or escalate", never
+   as "the argument is bad". *)
 
 type error_class = Lexical | Syntactic | Outside_fragment | Internal
 

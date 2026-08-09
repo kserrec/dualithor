@@ -38,6 +38,16 @@
  (modules test_program)
  (libraries tfl test_support qcheck-core qcheck-core.runner))
 
+; The normative core-0.1 language contract (new-roadmap Phase 1). The cases
+; live in data so another implementation can consume the same corpus; this
+; executable checks notation, readings, results, completeness, and proof shape.
+
+(test
+ (name test_conformance)
+ (modules test_conformance)
+ (libraries tfl test_support yojson)
+ (deps ../data/conformance/core-0.1.json))
+
 ; The differential gate needs Node ≥18 (a dev-time requirement per PLAN) and
 ; the frozen JS reference; the deps are copied into _build so the test can
 ; spawn ../engine/shim.js from its own directory.
