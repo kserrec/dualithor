@@ -87,6 +87,13 @@ let () =
       valid
         [ "±Hesperus*+Phosphorus*"; "±Phosphorus*+Venus*" ]
         "±Hesperus*+Venus*" "identity transitivity");
+  test "a quoted name ending in star is not a singular with the suffix removed"
+    (fun () ->
+      invalid [ "+\"A*\"+P" ] "+A*+P" "quoted name versus singular";
+      invalid [ "+A*+P" ] "+\"A*\"+P" "singular versus quoted name";
+      invalid
+        [ "+\"A*\"+P"; "+\"A*\"+Q" ]
+        "+P+Q" "a general quoted term is not one fixed witness");
 
   (* Simp and Add *)
   test "Simp drops a conjunct at a net-+ occurrence" (fun () ->

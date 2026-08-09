@@ -1,47 +1,47 @@
 # Engine surface — failure taxonomy and the total API
 
-**Status: implemented (PLAN 1.14, 2026-08-01).** `lib/tfl/safe.ml` is the total surface;
+**Status: implemented and hardened (`core-0.1`, 2026-08-09).** `lib/tfl/safe.ml` is the total surface;
 `test/test_safe.ml` holds the contract checks and the adversarial fuzz. The inventory below
 is what `lib/tfl/` raises and how each refusal is classified.
 
 ## Why this exists
 
-Everything downstream of Phase 4 feeds this engine text written by a language model. That
-text will be wrong in every way text can be wrong: truncated mid-formula, using FOL
-notation, using prose, nesting parentheses forty deep, or perfectly well-formed but outside
-the fragment TFL decides. The router's whole claim (PLAN core claim 2) is that this
-failure is a *clean mechanical signal* — so the failure has to be structured, total, and
-stable, not an exception that escapes into the pipeline.
+Files, pipes, language models, and future integrations can all feed this engine text. That
+text can be truncated mid-formula, use FOL notation or prose, nest pathologically, exceed
+a reasonable size, or be perfectly well-formed but outside the fragment TFL decides.
+Failure therefore has to be a *clean mechanical signal*: structured, total, stable, and
+bounded rather than an exception that escapes into the caller.
 
 Three requirements follow:
 
-1. **Classified.** Every refusal of an *input* falls into one of three classes, and the
-   class is what the router branches on. (A fourth kind, `Internal`, classifies the engine
-   rather than the input — see below.)
+1. **Classified.** Every refusal of an *input* falls into one of four classes. A fifth
+   kind, `Internal`, classifies the engine rather than the input.
 2. **Total.** The public entry points never raise. Not for malformed input, not for
    adversarial input, not for input that hits an internal limit.
 3. **Bounded.** No input makes the engine run unboundedly. A refusal must arrive.
 
-## The three classes
+## The four input classes
 
 | class | means | router reading |
 |---|---|---|
 | `Lexical` | the input contains a character or token the notation has no reading for | not TFL text at all — the model emitted prose, FOL, or garbage |
 | `Syntactic` | the tokens are legal but do not form a proposition | the model was aiming at TFL and missed — a candidate for one repair attempt |
 | `Outside_fragment` | the input parses to a well-formed AST that the inference layer refuses | genuinely TFL, but not something this engine decides — escalate, never guess |
+| `Resource_limit` | source that reached a public boundary exceeds a byte, count, or work budget | reduce or split the input; retrying it unchanged cannot help |
 
 The split between the first two is exactly the tokenizer/parser boundary, which makes it
 mechanical rather than a judgement call: `Safe.parse` runs the tokenizer alone first, so a
 failure there is `Lexical` by construction and one from the parser proper is `Syntactic`.
 Classification never reads the message text, so editing a message cannot silently
-reclassify anything. The third is the one that matters for the paper:
+reclassify anything. `Outside_fragment` is the semantic routing signal:
 it is the engine saying *I understood you and I still will not answer*, which is the
 signal an FOL pipeline cannot produce.
 
 `Outside_fragment` is **not** the same as the `Unknown` verdict. `Unknown` means the
 argument was accepted, searched within fuel, and neither proved nor refuted (port-spec
-§12). `Outside_fragment` means it was never searched. Both are non-answers; only the second
-is a parse-level property, and collapsing them would destroy the router signal.
+§12). `Outside_fragment` means it was never searched. `Resource_limit` instead says the
+public boundary deliberately did not attempt the work. Collapsing any of them would
+destroy information a caller needs.
 
 ## Inventory: every refusal the engine raises today
 
@@ -53,9 +53,11 @@ Each carries a 0-based `pos` into the source string.
 |---|---|
 | `Unexpected character '<c>'` | no token starts with that character |
 | `Unexpected character '<c>' (quote the term to use non-ASCII names)` | same, for a non-ASCII character — the §16.4 narrowing, with the advisory that makes it actionable |
+| `Unexpected unsafe character U+NNNN` | a terminal or bidirectional control appears outside a quoted term; the control is not replayed in the diagnostic |
 | `Term names must start with a letter` | a digit in name position |
 | `Unclosed quote` | a `"` with no closing `"` |
 | `Empty quoted term` | `""` |
+| `Control and bidirectional formatting characters are not allowed in quoted terms` | a quoted name contains a C0/C1 terminal control or Unicode bidirectional formatting control |
 | `Expected digits after '^' (quantity level)` | a `^` not followed by digits |
 
 ### `Syntactic` — `Notation.Parse_error` from the parser
@@ -108,10 +110,23 @@ The second group is easy to miss because fragment-shaped test generators never r
 the 1.12 arbitrary-shapes gate found it by feeding `checkArgument` a levelled subject with a
 compound predicate. Both engines raise it identically.
 
-## The fourth kind: `Internal`
+### `Resource_limit` — public boundary budgets
 
-There is a fourth failure kind, `Internal`, and it is deliberately **not** one of the three
-router classes: it classifies the engine, not the input. The router must never treat "the
+| boundary | limit |
+|---|---:|
+| one proposition | 65,536 bytes |
+| one argument | 1,024 premises and 1,048,576 combined source bytes |
+| one program | 1,048,576 bytes total, 65,536 bytes per line, 10,000 physical lines, and 1,024 parsed propositions |
+| one JSON-lines request | 1,048,576 bytes |
+
+Truth-table equivalence also falls back to bounded rewrite search before an estimated DNF
+or AST-evaluation cost can exceed 8,388,608 units. Because fallback is a supported
+incomplete result rather than an input failure, it does not return `Resource_limit`.
+
+## The fifth kind: `Internal`
+
+There is a fifth failure kind, `Internal`, and it is deliberately **not** one of the four
+input classes: it classifies the engine, not the input. A caller must never treat "the
 engine broke" as "this input is outside the fragment" — one is a bug to fix, the other an
 escalation to make, and folding them together would let a defect hide inside an expected
 outcome. It exists so the API can be total without a crash ever being *reported* as a
@@ -136,7 +151,7 @@ measured ×4 growth per premise, 1.9s at 11 universals and ~days at 20 — LOG 2
 audit). It now carries a 500,000-node budget, shared across the whole call, and reports no
 cancellation when the budget runs out. That is verdict-safe by construction: the closure
 decides the verdict *before* the search runs, and the cancellation only decorates the
-certificate. The search stays complete through 9 re-usable universals. **This is the one
+certificate. The search stays complete through 9 re-usable universals. **This is a
 deliberate behavioural deviation of the OCaml engine from the frozen JS reference**, which
 is uncapped (dev-only there, never exposed). The differential gates never reach the budget —
 their generated sets are far too small — so the divergence is real but unobserved by them;
@@ -145,7 +160,12 @@ their generated sets are far too small — so the divergence is real but unobser
 ## The total API (`Tfl.Safe`)
 
 ```
-type failure_kind = Lexical | Syntactic | Outside_fragment | Internal
+type failure_kind =
+  | Lexical
+  | Syntactic
+  | Outside_fragment
+  | Resource_limit
+  | Internal
 
 type failure = {
   kind    : failure_kind;
@@ -165,10 +185,10 @@ val parse_program : string -> (Program.parsed_program, failure) result
 (An earlier revision of this table listed a `describe` helper that was never
 implemented; removed 2026-08-01.)
 
-`parse_program` (added in PLAN 3.1) closes the gap 1.14 left open: the depth cap
-lived only in `Safe.parse`, so the program-loading path could still exhaust the
-stack — measured as a hard `Stack_overflow` at 200k nesting levels. The wrapper
-checks bracket depth per line, pre-parse, on the same comment-stripped text the
+`parse_program` closes the gap the original depth guard left open: the depth cap lived
+only in `Safe.parse`, so the program-loading path could still exhaust the stack — measured
+as a hard `Stack_overflow` at 200k nesting levels. The wrapper first caps total and
+per-line bytes, then checks bracket depth per line on the same comment-stripped text the
 program parser reads, and names the offending line (`where = "line N"`).
 Per-line syntax errors remain collected in the returned program's `errors`
 field, exactly as the underlying `Program.parse_program` reports them; programs
@@ -177,14 +197,14 @@ are loaded through this wrapper and nowhere else.
 `check` validates each proposition under its own label before deciding, so a fragment
 refusal names the premise that caused it rather than the argument as a whole —
 `check_argument` validates its whole input at the head, which would otherwise lose the
-attribution. A refusal about the argument itself (a quantity level with no categorical
-route, an inconsistency check on a non-categorical set) is labelled `argument`.
+attribution. A refusal about the argument itself, including aggregate bytes or premise
+count, is labelled `argument`.
 
 - **Never raises.** Every exception above — including `Stack_overflow` and any escaping
   `assert false` — is caught at this boundary and returned. An escaping assertion is a bug
   to be fixed, but it must not be a crash in the pipeline.
-- **Never hangs.** Every search is bounded by explicit fuel (port-spec §16.6), and 1.14(d)
-  adds the missing cap.
+- **Never hangs or grows without a public bound.** Search fuel, source sizes, request
+  length, premise count, truth-table work, and truth-table output all have explicit caps.
 - **Message text is the engine's own**, unmodified, so a trace stays greppable against the
   source.
 - **Classification is a function of where the failure came from**, not of its text, so
@@ -192,18 +212,19 @@ route, an inconsistency check on a non-categorical set) is labelled `argument`.
 
 ## Evidence
 
-`test/test_safe.ml`, run 2026-08-01: **102,000 adversarial inputs** — 30,000 random byte
+`test/test_safe.ml`, rerun 2026-08-09: **102,000 adversarial inputs** — 30,000 random byte
 strings (invalid UTF-8 and control characters included), 20,000 random notation-token
 strings, 30,000 truncations of printed formulas (cut on byte indices, so UTF-8 sequences
 are sliced in half), 10,000 inputs nested 1–3,000 levels deep in both bracket flavours
 balanced and unbalanced, 2,000 pathological lengths (names and token runs up to 20,000
 characters), and 10,000 `check` calls over garbage premises and conclusions.
 
-No escaping exception, no `Internal` failure, and **no case slower than 0.036s** against a
-one-second bound — the slowest was a 39KB input. Eight contract checks cover the
-classification boundaries directly, including the depth cap admitting 60 levels and
-refusing 200, and the capped cancellation search returning in under a second on the audit's
-20-universal probe while still decorating an ordinary three-premise certificate.
+No escaping exception, no `Internal` failure, and no case approached the one-second
+bound. Twelve contract checks cover the
+classification and resource boundaries directly, including the depth cap, source,
+program and argument budgets, and the capped cancellation search. `test/test_cli.ml`
+separately proves an oversized protocol line is drained and a following request succeeds;
+the equivalence unit and conformance cases pin the DNF fallback.
 
 ---
 

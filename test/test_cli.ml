@@ -110,4 +110,39 @@ let () =
   check "blank lines are skipped rather than answered"
     (List.length replies = 1);
 
+  (* The limit has to apply while reading, before Yojson allocates a complete
+     hostile line. Draining the rejected line is equally important: the valid
+     request after it proves the long-lived process remains synchronized. *)
+  let oversized = String.make (1_048_576 + 1) 'x' in
+  let replies =
+    run [ oversized; {|{"cmd":"parse","tfl":"-Man+Mortal"}|} ]
+    |> Array.of_list
+  in
+  check "an oversized protocol line gets one structured refusal"
+    (Array.length replies = 2
+    && field "class" replies.(0) = "resource_limit");
+  check "the request after an oversized line is still processed"
+    (field "ok" replies.(1) = "true");
+
+  (* Valid JSON is not necessarily a request object. Yojson's member helper
+     raises on these shapes, so the object check must happen before lookup. *)
+  let replies =
+    run
+      [
+        "[]";
+        {|"scalar"|};
+        "null";
+        "42";
+        {|{"cmd":"parse","tfl":"-Man+Mortal"}|};
+      ]
+    |> Array.of_list
+  in
+  check "valid non-object JSON is refused without killing the stream"
+    (Array.length replies = 5
+    && Array.for_all
+         (fun reply -> field "error" reply = "request must be a JSON object")
+         (Array.sub replies 0 4));
+  check "a request after non-object JSON is still processed"
+    (field "ok" replies.(4) = "true");
+
   Printf.printf "cli boundary: %d checks passed\n" !checks

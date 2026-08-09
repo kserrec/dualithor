@@ -10,8 +10,10 @@
    the back-check (4.4) and the Phase 9 audit surface are built on them, so every
    deviation is deliberate, commented at its branch, exempted by name in the
    rendering differential, and pinned in test/test_readings.ml where a human
-   approved it. Three deviations exist so far, all from PLAN 5.0: the compound
-   joiner, the quantity word on a relational predicate, and the comma seam. *)
+   approved it. Four rendering deviations exist so far: the PLAN 5.0 compound
+   joiner, quantity word on a relational predicate, and comma seam, plus the
+   core-0.1 rule that a nonzero quantity level blocks fixed-predicate
+   conversion. *)
 
 open Ast
 
@@ -193,6 +195,10 @@ let explain_proof (proof : Derive.proof) : string option =
              match l.l_prop with Some p -> read_prop p | None -> "")
            givens)
     in
+    let introduce consequence =
+      if because = "" then String.capitalize_ascii consequence
+      else "Because " ^ because ^ ", " ^ consequence
+    in
     if closing then
       (* the two clashing lines make the impossibility vivid *)
       let clash =
@@ -207,11 +213,11 @@ let explain_proof (proof : Derive.proof) : string option =
              clash)
       in
       Some
-        ("Because " ^ because ^ ", it would follow that " ^ pair
-       ^ " \u{2014} which is impossible.")
+        (introduce ("it would follow that " ^ pair)
+        ^ " \u{2014} which is impossible.")
     else
       match last.l_prop with
-      | Some p -> Some ("Because " ^ because ^ ", " ^ read_prop p ^ ".")
+      | Some p -> Some (introduce (read_prop p) ^ ".")
       (* unreachable: only the synthetic ⊥ line lacks a prop, and the closing
          branch above already handled it *)
-      | None -> Some ("Because " ^ because ^ ", .")
+      | None -> Some (introduce "" ^ ".")

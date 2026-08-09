@@ -199,10 +199,10 @@ let query_prop ?max_lines ?slack (program : prop list) (query : prop) :
   | Valid -> { q_verdict = Q_yes; support = Some yes }
   | Contradicted -> { q_verdict = Q_no; support = Some yes }
   | _ ->
-      (* Categorical 'invalid' means the query is not entailed; its
-         contradictory may still be. (Relational 'unknown' already tried the
-         contradictory inside check_argument.) *)
-      if yes.meth = PZ then
+      (* P/Z invalidity and numerical abstention have not yet tried the
+         contradictory. Non-atomic derivation already does so inside
+         [check_argument], returning [Contradicted] when it succeeds. *)
+      if yes.meth = PZ || yes.meth = Numerical then
         let no =
           Decide.check_argument ?max_lines ?slack program
             (Infer.contradictory query)
@@ -345,6 +345,36 @@ let equivalents ?(max_nodes = 64) (p : prop) : equivalent_entry list =
 
 (* ── The one-world statement model ──────────────────────────────────────── *)
 
+let statement_atom_limit = 16
+
+(* A 16-atom truth table has only 65,536 assignments, but its returned DNF can
+   still be made arbitrarily large through long atom names, and a wide formula
+   can make evaluating those assignments arbitrarily expensive. Keep both the
+   materialized output and the approximate AST-node visits within explicit
+   process budgets. Crossing either budget falls back to the bounded rewrite
+   method below; it never weakens a positive equivalence result into a crash or
+   an unbounded allocation. *)
+let max_dnf_bytes = 8 * 1_024 * 1_024
+let max_truth_table_node_visits = 8 * 1_024 * 1_024
+
+let truth_table_fits_budget atoms a b =
+  let row_count = 1 lsl List.length atoms in
+  (* Every row writes every atom once. U+2212 is the longer of the two signs
+     in UTF-8, so this is an upper bound independent of the assignment. *)
+  let max_row_bytes =
+    List.fold_left
+      (fun total name -> total + String.length "−" + String.length name)
+      0 atoms
+  in
+  let output_fits =
+    max_row_bytes <= max_dnf_bytes / row_count
+  in
+  let nodes_per_row = Infer.prop_nodes a + Infer.prop_nodes b in
+  let work_fits =
+    nodes_per_row <= max_truth_table_node_visits / row_count
+  in
+  output_fits && work_fits
+
 (* Non-null only when the prop is purely propositional: every atom
    lowercase-initial (ASCII per the §16.4 narrowing), non-singular; no
    relational complexes; 1–16 atoms. Semantics over a one-member universe. *)
@@ -372,7 +402,7 @@ let statement_model (p : prop) :
   in
   scan_p p;
   let n = Hashtbl.length atoms in
-  if (not !ok) || n = 0 || n > 16 then None
+  if (not !ok) || n = 0 || n > statement_atom_limit then None
   else
     let rec eval_t t asg =
       match t with
@@ -412,51 +442,66 @@ let decide_equivalence ?max_nodes (a : prop) (b : prop) : equivalence_decision =
     Infer.engine_error
       "equivalence is decided at level 0; numerical quantifiers are compared \
        only through the decision method";
+  let rewrite () =
+    let closure = equivalents ?max_nodes a in
+    let b_key = Notation.print_proposition (Infer.canon_prop b) in
+    let hit =
+      List.find_opt
+        (fun e ->
+          Notation.print_proposition (Infer.canon_prop e.eq_prop) = b_key)
+        closure
+    in
+    {
+      equivalent = hit <> None;
+      e_method = "rewrite";
+      atoms = None;
+      dnf = None;
+      e_path = (match hit with Some e -> Some e.path | None -> None);
+    }
+  in
   match (statement_model a, statement_model b) with
   | Some (atoms_a, sat_a), Some (atoms_b, sat_b) ->
       let atoms = List.sort_uniq String.compare (atoms_a @ atoms_b) in
-      let arr = Array.of_list atoms in
-      let n = Array.length arr in
-      let rows = ref [] in
-      let equal = ref true in
-      for m = 0 to (1 lsl n) - 1 do
-        let asg name =
-          let rec idx i = if arr.(i) = name then i else idx (i + 1) in
-          m land (1 lsl idx 0) <> 0
-        in
-        let va = sat_a asg and vb = sat_b asg in
-        if va <> vb then equal := false;
-        if va then
-          let true_atoms =
-            List.filter (fun nm -> asg nm) atoms
-            |> List.map (fun nm -> "+" ^ nm)
+      if
+        List.length atoms > statement_atom_limit
+        || not (truth_table_fits_budget atoms a b)
+      then rewrite ()
+      else
+        let arr = Array.of_list atoms in
+        let n = Array.length arr in
+        let positions : (string, int) Hashtbl.t = Hashtbl.create n in
+        Array.iteri (fun i name -> Hashtbl.add positions name i) arr;
+        let rows = ref [] in
+        let equal = ref true in
+        for m = 0 to (1 lsl n) - 1 do
+          let asg name =
+            m land (1 lsl Hashtbl.find positions name) <> 0
           in
-          let false_atoms =
-            List.filter (fun nm -> not (asg nm)) atoms
-            |> List.map (fun nm -> "−" ^ nm)
-          in
-          rows := String.concat "" (true_atoms @ false_atoms) :: !rows
-      done;
-      {
-        equivalent = !equal;
-        e_method = "dnf";
-        atoms = Some atoms;
-        dnf = Some (List.rev !rows);
-        e_path = None;
-      }
-  | _ ->
-      let closure = equivalents ?max_nodes a in
-      let b_key = Notation.print_proposition (Infer.canon_prop b) in
-      let hit =
-        List.find_opt
-          (fun e ->
-            Notation.print_proposition (Infer.canon_prop e.eq_prop) = b_key)
-          closure
-      in
-      {
-        equivalent = hit <> None;
-        e_method = "rewrite";
-        atoms = None;
-        dnf = None;
-        e_path = (match hit with Some e -> Some e.path | None -> None);
-      }
+          let va = sat_a asg and vb = sat_b asg in
+          if va <> vb then equal := false;
+          if va then (
+            let row = Buffer.create (n * 4) in
+            (* Preserve the reference ordering: true atoms first, then false
+               atoms, with each group in sorted atom order. *)
+            Array.iteri
+              (fun i name ->
+                if m land (1 lsl i) <> 0 then (
+                  Buffer.add_char row '+';
+                  Buffer.add_string row name))
+              arr;
+            Array.iteri
+              (fun i name ->
+                if m land (1 lsl i) = 0 then (
+                  Buffer.add_string row "−";
+                  Buffer.add_string row name))
+              arr;
+            rows := Buffer.contents row :: !rows)
+        done;
+        {
+          equivalent = !equal;
+          e_method = "dnf";
+          atoms = Some atoms;
+          dnf = Some (List.rev !rows);
+          e_path = None;
+        }
+  | _ -> rewrite ()

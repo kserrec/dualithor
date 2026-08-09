@@ -186,6 +186,27 @@ let run_unit_tests () =
       term_to "\"the number 7\"*" (atom ~singular:true "the number 7"));
   test "unclosed quote" (fun () -> fails_with "+\"oops+P" "Unclosed quote");
   test "empty quoted term" (fun () -> fails_with "+\"\"+P" "Empty quoted term");
+  test "quoted terms reject terminal control sequences" (fun () ->
+      fails_with "+\"red\x1b[31m\"+P" "Control and bidirectional";
+      fails_with "+\"carriage\rreturn\"+P" "Control and bidirectional");
+  test "unsafe bare characters are named without replaying the control" (fun () ->
+      let expect_code src code =
+        match parse_proposition src with
+        | _ -> failwith "an unsafe character should have been refused"
+        | exception Parse_error { message; _ } ->
+            check (contains message code) "the diagnostic should name its code";
+            check
+              (not (contains message src))
+              "the diagnostic must not replay the unsafe character"
+      in
+      expect_code "\x1b" "U+001B";
+      expect_code "\u{202E}" "U+202E");
+  test "quoted terms reject bidirectional display overrides" (fun () ->
+      fails_with "+\"safe\u{202E}txt\"+P" "Control and bidirectional";
+      fails_with "+\"safe\u{2066}txt\"+P" "Control and bidirectional");
+  test "ordinary quoted Unicode remains legal" (fun () ->
+      prop_to "+\"élève sérieux\"+P"
+        (prop (st Plus (atom "élève sérieux")) (st Plus (atom "P"))));
 
   (* Negative and compound terms *)
   test "negative term" (fun () -> term_to "(−T)" (Neg (atom "T")));

@@ -194,6 +194,65 @@ let unit_checks () =
       check
         (kind_of ("+" ^ nest 200 ^ "+B") = "syntactic")
         "200 levels is refused");
+  test "source and argument size limits are structured refusals" (fun () ->
+      let over_source = String.make (Tfl.Safe.max_source_bytes + 1) 'x' in
+      check
+        (kind_of over_source = "resource_limit")
+        "an oversized source must be a resource-limit refusal";
+      let at_source = String.make Tfl.Safe.max_source_bytes 'x' in
+      check
+        (kind_of at_source <> "resource_limit")
+        "the documented source limit itself remains admissible";
+      let oversized_argument =
+        List.init 17 (fun _ -> String.make Tfl.Safe.max_source_bytes 'x')
+      in
+      check
+        (match
+           Tfl.Safe.check ~premises:oversized_argument ~conclusion:""
+         with
+        | Error
+            {
+              kind = Tfl.Safe.Resource_limit;
+              where = Some "argument";
+              _;
+            } -> true
+        | _ -> false)
+        "combined argument bytes must be bounded");
+  test "argument premise count is bounded before parsing" (fun () ->
+      let premises =
+        List.init (Tfl.Safe.max_argument_premises + 1) (fun _ -> "−A+B")
+      in
+      match Tfl.Safe.check ~premises ~conclusion:"−A+B" with
+      | Error
+          { kind = Tfl.Safe.Resource_limit; where = Some "argument"; _ } -> ()
+      | _ -> failwith "an oversized premise list was not refused");
+  test "program bytes and individual line bytes are bounded" (fun () ->
+      let over_program = String.make (Tfl.Safe.max_program_bytes + 1) 'x' in
+      (match Tfl.Safe.parse_program over_program with
+      | Error { kind = Tfl.Safe.Resource_limit; _ } -> ()
+      | _ -> failwith "an oversized program was not refused");
+      let over_line = String.make (Tfl.Safe.max_source_bytes + 1) 'x' in
+      match Tfl.Safe.parse_program over_line with
+      | Error
+          {
+            kind = Tfl.Safe.Resource_limit;
+            where = Some "line 1";
+            _;
+          } -> ()
+      | _ -> failwith "an oversized program line was not refused");
+  test "program line and proposition counts are bounded" (fun () ->
+      let too_many_lines = String.make Tfl.Safe.max_program_lines '\n' in
+      (match Tfl.Safe.parse_program too_many_lines with
+      | Error { kind = Tfl.Safe.Resource_limit; _ } -> ()
+      | _ -> failwith "an oversized program line count was not refused");
+      let too_many_props =
+        List.init (Tfl.Safe.max_program_propositions + 1) (fun _ -> "−A+B")
+        |> String.concat "\n"
+      in
+      match Tfl.Safe.parse_program too_many_props with
+      | Error
+          { kind = Tfl.Safe.Resource_limit; where = Some "program"; _ } -> ()
+      | _ -> failwith "an oversized program proposition count was not refused");
   test "failures name the input they came from" (fun () ->
       match Tfl.Safe.check ~premises:[ "−S+P"; "!!" ] ~conclusion:"−S+P" with
       | Error { where = Some w; _ } -> check_eq w "premise 2"

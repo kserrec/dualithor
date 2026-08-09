@@ -23,6 +23,47 @@ let out (j : Yojson.Safe.t) =
 
 let error ?(fields = []) msg = `Assoc (("error", `String msg) :: fields)
 
+(* Bound a request before either [Yojson] or the engine sees it. [input_line]
+   allocates the complete line first, so checking [String.length] afterwards
+   would leave the process vulnerable to exactly the oversized request this
+   guard is meant to refuse. The reader retains at most [max_request_bytes]
+   bytes and drains the remainder of an oversized line so the next request can
+   still be processed. *)
+let max_request_bytes = 1_048_576
+
+type request_line = End_of_input | Request of string | Request_too_large
+
+let read_request_line ic =
+  let buffer = Buffer.create 256 in
+  let oversized = ref false in
+  let saw_input = ref false in
+  let rec read () =
+    match input_char ic with
+    | '\n' -> if !oversized then Request_too_large else Request (Buffer.contents buffer)
+    | char ->
+        saw_input := true;
+        if !oversized then ()
+        else if Buffer.length buffer < max_request_bytes then
+          Buffer.add_char buffer char
+        else oversized := true;
+        read ()
+    | exception End_of_file ->
+        if !oversized then Request_too_large
+        else if !saw_input || Buffer.length buffer > 0 then
+          Request (Buffer.contents buffer)
+        else End_of_input
+  in
+  read ()
+
+let request_too_large_json () =
+  error
+    (Printf.sprintf "request exceeds the %d-byte limit" max_request_bytes)
+    ~fields:
+      [
+        ("class", `String "resource_limit");
+        ("max_bytes", `Int max_request_bytes);
+      ]
+
 let member name json =
   match Yojson.Safe.Util.member name json with `Null -> None | v -> Some v
 
@@ -96,7 +137,7 @@ let commands =
 let handle (line : string) : Yojson.Safe.t =
   match Yojson.Safe.from_string line with
   | exception _ -> error "line is not valid JSON"
-  | json -> (
+  | (`Assoc _ as json) -> (
       match string_field "cmd" json with
       | Error m ->
           error m
@@ -118,6 +159,7 @@ let handle (line : string) : Yojson.Safe.t =
                     ( "commands",
                       `List (List.map (fun (n, _) -> `String n) commands) );
                   ]))
+  | _ -> error "request must be a JSON object"
 
 let usage =
   {|tfl_cli — JSON over stdio, one request per line.
@@ -128,7 +170,8 @@ let usage =
 
 Every reply is one JSON object. Failures carry an "error" field; a formula the
 engine refuses carries "ok":false with its class (lexical | syntactic |
-outside_fragment | internal), which is the fragment-membership signal.
+outside_fragment | resource_limit | internal), which is the
+fragment-membership signal.
 |}
 
 let () =
@@ -138,9 +181,12 @@ let () =
     print_string usage;
     exit (if Sys.argv.(1) = "--help" || Sys.argv.(1) = "-h" then 0 else 2));
   let rec loop () =
-    match input_line stdin with
-    | exception End_of_file -> ()
-    | line ->
+    match read_request_line stdin with
+    | End_of_input -> ()
+    | Request_too_large ->
+        out (request_too_large_json ());
+        loop ()
+    | Request line ->
         if String.trim line <> "" then out (handle line);
         loop ()
   in

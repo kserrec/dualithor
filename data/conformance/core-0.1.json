@@ -40,6 +40,30 @@
       }
     },
     {
+      "id": "premise-free-tautology-explanation",
+      "rule": "A proof with no given lines reads as a sentence without an empty Because clause",
+      "focus": "-(+A+B)+(+A+B)",
+      "operation": {
+        "kind": "argument",
+        "premises": [],
+        "conclusion": "-(+A+B)+(+A+B)"
+      },
+      "expected": {
+        "printed": "−(+A+B)+(+A+B)",
+        "canonical": "−(+A+B)+(+A+B)",
+        "reading": "every a b is a b",
+        "result": "valid",
+        "method": "derivation",
+        "complete": false,
+        "proof": {
+          "kind": "direct",
+          "rules": ["It"],
+          "final": "−(+A+B)+(+A+B)",
+          "explanation": "Every a b is a b."
+        }
+      }
+    },
+    {
       "id": "fixed-reference-wild-quantity",
       "rule": "A starred singular is a fixed reference whose universal and particular readings coincide",
       "focus": "+-Socrates*+Man",
@@ -56,6 +80,25 @@
         "method": "PZ",
         "complete": true,
         "proof": {"kind": "certificate", "rules": [], "final": null}
+      }
+    },
+    {
+      "id": "quoted-star-is-not-a-singular-marker",
+      "rule": "A star inside a quoted general name remains name content and is distinct from a trailing singular marker",
+      "focus": "+\"A*\"+P",
+      "operation": {
+        "kind": "argument",
+        "premises": ["+\"A*\"+P"],
+        "conclusion": "+A*+P"
+      },
+      "expected": {
+        "printed": "+\"A*\"+P",
+        "canonical": "+\"A*\"+P",
+        "reading": "some a* is p",
+        "result": "invalid",
+        "method": "PZ",
+        "complete": true,
+        "proof": {"kind": "none", "rules": [], "final": null}
       }
     },
     {
@@ -185,6 +228,46 @@
       }
     },
     {
+      "id": "nested-numerical-level-is-refused",
+      "rule": "A numerical level inside a proposition term routes before level-less canonicalization and is refused outside the atomic numerical fragment",
+      "focus": "+[+p^2+q]+r",
+      "operation": {
+        "kind": "argument-error",
+        "premises": ["+[+p^2+q]+r"],
+        "conclusion": "+[+p+q]+r"
+      },
+      "expected": {
+        "printed": "+[+p²+q]+r",
+        "canonical": "+[+p+q]+r",
+        "reading": "some “most p is q” is r",
+        "result": "outside_fragment",
+        "message": "quantity levels are supported only in categorical (atomic) syllogisms",
+        "where": "argument",
+        "method": null,
+        "complete": false,
+        "proof": {"kind": "none", "rules": [], "final": null}
+      }
+    },
+    {
+      "id": "levelled-subject-with-fixed-predicate-reading",
+      "rule": "A fixed predicate does not license conversion that would erase a numerical subject quantity",
+      "focus": "+Man^2+Socrates*",
+      "operation": {
+        "kind": "argument",
+        "premises": ["+Man^2+Socrates*"],
+        "conclusion": "+Man^2+Socrates*"
+      },
+      "expected": {
+        "printed": "+Man²+Socrates*",
+        "canonical": "+Man+Socrates*",
+        "reading": "most man is Socrates",
+        "result": "valid",
+        "method": "numerical",
+        "complete": false,
+        "proof": {"kind": "numerical-decision", "rules": [], "final": null}
+      }
+    },
+    {
       "id": "program-ground-query-yes",
       "rule": "Programs ignore comments and a complete atomic ground query can establish support",
       "focus": "+-Socrates*+Mortal",
@@ -220,6 +303,25 @@
         "method": "PZ",
         "complete": true,
         "proof": {"kind": "certificate", "rules": [], "final": null}
+      }
+    },
+    {
+      "id": "program-ground-query-numerical-no",
+      "rule": "A numerical ground query returns no when the numerical procedure supports its contradictory",
+      "focus": "-E+H",
+      "operation": {
+        "kind": "ground-query",
+        "program": "+C^3-H\n-C+E\n",
+        "query": "-E+H"
+      },
+      "expected": {
+        "printed": "−E+H",
+        "canonical": "−E+H",
+        "reading": "every e is h",
+        "result": "no",
+        "method": "numerical",
+        "complete": false,
+        "proof": {"kind": "numerical-decision", "rules": [], "final": null}
       }
     },
     {
@@ -355,6 +457,65 @@
         "method": "dnf",
         "complete": true,
         "proof": {"kind": "truth-table", "rules": [], "final": null}
+      }
+    },
+    {
+      "id": "equivalence-truth-table-union-cap",
+      "rule": "Truth-table equivalence is complete only when the union contains at most sixteen atoms; larger unions use bounded rewrite search",
+      "focus": "+(+a+b+c+d+e+f+g+h)+i",
+      "operation": {
+        "kind": "equivalence",
+        "left": "+(+a+b+c+d+e+f+g+h)+i",
+        "right": "+(+j+k+l+m+n+o+p)+q"
+      },
+      "expected": {
+        "printed": "+(+a+b+c+d+e+f+g+h)+i",
+        "canonical": "+(+a+b+c+d+e+f+g+h)+i",
+        "reading": "some a b c d e f g h is i",
+        "result": false,
+        "method": "rewrite",
+        "complete": false,
+        "proof": {"kind": "none", "rules": [], "final": null}
+      }
+    },
+    {
+      "id": "quoted-name-terminal-control-refusal",
+      "rule": "Quoted names refuse terminal controls and bidirectional formatting controls before any human-facing rendering",
+      "focus": "-S+P",
+      "operation": {
+        "kind": "argument-error",
+        "premises": ["+\"safe\u001b[31m\"+P"],
+        "conclusion": "-S+P"
+      },
+      "expected": {
+        "printed": "−S+P",
+        "canonical": "−S+P",
+        "reading": "every s is p",
+        "result": "lexical",
+        "message": "Control and bidirectional formatting characters are not allowed in quoted terms (at position 6)",
+        "where": "premise 1",
+        "method": null,
+        "complete": false,
+        "proof": {"kind": "none", "rules": [], "final": null}
+      }
+    },
+    {
+      "id": "equivalence-dnf-output-budget",
+      "rule": "A sixteen-atom truth table uses bounded rewrite search when materializing its DNF would exceed the core output budget",
+      "focus": "−(+p00000+p00001+p00002+p00003+p00004+p00005+p00006+p00007+p00008+p00009+p00010+p00011+p00012+p00013+p00014+p00015)+(+p00000+p00001+p00002+p00003+p00004+p00005+p00006+p00007+p00008+p00009+p00010+p00011+p00012+p00013+p00014+p00015)",
+      "operation": {
+        "kind": "equivalence",
+        "left": "−(+p00000+p00001+p00002+p00003+p00004+p00005+p00006+p00007+p00008+p00009+p00010+p00011+p00012+p00013+p00014+p00015)+(+p00000+p00001+p00002+p00003+p00004+p00005+p00006+p00007+p00008+p00009+p00010+p00011+p00012+p00013+p00014+p00015)",
+        "right": "−(+p00000+p00001+p00002+p00003+p00004+p00005+p00006+p00007+p00008+p00009+p00010+p00011+p00012+p00013+p00014+p00015)+(+p00000+p00001+p00002+p00003+p00004+p00005+p00006+p00007+p00008+p00009+p00010+p00011+p00012+p00013+p00014+p00015)"
+      },
+      "expected": {
+        "printed": "−(+p00000+p00001+p00002+p00003+p00004+p00005+p00006+p00007+p00008+p00009+p00010+p00011+p00012+p00013+p00014+p00015)+(+p00000+p00001+p00002+p00003+p00004+p00005+p00006+p00007+p00008+p00009+p00010+p00011+p00012+p00013+p00014+p00015)",
+        "canonical": "−(+p00000+p00001+p00002+p00003+p00004+p00005+p00006+p00007+p00008+p00009+p00010+p00011+p00012+p00013+p00014+p00015)+(+p00000+p00001+p00002+p00003+p00004+p00005+p00006+p00007+p00008+p00009+p00010+p00011+p00012+p00013+p00014+p00015)",
+        "reading": "every p00000 p00001 p00002 p00003 p00004 p00005 p00006 p00007 p00008 p00009 p00010 p00011 p00012 p00013 p00014 p00015 is p00000 p00001 p00002 p00003 p00004 p00005 p00006 p00007 p00008 p00009 p00010 p00011 p00012 p00013 p00014 p00015",
+        "result": true,
+        "method": "rewrite",
+        "complete": false,
+        "proof": {"kind": "rewrite-path", "rules": [], "final": null}
       }
     }
   ]

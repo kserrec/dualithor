@@ -8,11 +8,12 @@ type failure_kind =
   | Lexical (* a character or token the notation has no reading for *)
   | Syntactic (* legal tokens that do not form a proposition *)
   | Outside_fragment (* a well-formed AST the inference layer refuses *)
+  | Resource_limit (* valid-shaped input exceeds a public work or size bound *)
   | Internal
-(* an exception that should be unreachable. Not one of the three router
-         classes: it classifies the engine, not the input, and it means a bug
-         to fix rather than an escalation to make. It exists so the API can be
-         total without a crash ever being reported as an expected outcome. *)
+(* an exception that should be unreachable. It classifies the engine, not the
+   input, and it means a bug to fix rather than an escalation to make. It
+   exists so the API can be total without a crash ever being reported as an
+   expected outcome. *)
 
 type failure = {
   kind : failure_kind;
@@ -25,6 +26,7 @@ let kind_name = function
   | Lexical -> "lexical"
   | Syntactic -> "syntactic"
   | Outside_fragment -> "outside_fragment"
+  | Resource_limit -> "resource_limit"
   | Internal -> "internal"
 
 (* ── Bounds ─────────────────────────────────────────────────────────────────
@@ -36,6 +38,22 @@ let kind_name = function
    64 is far past anything a real formula reaches (three or four is typical)
    and far below the stack limit of any tree walk in the engine. *)
 let max_depth = 64
+let max_source_bytes = 65_536
+let max_program_bytes = 1_048_576
+let max_program_lines = 10_000
+let max_program_propositions = 1_024
+let max_argument_bytes = 1_048_576
+let max_argument_premises = 1_024
+
+let resource_failure ?where message =
+  { kind = Resource_limit; message; pos = None; where }
+
+let source_too_large ?where src =
+  if String.length src <= max_source_bytes then None
+  else
+    Some
+      (resource_failure ?where
+         (Printf.sprintf "Source exceeds the %d-byte limit" max_source_bytes))
 
 let depth_failure pos =
   {
@@ -79,62 +97,93 @@ let guard ?where (f : unit -> 'a) : ('a, failure) result =
    Lexical and syntactic refusals are the same OCaml exception, so the class
    comes from *where* it was raised, never from the message text: the tokenizer
    runs first on its own, and a failure there is lexical by construction.
-   Tokenizing twice costs one linear pass and keeps a message edit from
-   silently reclassifying anything. *)
+   The accepted token array is then passed directly to the parser: lexical and
+   syntactic phases remain distinct without decoding and allocating the source
+   twice. *)
 
 let parse ?where (src : string) : (Ast.prop, failure) result =
-  match Notation.tokenize src with
-  | exception Notation.Parse_error { message; pos } ->
-      Error { kind = Lexical; message; pos = Some pos; where }
-  | exception e -> Error (unexpected ?where e)
-  | tokens -> (
-      match too_deep tokens with
-      | Some pos -> Error { (depth_failure pos) with where }
-      | None -> (
-          match Notation.parse_proposition src with
-          | p -> Ok p
-          | exception Notation.Parse_error { message; pos } ->
-              Error { kind = Syntactic; message; pos = Some pos; where }
-          | exception e -> Error (unexpected ?where e)))
+  match source_too_large ?where src with
+  | Some failure -> Error failure
+  | None -> (
+      match Notation.tokenize src with
+      | exception Notation.Parse_error { message; pos } ->
+          Error { kind = Lexical; message; pos = Some pos; where }
+      | exception e -> Error (unexpected ?where e)
+      | tokens -> (
+          match too_deep tokens with
+          | Some pos -> Error { (depth_failure pos) with where }
+          | None -> (
+              match Notation.parse_proposition_tokens tokens with
+              | p -> Ok p
+              | exception Notation.Parse_error { message; pos } ->
+                  Error { kind = Syntactic; message; pos = Some pos; where }
+              | exception e -> Error (unexpected ?where e))))
 
 let parse_all (label : string) (sources : string list) :
     (Ast.prop list, failure) result =
-  let rec go i = function
-    | [] -> Ok []
+  let rec go i acc = function
+    | [] -> Ok (List.rev acc)
     | src :: rest -> (
         match parse ~where:(Printf.sprintf "%s %d" label i) src with
         | Error e -> Error e
-        | Ok p -> ( match go (i + 1) rest with Ok ps -> Ok (p :: ps) | e -> e))
+        | Ok p -> go (i + 1) (p :: acc) rest)
   in
-  go 1 sources
+  go 1 [] sources
 
-(* The program-loading path (PLAN 3.1). [Program.parse_program] collects
-   per-line Parse_errors itself, so unbounded nesting is the one hazard left
-   here — the same stack exhaustion [parse] caps, measured as a hard
-   Stack_overflow at 200k levels (LOG 2026-08-01). Depth is checked per line,
-   pre-parse, on the same comment-stripped text the program parser reads;
-   callers load programs through this wrapper and nowhere else. *)
+(* The guarded program-loading path. Cap the aggregate, physical-line count,
+   line size, and parsed proposition count around [Program.parse_program].
+   Depth is checked per line before recursive parsing, on the same
+   comment-stripped text the program parser reads. *)
 let parse_program (src : string) : (Program.parsed_program, failure) result =
-  let too_deep_line (n, raw) =
-    match Notation.tokenize (Program.line_code raw) with
-    (* a tokenizer refusal is that line's own recorded error — the program
-       parser reports it in [errors] *)
-    | exception _ -> None
-    | tokens ->
-        Option.map
-          (fun pos ->
-            {
-              (depth_failure pos) with
-              where = Some (Printf.sprintf "line %d" n);
-            })
-          (too_deep tokens)
-  in
-  let numbered =
-    List.mapi (fun i raw -> (i + 1, raw)) (String.split_on_char '\n' src)
-  in
-  match List.find_map too_deep_line numbered with
-  | Some f -> Error f
-  | None -> guard (fun () -> Program.parse_program src)
+  if String.length src > max_program_bytes then
+    Error
+      (resource_failure
+         (Printf.sprintf "Program source exceeds the %d-byte limit"
+            max_program_bytes))
+  else
+    let line_count =
+      String.fold_left
+        (fun count char -> if char = '\n' then count + 1 else count)
+        1 src
+    in
+    if line_count > max_program_lines then
+      Error
+        (resource_failure
+           (Printf.sprintf "Program exceeds the %d-line limit"
+              max_program_lines))
+    else
+      let line_failure (n, raw) =
+        let where = Printf.sprintf "line %d" n in
+        if String.length raw > max_source_bytes then
+          Some
+            (resource_failure ~where
+               (Printf.sprintf "Program line exceeds the %d-byte limit"
+                  max_source_bytes))
+        else
+          match Notation.tokenize (Program.line_code raw) with
+          (* a tokenizer refusal is that line's own recorded error — the
+             program parser reports it in [errors] *)
+          | exception _ -> None
+          | tokens ->
+              Option.map
+                (fun pos -> { (depth_failure pos) with where = Some where })
+                (too_deep tokens)
+      in
+      let numbered =
+        List.mapi (fun i raw -> (i + 1, raw)) (String.split_on_char '\n' src)
+      in
+      match List.find_map line_failure numbered with
+      | Some f -> Error f
+      | None -> (
+          match guard (fun () -> Program.parse_program src) with
+          | Error _ as error -> error
+          | Ok program
+            when List.length program.propositions > max_program_propositions ->
+              Error
+                (resource_failure ~where:"program"
+                   (Printf.sprintf "Program exceeds the %d-proposition limit"
+                      max_program_propositions))
+          | Ok program -> Ok program)
 
 (* Parse every input, then decide. A refusal from the inference layer —
    including the guards that fire on propositions the parser accepted — comes
@@ -148,6 +197,32 @@ let parse_program (src : string) : (Program.parsed_program, failure) result =
    check on a non-categorical set) names "argument". *)
 let check ~(premises : string list) ~(conclusion : string) :
     (Decide.result, failure) result =
+  let argument_budget () =
+    let rec add_premises count remaining = function
+      | [] ->
+          if String.length conclusion > remaining then
+            Error
+              (resource_failure ~where:"argument"
+                 (Printf.sprintf "Argument source exceeds the %d-byte limit"
+                    max_argument_bytes))
+          else Ok ()
+      | source :: rest ->
+          if count >= max_argument_premises then
+            Error
+              (resource_failure ~where:"argument"
+                 (Printf.sprintf "Argument exceeds the %d-premise limit"
+                    max_argument_premises))
+          else
+            let size = String.length source in
+            if size > remaining then
+              Error
+                (resource_failure ~where:"argument"
+                   (Printf.sprintf "Argument source exceeds the %d-byte limit"
+                      max_argument_bytes))
+            else add_premises (count + 1) (remaining - size) rest
+    in
+    add_premises 0 max_argument_bytes premises
+  in
   let validate where p = guard ~where (fun () -> Infer.validate_prop p) in
   let rec validate_premises i = function
     | [] -> Ok ()
@@ -156,17 +231,20 @@ let check ~(premises : string list) ~(conclusion : string) :
         | Error e -> Error e
         | Ok () -> validate_premises (i + 1) rest)
   in
-  match parse_all "premise" premises with
+  match argument_budget () with
   | Error e -> Error e
-  | Ok premises -> (
-      match parse ~where:"conclusion" conclusion with
+  | Ok () -> (
+      match parse_all "premise" premises with
       | Error e -> Error e
-      | Ok conclusion -> (
-          match validate_premises 1 premises with
+      | Ok premises -> (
+          match parse ~where:"conclusion" conclusion with
           | Error e -> Error e
-          | Ok () -> (
-              match validate "conclusion" conclusion with
+          | Ok conclusion -> (
+              match validate_premises 1 premises with
               | Error e -> Error e
-              | Ok () ->
-                  guard ~where:"argument" (fun () ->
-                      Decide.check_argument premises conclusion))))
+              | Ok () -> (
+                  match validate "conclusion" conclusion with
+                  | Error e -> Error e
+                  | Ok () ->
+                      guard ~where:"argument" (fun () ->
+                          Decide.check_argument premises conclusion)))))

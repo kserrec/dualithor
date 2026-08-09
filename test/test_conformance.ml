@@ -1,41 +1,46 @@
-(* Executable core-0.1 conformance corpus (PLAN Phase 1). The examples live
-   in data, not in this executable, so another implementation can consume the
-   same contract. This runner checks notation, inference canonicalization,
-   exact readings, result vocabulary, decision completeness, and proof shape. *)
+(* Executable conformance for the versioned core-language contract. The
+   examples live in data so every implementation can consume the same corpus.
+   This runner checks notation, inference canonicalization, exact readings,
+   result vocabulary, decision completeness, and proof shape. *)
 
 open Harness
 module J = Yojson.Safe
 module U = Yojson.Safe.Util
 
+let contract = "core-0.1"
+
+let corpus_relative_path =
+  Filename.concat "data/conformance" (contract ^ ".json")
+
 let corpus_path =
-  match
-    List.find_opt Sys.file_exists
-      [ "data/conformance/core-0.1.json"; "../data/conformance/core-0.1.json" ]
-  with
+  let candidates =
+    [ corpus_relative_path; Filename.concat ".." corpus_relative_path ]
+  in
+  match List.find_opt Sys.file_exists candidates with
   | Some path -> path
-  | None -> "data/conformance/core-0.1.json"
+  | None -> corpus_relative_path
 
 let failf fmt = Printf.ksprintf failwith fmt
-let field name json = U.member name json
+let json_field name json = U.member name json
 
-let string name json =
-  match field name json with
+let json_string name json =
+  match json_field name json with
   | `String s -> s
   | _ -> failf "field %S must be a string" name
 
-let optional_string name json =
-  match field name json with
+let json_optional_string name json =
+  match json_field name json with
   | `Null -> None
   | `String s -> Some s
   | _ -> failf "field %S must be a string or null" name
 
-let bool name json =
-  match field name json with
+let json_bool name json =
+  match json_field name json with
   | `Bool b -> b
   | _ -> failf "field %S must be a boolean" name
 
-let string_list name json =
-  match field name json with
+let json_string_list name json =
+  match json_field name json with
   | `List xs ->
       List.map
         (function
@@ -70,212 +75,257 @@ let parse_program label source =
   | Ok p ->
       List.map (fun (e : Tfl.Program.program_entry) -> e.prop) p.propositions
 
-let verdict_name (r : Tfl.Decide.result) =
-  match r.verdict with
-  | Valid -> "valid"
-  | Invalid -> "invalid"
-  | Contradicted -> "contradicted"
-  | Unknown -> "unknown"
-
 let method_name = function
   | Tfl.Decide.PZ -> "PZ"
   | Derivation -> "derivation"
   | Indirect -> "indirect"
   | Numerical -> "numerical"
 
-let proof_rules (proof : Tfl.Derive.proof) =
+let method_is_complete = function
+  | Tfl.Decide.PZ -> true
+  | Derivation | Indirect | Numerical -> false
+
+let proof_rule_names (proof : Tfl.Derive.proof) =
   List.map (fun (line : Tfl.Derive.line) -> line.rule) proof.lines
 
-let proof_final (proof : Tfl.Derive.proof) =
+let proof_final_text (proof : Tfl.Derive.proof) =
   match List.rev proof.lines with [] -> None | line :: _ -> Some line.text
 
-let expected_proof expected = field "proof" expected
+let expected_proof expected = json_field "proof" expected
+let expected_proof_kind expected = json_string "kind" (expected_proof expected)
 
-let check_rules_and_final expected proof =
+let check_proof_shape expected proof =
   let shape = expected_proof expected in
-  let wanted_rules = string_list "rules" shape in
-  check
-    (proof_rules proof = wanted_rules)
+  let got_rules = proof_rule_names proof in
+  let wanted_rules = json_string_list "rules" shape in
+  check (got_rules = wanted_rules)
     (Printf.sprintf "proof rules changed: got [%s], expected [%s]"
-       (String.concat ", " (proof_rules proof))
+       (String.concat ", " got_rules)
        (String.concat ", " wanted_rules));
-  let wanted_final = optional_string "final" shape in
-  check
-    (proof_final proof = wanted_final)
+  let got_final = proof_final_text proof in
+  let wanted_final = json_optional_string "final" shape in
+  check (got_final = wanted_final)
     (Printf.sprintf "proof final line changed: got %s, expected %s"
-       (Option.value ~default:"null" (proof_final proof))
-       (Option.value ~default:"null" wanted_final))
+       (Option.value ~default:"null" got_final)
+       (Option.value ~default:"null" wanted_final));
+  match json_field "explanation" shape with
+  | `Null -> ()
+  | `String wanted ->
+      check
+        (Tfl.Render.explain_proof proof = Some wanted)
+        "proof explanation changed"
+  | _ -> failwith "proof explanation must be a string when present"
 
-let check_decide_proof expected (r : Tfl.Decide.result) =
-  let kind = string "kind" (expected_proof expected) in
-  match kind with
+let check_argument_evidence expected (r : Tfl.Decide.result) =
+  match expected_proof_kind expected with
   | "certificate" ->
-      check (r.certificate <> None) "expected a P/Z certificate";
-      check (r.proof = None) "a certificate case unexpectedly carried a proof";
-      check (r.decision = None)
+      check (Option.is_some r.certificate) "expected a P/Z certificate";
+      check (Option.is_none r.proof)
+        "a certificate case unexpectedly carried a proof";
+      check
+        (Option.is_none r.decision)
         "a certificate case carried a numerical decision"
   | "none" ->
-      check (r.certificate = None) "unexpected certificate";
-      check (r.proof = None) "unexpected proof";
-      check (r.decision = None) "unexpected numerical decision"
+      check (Option.is_none r.certificate) "unexpected certificate";
+      check (Option.is_none r.proof) "unexpected proof";
+      check (Option.is_none r.decision) "unexpected numerical decision"
   | "direct" | "direct-contradictory" | "indirect" -> (
-      check (r.certificate = None)
+      check
+        (Option.is_none r.certificate)
         "proof case unexpectedly carried a certificate";
-      check (r.decision = None) "proof case carried a numerical decision";
+      check
+        (Option.is_none r.decision)
+        "proof case carried a numerical decision";
       match r.proof with
       | None -> failwith "expected a derivation proof"
-      | Some proof -> check_rules_and_final expected proof)
+      | Some proof -> check_proof_shape expected proof)
   | "numerical-decision" ->
-      check (r.decision <> None) "expected a numerical decision record";
-      check (r.proof = None) "numerical decision unexpectedly carried a proof";
-      check (r.certificate = None) "numerical decision carried a certificate"
+      check (Option.is_some r.decision) "expected a numerical decision record";
+      check (Option.is_none r.proof)
+        "numerical decision unexpectedly carried a proof";
+      check
+        (Option.is_none r.certificate)
+        "numerical decision carried a certificate"
   | other -> failf "proof kind %S is not valid for an argument result" other
 
-let check_focus case expected =
-  let focus = parse_prop "focus" (string "focus" case) in
+let check_focus_views case expected =
+  let focus = parse_prop "focus" (json_string "focus" case) in
   let printed = Tfl.Notation.print_proposition focus in
   let canonical = Tfl.Notation.print_proposition (Tfl.Infer.canon_prop focus) in
   let reading = Tfl.Render.read_prop focus in
-  check_eq printed (string "printed" expected);
-  check_eq canonical (string "canonical" expected);
-  check_eq reading (string "reading" expected)
+  check_eq printed (json_string "printed" expected);
+  check_eq canonical (json_string "canonical" expected);
+  check_eq reading (json_string "reading" expected)
 
 let check_argument operation expected =
   let premises =
-    string_list "premises" operation
+    json_string_list "premises" operation
     |> List.mapi (fun i source ->
         parse_prop (Printf.sprintf "premise %d" (i + 1)) source)
   in
-  let conclusion = parse_prop "conclusion" (string "conclusion" operation) in
+  let conclusion =
+    parse_prop "conclusion" (json_string "conclusion" operation)
+  in
   let r = Tfl.Decide.check_argument premises conclusion in
-  check_eq (verdict_name r) (string "result" expected);
-  check_eq (method_name r.meth) (string "method" expected);
-  let complete = r.meth = Tfl.Decide.PZ in
-  check (complete = bool "complete" expected) "argument completeness changed";
-  check_decide_proof expected r
+  check_eq (verdict_name r) (json_string "result" expected);
+  check_eq (method_name r.meth) (json_string "method" expected);
+  let complete = method_is_complete r.meth in
+  check
+    (complete = json_bool "complete" expected)
+    "argument completeness changed";
+  check_argument_evidence expected r
+
+let check_argument_error operation expected =
+  let premises = json_string_list "premises" operation in
+  let conclusion = json_string "conclusion" operation in
+  match Tfl.Safe.check ~premises ~conclusion with
+  | Ok _ -> failwith "expected the guarded argument to be refused"
+  | Error failure ->
+      check_eq (Tfl.Safe.kind_name failure.kind) (json_string "result" expected);
+      check_eq failure.message (json_string "message" expected);
+      check
+        (failure.where = json_optional_string "where" expected)
+        "guarded argument error location changed";
+      check
+        (json_optional_string "method" expected = None)
+        "a refused argument cannot claim a decision method";
+      check
+        (not (json_bool "complete" expected))
+        "a refused argument cannot claim decision completeness";
+      check
+        (expected_proof_kind expected = "none")
+        "a refused argument cannot carry proof evidence"
 
 let query_verdict_name = function
   | Tfl.Program.Q_yes -> "yes"
   | Q_no -> "no"
   | Q_unknown -> "unknown"
 
-let ground_query_complete program query (answer : Tfl.Program.prop_query) =
+let is_ground_query_complete program query (answer : Tfl.Program.prop_query) =
   match answer.support with
-  | Some r -> r.meth = Tfl.Decide.PZ
+  | Some r -> method_is_complete r.meth
   | None ->
       let positive = Tfl.Decide.check_argument program query in
-      if positive.meth <> Tfl.Decide.PZ then false
+      if not (method_is_complete positive.meth) then false
       else
         let negative =
           Tfl.Decide.check_argument program (Tfl.Infer.contradictory query)
         in
-        negative.meth = Tfl.Decide.PZ
+        method_is_complete negative.meth
 
 let check_ground_query operation expected =
   let program =
-    parse_program "ground-query program" (string "program" operation)
+    parse_program "ground-query program" (json_string "program" operation)
   in
-  let query = parse_prop "ground query" (string "query" operation) in
+  let query = parse_prop "ground query" (json_string "query" operation) in
   let answer = Tfl.Program.query_prop program query in
-  check_eq (query_verdict_name answer.q_verdict) (string "result" expected);
+  check_eq (query_verdict_name answer.q_verdict) (json_string "result" expected);
   let got_method =
     Option.map (fun r -> method_name r.Tfl.Decide.meth) answer.support
   in
   check
-    (got_method = optional_string "method" expected)
+    (got_method = json_optional_string "method" expected)
     "ground-query support method changed";
   check
-    (ground_query_complete program query answer = bool "complete" expected)
+    (is_ground_query_complete program query answer
+    = json_bool "complete" expected)
     "ground-query completeness changed";
   match answer.support with
-  | Some r -> check_decide_proof expected r
+  | Some r -> check_argument_evidence expected r
   | None ->
       check
-        (string "kind" (expected_proof expected) = "none")
+        (expected_proof_kind expected = "none")
         "unsupported ground query must expect no proof"
 
 let check_term_query operation expected =
   let program =
-    parse_program "term-query program" (string "program" operation)
+    parse_program "term-query program" (json_string "program" operation)
   in
-  let term = Tfl.Notation.parse_term (string "term" operation) in
+  let term = Tfl.Notation.parse_term (json_string "term" operation) in
   let answers = Tfl.Program.query_term program term |> List.map snd in
-  let wanted = string_list "result" expected in
+  let wanted = json_string_list "result" expected in
   check (answers = wanted)
     (Printf.sprintf "term-query answers changed: got [%s], expected [%s]"
        (String.concat ", " answers)
        (String.concat ", " wanted));
-  check_eq (string "method" expected) "bounded-saturation";
-  check (not (bool "complete" expected)) "term query cannot claim completeness";
+  check_eq (json_string "method" expected) "bounded-saturation";
   check
-    (string "kind" (expected_proof expected) = "not-exposed")
+    (not (json_bool "complete" expected))
+    "term query cannot claim completeness";
+  check
+    (expected_proof_kind expected = "not-exposed")
     "term-query proof shape must record that proofs are not exposed"
 
-let consistency_result (r : Tfl.Program.consistency) =
+let consistency_result_name (r : Tfl.Program.consistency) =
   if not r.consistent then "inconsistent"
   else if r.complete then "consistent"
   else if r.numerical then "numerical-undecided"
   else "no-contradiction-found"
 
-let consistency_method (r : Tfl.Program.consistency) =
+let consistency_method_name (r : Tfl.Program.consistency) =
   if r.complete then "PZ"
   else if r.numerical then "numerical"
   else "refutation-search"
 
 let check_consistency operation expected =
   let program =
-    parse_program "consistency program" (string "program" operation)
+    parse_program "consistency program" (json_string "program" operation)
   in
   let r = Tfl.Program.check_program_consistency program in
-  check_eq (consistency_result r) (string "result" expected);
-  check_eq (consistency_method r) (string "method" expected);
+  check_eq (consistency_result_name r) (json_string "result" expected);
+  check_eq (consistency_method_name r) (json_string "method" expected);
   check
-    (r.complete = bool "complete" expected)
+    (r.complete = json_bool "complete" expected)
     "consistency completeness changed";
-  let kind = string "kind" (expected_proof expected) in
-  match (kind, r.c_proof) with
-  | "refutation", Some proof -> check_rules_and_final expected proof
+  match (expected_proof_kind expected, r.c_proof) with
+  | "refutation", Some proof -> check_proof_shape expected proof
   | "none", None -> ()
   | "refutation", None -> failwith "expected a consistency refutation"
   | "none", Some _ -> failwith "unexpected consistency proof"
   | other, _ -> failf "proof kind %S is not valid for consistency" other
 
 let check_equivalence operation expected =
-  let left = parse_prop "equivalence left" (string "left" operation) in
-  let right = parse_prop "equivalence right" (string "right" operation) in
+  let left = parse_prop "equivalence left" (json_string "left" operation) in
+  let right = parse_prop "equivalence right" (json_string "right" operation) in
   let r = Tfl.Program.decide_equivalence left right in
   let wanted_result =
-    match field "result" expected with
+    match json_field "result" expected with
     | `Bool b -> b
     | _ -> failwith "equivalence result must be boolean"
   in
   check (r.equivalent = wanted_result) "equivalence result changed";
-  check_eq r.e_method (string "method" expected);
+  check_eq r.e_method (json_string "method" expected);
+  let complete = String.equal r.e_method "dnf" in
   check
-    (r.e_method = "dnf" = bool "complete" expected)
+    (complete = json_bool "complete" expected)
     "equivalence completeness changed";
-  let kind = string "kind" (expected_proof expected) in
-  match kind with
+  match expected_proof_kind expected with
   | "rewrite-path" ->
       check
-        (r.e_path = Some (string_list "rules" (expected_proof expected)))
+        (r.e_path = Some (json_string_list "rules" (expected_proof expected)))
         "rewrite equivalence path changed"
   | "truth-table" ->
-      check (r.atoms <> None) "truth-table result lost its atoms";
-      check (r.dnf <> None) "truth-table result lost its DNF rows";
-      check (r.e_path = None) "truth-table result carried a rewrite path"
+      check (Option.is_some r.atoms) "truth-table result lost its atoms";
+      check (Option.is_some r.dnf) "truth-table result lost its DNF rows";
+      check (Option.is_none r.e_path)
+        "truth-table result carried a rewrite path"
+  | "none" ->
+      check (Option.is_none r.atoms) "rewrite miss carried truth-table atoms";
+      check (Option.is_none r.dnf) "rewrite miss carried DNF rows";
+      check (Option.is_none r.e_path) "rewrite miss carried a path"
   | other -> failf "proof kind %S is not valid for equivalence" other
 
-let check_case case =
-  let id = string "id" case in
-  let rule = string "rule" case in
+let register_case case =
+  let id = json_string "id" case in
+  let rule = json_string "rule" case in
   check (String.trim rule <> "") (id ^ " has an empty rule description");
-  let operation = field "operation" case in
-  let expected = field "expected" case in
+  let operation = json_field "operation" case in
+  let expected = json_field "expected" case in
   test id (fun () ->
-      check_focus case expected;
-      match string "kind" operation with
+      check_focus_views case expected;
+      match json_string "kind" operation with
       | "argument" -> check_argument operation expected
+      | "argument-error" -> check_argument_error operation expected
       | "ground-query" -> check_ground_query operation expected
       | "term-query" -> check_term_query operation expected
       | "consistency" -> check_consistency operation expected
@@ -284,15 +334,15 @@ let check_case case =
 
 let () =
   let document = J.from_file corpus_path in
-  check_eq (string "contract" document) "core-0.1";
-  let cases = U.to_list (field "cases" document) in
+  check_eq (json_string "contract" document) contract;
+  let cases = U.to_list (json_field "cases" document) in
   let seen = Hashtbl.create (List.length cases) in
   List.iter
     (fun case ->
-      let id = string "id" case in
+      let id = json_string "id" case in
       check (not (Hashtbl.mem seen id)) ("duplicate conformance id: " ^ id);
       Hashtbl.add seen id ();
-      check_case case)
+      register_case case)
     cases;
-  check (List.length cases >= 15) "core corpus unexpectedly lost required cases";
-  finish "core-0.1 conformance"
+  check (List.length cases >= 26) "core corpus unexpectedly lost required cases";
+  finish (contract ^ " conformance")

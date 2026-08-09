@@ -44,9 +44,20 @@ let () =
 
   test "any nonzero level routes to the decision method" (fun () ->
       check (has_level (p "+V^2+C")) "has_level positive";
+      check (has_level (p "+[+p^2+q]+r")) "nested level positive";
       check (not (has_level (p "-S+P"))) "has_level negative";
       check ((arg [ "-M+P"; "-S+M" ] "-S+P").meth = PZ) "level 0 stays P/Z";
-      check ((arg [ "+V^2+C" ] "+V+C").meth = Numerical) "leveled routes");
+      check ((arg [ "+V^2+C" ] "+V+C").meth = Numerical) "leveled routes";
+      match arg [ "+[+p^2+q]+r" ] "+[+p+q]+r" with
+      | _ -> failwith "a nested level must not be erased into derivation"
+      | exception Tfl.Infer.Engine_error _ -> ());
+
+  test "numerical coefficients distinguish quoted stars from singular markers"
+    (fun () ->
+      let r = arg [ "+\"A*\"^1+P" ] "+A*+P" in
+      check (r.verdict = Unknown) "distinct terms must not cancel";
+      let sum, _, _ = conditions r in
+      check (not sum) "the structural coefficient keys remain distinct");
 
   (* Validation: where a level may and may not sit *)
   test "validation: a level needs a particular (+) subject" (fun () ->
@@ -116,7 +127,9 @@ let () =
     (fun () ->
       let r = arg [ "+S^2+P"; "+S^2+Q" ] "+P+Q" in
       check (r.verdict = Unknown) "must not be Invalid — the argument is valid";
-      check (conditions r = (false, false, true))
-        "the sum and the particular count both fail; the level condition is fine");
+      check
+        (conditions r = (false, false, true))
+        "the sum and the particular count both fail; the level condition is \
+         fine");
 
   finish "numerical unit tests"

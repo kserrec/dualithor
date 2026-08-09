@@ -24,7 +24,7 @@ The accepted concrete notation is:
 | `Socrates*`, `±s*` | singular terms carry a trailing star |
 | `Boy'`, `A″`, `Girl′` | proterm primes: `′` → `'` and `″` → `''` are normalized into the name |
 | `Wise`, `German_Shepherd`, `H2O`, `S₁₂` | bare term names: an ASCII letter, then ASCII letters, digits, `_`, subscript digits (`₀`–`₉`), primes. **No hyphens** — ASCII `-` and typographic `−` are always the minus sign, so `non-smoker` cannot lex as one term |
-| `"non-smoker"`, `"head of a horse"` | quoted terms allow anything except the quote char and newline; may take a trailing `*` after the closing quote |
+| `"non-smoker"`, `"head of a horse"` | quoted terms allow ordinary Unicode except the quote character, C0/C1 controls, and bidirectional formatting controls; may take a trailing `*` after the closing quote |
 | `(−T)` | negative term (single minus-signed group) |
 | `(+White+Horse)` | compound (conjunctive) term — first element signed; 2+ elements, all signed |
 | `(Lov+Girl)`, `(Gave+Rose+Girl)`, `(Lov+(Adm−Teacher))` | relational complex — **unsigned** head term, then one or more signed objects; n-ary and nesting unbounded; objects may be wild: `(Lov±Mary*)` |
@@ -52,11 +52,14 @@ its first Unicode code point in the source string. The fixed whitespace set list
 - A trailing `*` immediately after a name (bare or quoted) sets `singular: true` and is
   consumed; it is not part of the name.
 - Quoted terms: unclosed quote → ParseError `Unclosed quote` at the opening quote's
-  position; empty `""` → ParseError `Empty quoted term`.
+  position; empty `""` → ParseError `Empty quoted term`; C0/C1 or bidirectional
+  formatting control → lexical ParseError at that control.
 - `^` not followed by at least one ASCII digit → ParseError. Superscript digit runs
   accumulate a base-10 value.
 - A leading ASCII digit → ParseError `Term names must start with a letter`. Any other
-  unrecognized character → ParseError ``Unexpected character 'c'``.
+  unrecognized printable character → ParseError ``Unexpected character 'c'``. Unsafe
+  terminal or bidirectional controls are named as `Unexpected unsafe character U+NNNN`
+  without replaying the character in the diagnostic.
 
 ## 2. AST
 
@@ -344,8 +347,10 @@ fragment the decision is COMPLETE (fuzz-verified against the finite-model oracle
 consistent, else a certificate `{point, clash, cancellation}`.
 
 Literals: `coreLit` reduces a term to `{name, singular, pol}` (pol = even number of
-negations); key format `+Name` / `-Name` with `*` appended for singulars. A `-`-signed
-predicate flips the predicate literal's polarity.
+negations). The closure retains that structured triple as identity, so punctuation in a
+legal quoted name cannot collide with a singular marker. Certificate text prefixes the
+canonical printed atom with `+` or `-`. A `-`-signed predicate flips the predicate
+literal's polarity.
 
 - Universals (subject `-` or `±`): contribute implications `sK → qK` and `¬qK → ¬sK`.
 - Particulars (subject `+` or `±`): contribute a **point** — a set {sK, qK}. (A wild
@@ -405,9 +410,11 @@ method  : 'PZ' | 'derivation' | 'indirect' | 'numerical'
 ### `checkArgument premises conclusion opts`
 
 Order of decision (opts `{maxLines, slack}` thread into the searches):
-1. Any nonzero quantity level anywhere → `numericalDecision`; verdict `valid` if all
-   conditions pass and `unknown` otherwise, method `numerical`, with the full `decision`
-   record attached.
+1. Any nonzero quantity level anywhere in any recursive term tree →
+   `numericalDecision`; verdict `valid` if all conditions pass and `unknown` otherwise,
+   method `numerical`, with the full `decision` record attached. A nested level therefore
+   reaches the numerical fragment check and is refused when the whole argument is not
+   atomic categorical; it is never erased by canonicalization first.
 2. Premises + contradictory(conclusion) all atomic-categorical → counterclaim test:
    inconsistent → `{verdict:'valid', method:'PZ', certificate}`; consistent →
    `{verdict:'invalid', method:'PZ'}`.
@@ -424,9 +431,9 @@ levels validated 0–3 by `validateProp`. Throws EngineError otherwise. Returns
 `{valid, conditions: {sum, particular, level}, carriedLevel, conclusionLevel,
 particularPremises, particularConclusions}` with `valid = sum && particular && level`:
 
-- **(i) sum**: the algebraic sum of premise sides minus conclusion sides is zero per term
-  key (`sideCoeff`: occurrence sign (− for `-`, else +) times the literal's negation
-  parity; key includes the `*` for singulars).
+- **(i) sum**: the algebraic sum of premise sides minus conclusion sides is zero per
+  structured `(name, singular)` term identity (`sideCoeff`: occurrence sign (− for `-`,
+  else +) times the literal's negation parity).
 - **(ii) particular**: number of `+`-subject premises equals number of `+`-subject
   conclusions (0 or 1).
 - **(iii) level — the term-matched correction.** The literature's condition (iii) is "the
@@ -488,9 +495,9 @@ descending, then printed form ascending. Returns `[{prop, text}]`.
 ### `queryProp program query opts` — three-way verdict
 
 `checkArgument(program, query)`: valid → `{verdict:'yes', support}`; contradicted →
-`{verdict:'no', support}`. If the method was `PZ` and the verdict `invalid`, additionally
-try `checkArgument(program, contradictory(query))`: valid → `no`. Else
-`{verdict:'unknown'}`. (Relational `unknown` already tried the contradictory inside
+`{verdict:'no', support}`. If the method was `PZ` or `numerical` and did not establish the
+query, additionally try `checkArgument(program, contradictory(query))`: valid → `no`.
+Else `{verdict:'unknown'}`. (Relational `unknown` already tried the contradictory inside
 `checkArgument`.)
 
 ### `checkProgramConsistency program opts`
@@ -514,11 +521,15 @@ closure is finite; node cap `maxNodes` default 64). Each entry:
 strings `the statement itself`, `` its obverse ``-style one-step, or
 `its <op> then <op> …`.
 
-`decideEquivalence`: if **both** props have a `statementModel`, decide completely by truth
-table over the union of atoms (sorted; bitmask enumeration, bit i = atom i) —
+`decideEquivalence`: if **both** props have a `statementModel`, their combined union has
+at most 16 atoms, their worst-case materialized DNF is at most 8,388,608 bytes, and their
+estimated evaluation work is at most 8,388,608 AST-node visits, decide completely by truth
+table over that union (sorted; bitmask enumeration, bit i = atom i) —
 `{equivalent, method:'dnf', atoms, dnf}` where `dnf` lists each satisfying row of `a` as a
-string of `+atom`/`−atom` (typographic minus) with true atoms first. Otherwise fall back to
-the rewrite closure of `a`: `{equivalent, method:'rewrite', path | null}`.
+string of `+atom`/`−atom` (typographic minus) with true atoms first. Otherwise, including
+when two individually eligible inputs exceed a cap only after union or output estimation,
+fall back to the rewrite closure of `a`:
+`{equivalent, method:'rewrite', path | null}`.
 
 `statementModel prop`: non-null only when the prop is purely propositional — every atom
 lowercase-initial ASCII, non-singular; no relational complexes anywhere; 1–16 atoms.
@@ -544,8 +555,9 @@ match these strings exactly.
 
 ### `readProp`
 
-First re-orient so a fixed-reference term is the subject if any orientation allows
-("Socrates is a man", not "some man is Socrates"). Then:
+At level 0, first re-orient so a fixed-reference term is the subject if any orientation
+allows ("Socrates is a man", not "some man is Socrates"). A nonzero subject level blocks
+conversion because it would erase and misstate the numerical quantity. Then:
 
 - Fixed-ref subject: relational predicate → `<who> <does not >?<rel reading>`; otherwise
   `<who> is [not ]<article?><reading>` — the article (`a `/`an ` by leading vowel of the
@@ -566,7 +578,8 @@ First re-orient so a fixed-reference term is the subject if any orientation allo
 ### `explainProof proof`
 
 Null for missing/failed proofs. Given lines (`premise`/`fact`/`counterclaim` with a prop)
-render as `Because <r1>, and <r2>, …`. A refutation (last line text `⊥`):
+render as `Because <r1>, and <r2>, …`. With no given lines, a successful conclusion is a
+standalone capitalized sentence. A refutation (last line text `⊥`):
 `Because …, it would follow that <clash1>, yet <clash2> — which is impossible.` (clash
 lines resolved from the closing line's parents). Otherwise: `Because …, <last line>.`
 
@@ -610,16 +623,24 @@ are deferred with it.
 3. **Quantity numbers saturate during tokenization.** Digit accumulation saturates at
    1,000,000,000 rather than overflowing. Validation accepts only levels 0 through 3.
 4. **Names and case are ASCII at the bare-name boundary.** Fixed non-ASCII notation
-   symbols remain accepted, quoted names carry arbitrary UTF-8 except quote/newline, and
-   display lowercasing is ASCII-only.
+   symbols remain accepted. Quoted names carry ordinary UTF-8 but reject quote,
+   C0/C1 controls, and Unicode bidirectional formatting controls; display lowercasing is
+   ASCII-only.
 5. **Deep nesting is a structured refusal.** The total boundary rejects the 65th opening
    parenthesis or bracket as syntactic input before recursive descent.
 6. **Search bounds are semantic metadata.** `maxLines` is 400 for ordinary saturation,
    300 for `queryTerm`, and 60 for its local implication checks. Size slack is 8 for
    derive/refute, 6 for `queryTerm`, and 2 for its implication checks. Equivalence has a
    64-node cap; passives have a nine-participant cap; cancellation has a 256-combination
-   cap, three uses per universal, and 500,000 total search nodes; `statementModel` has a
-   16-atom cap. A non-atomic or numerical `unknown` retains these limits.
+   cap, three uses per universal, and 500,000 total search nodes; `statementModel` and the
+   combined truth-table union have a 16-atom cap; truth-table materialization and
+   evaluation each have an 8,388,608-unit budget. A non-atomic or numerical `unknown`
+   retains these limits.
+7. **The total boundary has byte and count budgets.** One proposition is at most 65,536
+   bytes; one argument is at most 1,024 premises and 1,048,576 combined bytes; one program
+   is at most 1,048,576 bytes, 65,536 bytes per line, 10,000 physical lines, and 1,024
+   parsed propositions; one JSON-lines request is at most 1,048,576 bytes. Exceeding one is
+   `resource_limit`, except that excessive bracket depth remains a syntactic refusal.
 
 ## 17. Verdict/result record shapes
 

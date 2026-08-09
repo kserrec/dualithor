@@ -13,7 +13,7 @@ provenance, debugging, data interfaces, editor support, packaging, and real appl
 comparisons.
 
 **Current status (2026-08-09):** Phase 1 is complete. The inherited core now has a
-[normative language reference](docs/core-language.md) and an 18-case executable
+[normative language reference](docs/core-language.md) and a 26-case executable
 conformance corpus covering its notation, results, completeness boundaries, and proof
 shapes. Phase 2, the public program runtime, is next. [PLAN.md](PLAN.md) is the only active
 plan; it completely supersedes the old regulatory-verification product and proposed human
@@ -48,12 +48,13 @@ the new language contract.
 
 ## Build and test
 
-The project requires [opam](https://opam.ocaml.org/) with OCaml 4.14 or newer. Node 18 or
-newer is required only for development-time differential tests against the frozen
-JavaScript reference.
+The project requires [opam](https://opam.ocaml.org/) with OCaml 4.14.4. The supported
+compiler range is the security-fixed 4.14 line (`>=4.14.4` and `<5.0`). Node 18 or newer
+is required only for development-time differential tests against the frozen JavaScript
+reference.
 
 ```bash
-opam install . --deps-only --with-test
+opam install . --deps-only --with-test --locked
 opam exec -- dune build
 opam exec -- dune test
 ```

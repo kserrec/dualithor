@@ -2,14 +2,23 @@
 opam-version: "2.0"
 synopsis:
   "A proof-producing logic programming language based on term logic (TFL)"
+maintainer: ["Kyle Serrecchia <kserrec@gmail.com>"]
+authors: ["Kyle Serrecchia <kserrec@gmail.com>"]
+license: "MIT"
+homepage: "https://github.com/kserrec/tfl-verify"
+bug-reports: "https://github.com/kserrec/tfl-verify/issues"
 depends: [
-  "ocaml" {>= "4.14"}
+  "ocaml" {>= "4.14.4" & < "5.0"}
   "dune" {>= "3.6"}
   "qcheck-core" {with-test}
   "yojson"
   "lwt"
   "cohttp-lwt-unix"
   "tls-lwt"
+  "mirage-crypto" {>= "2.3.0"}
+  "mirage-crypto-rng" {>= "2.3.0"}
+  "mirage-crypto-pk" {>= "2.3.0"}
+  "mirage-crypto-ec" {>= "2.3.0"}
   "odoc" {with-doc}
 ]
 build: [
@@ -24,5 +33,29 @@ build: [
     "@install"
     "@runtest" {with-test}
     "@doc" {with-doc}
+  ]
+]
+dev-repo: "git+https://github.com/kserrec/tfl-verify.git"
+# Mirage Crypto 2.3.0 fixes OSEC-2026-14 and OSEC-2026-15 but was not yet in
+# the official opam index when this floor landed. All four packages come from
+# one release and constrain one another to the exact version, so pin the whole
+# set to the peeled v2.3.0 commit. Remove these pins once 2.3.0 is indexed; keep
+# the >= 2.3.0 dependency floors in dune-project.
+pin-depends: [
+  [
+    "mirage-crypto.2.3.0"
+    "git+https://github.com/mirage/mirage-crypto.git#00ed1238df988c6c109c753cedb87388d352a60c"
+  ]
+  [
+    "mirage-crypto-rng.2.3.0"
+    "git+https://github.com/mirage/mirage-crypto.git#00ed1238df988c6c109c753cedb87388d352a60c"
+  ]
+  [
+    "mirage-crypto-pk.2.3.0"
+    "git+https://github.com/mirage/mirage-crypto.git#00ed1238df988c6c109c753cedb87388d352a60c"
+  ]
+  [
+    "mirage-crypto-ec.2.3.0"
+    "git+https://github.com/mirage/mirage-crypto.git#00ed1238df988c6c109c753cedb87388d352a60c"
   ]
 ]

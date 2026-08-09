@@ -20,11 +20,15 @@ let rec core_lit ?(negations = 0) (t : term) : lit option =
       Some { l_name = name; l_singular = singular; pol = negations mod 2 = 0 }
   | _ -> None
 
-let lit_key l =
-  (if l.pol then "+" else "-") ^ l.l_name ^ if l.l_singular then "*" else ""
+let atom_key l = (l.l_name, l.l_singular)
+let neg_lit l = { l with pol = not l.pol }
 
-let neg_key k =
-  (if k.[0] = '+' then "-" else "+") ^ String.sub k 1 (String.length k - 1)
+(* Certificates expose literals as canonical notation, but inference identity
+   stays structural. Concatenating [name ^ "*"] made the legal general name
+   ["A*"] indistinguishable from the singular [A*]. *)
+let lit_key l =
+  (if l.pol then "+" else "-")
+  ^ Notation.print_term (Atom { name = l.l_name; singular = l.l_singular })
 
 let is_atomic_prop (p : prop) =
   core_lit (Infer.canon_term p.subject.term) <> None
@@ -34,12 +38,11 @@ let is_atomic_categorical props = List.for_all is_atomic_prop props
 
 (* Term-keyed signed counters: both decision procedures accumulate occurrence
    counts and then ask whether everything cancelled. *)
-let add_count (counts : (string, int) Hashtbl.t) key delta =
+let add_count counts key delta =
   Hashtbl.replace counts key
     ((match Hashtbl.find_opt counts key with Some v -> v | None -> 0) + delta)
 
-let all_zero (counts : (string, int) Hashtbl.t) =
-  Hashtbl.fold (fun _ v acc -> acc && v = 0) counts true
+let all_zero counts = Hashtbl.fold (fun _ v acc -> acc && v = 0) counts true
 
 (* ── The P/Z cancellation display ───────────────────────────────────────── *)
 
@@ -165,7 +168,7 @@ type certificate = {
 
 (* An individual with known literals; insertion order is preserved because
    the certificate reports the point as the JS Set would iterate it. *)
-type pt = { mutable lits : string list }
+type pt = { mutable lits : lit list }
 
 let pt_mem pt k = List.mem k pt.lits
 let pt_add pt k = if not (pt_mem pt k) then pt.lits <- pt.lits @ [ k ]
@@ -174,11 +177,8 @@ let pt_add pt k = if not (pt_mem pt k) then pt.lits <- pt.lits @ [ k ]
    case splits — completeness needs the splits: closure alone misses forced
    literals like B in {B→¬B, ¬B→¬A, ¬A→B}. Boolean result only, so propagation
    order is free. *)
-let var_of k = String.sub k 1 (String.length k - 1)
-
-let rec sat (implications : (string * string) list) (units : string list) : bool
-    =
-  let assign : (string, bool) Hashtbl.t = Hashtbl.create 16 in
+let rec sat (implications : (lit * lit) list) (units : lit list) : bool =
+  let assign : (string * bool, bool) Hashtbl.t = Hashtbl.create 16 in
   let stack = ref units in
   let ok = ref true in
   while !ok && !stack <> [] do
@@ -186,7 +186,7 @@ let rec sat (implications : (string * string) list) (units : string list) : bool
     | [] -> ()
     | k :: rest -> (
         stack := rest;
-        let v = var_of k and pol = k.[0] = '+' in
+        let v = atom_key k and pol = k.pol in
         match Hashtbl.find_opt assign v with
         | Some p -> if p <> pol then ok := false
         | None ->
@@ -194,25 +194,26 @@ let rec sat (implications : (string * string) list) (units : string list) : bool
             List.iter
               (fun (from_, to_) ->
                 if from_ = k then stack := to_ :: !stack;
-                if to_ = neg_key k then stack := neg_key from_ :: !stack)
+                if to_ = neg_lit k then stack := neg_lit from_ :: !stack)
               implications)
   done;
   if not !ok then false
   else
     match
       List.find_opt
-        (fun (from_, _) -> not (Hashtbl.mem assign (var_of from_)))
+        (fun (from_, _) -> not (Hashtbl.mem assign (atom_key from_)))
         implications
     with
     | None -> true
     | Some (from_, _) ->
         let units' =
           Hashtbl.fold
-            (fun v pol acc -> ((if pol then "+" else "-") ^ v) :: acc)
+            (fun (name, singular) pol acc ->
+              { l_name = name; l_singular = singular; pol } :: acc)
             assign []
         in
         sat implications (from_ :: units')
-        || sat implications (neg_key from_ :: units')
+        || sat implications (neg_lit from_ :: units')
 
 let check_inconsistent (props : prop list) : certificate option =
   List.iter Infer.validate_prop props;
@@ -246,11 +247,11 @@ let check_inconsistent (props : prop list) : certificate option =
             if p.predicate.sign = Minus then { l with pol = not l.pol } else l
         | None -> assert false
       in
-      let s_k = lit_key s and q_k = lit_key q in
+      let s_k = s and q_k = q in
       let wild = p.subject.sign = Wild in
       if p.subject.sign = Minus || wild then
         implications :=
-          !implications @ [ (s_k, q_k); (neg_key q_k, neg_key s_k) ];
+          !implications @ [ (s_k, q_k); (neg_lit q_k, neg_lit s_k) ];
       if p.subject.sign = Plus || wild then (
         let point = { lits = [] } in
         pt_add point s_k;
@@ -261,7 +262,7 @@ let check_inconsistent (props : prop list) : certificate option =
           match occ.occ_term with
           | Atom { name; singular } when Infer.is_fixed_ref occ.occ_term ->
               pt_add singulars
-                (lit_key { l_name = name; l_singular = singular; pol = true })
+                { l_name = name; l_singular = singular; pol = true }
           | _ -> ())
         (Infer.occurrences p))
     canon;
@@ -274,7 +275,7 @@ let check_inconsistent (props : prop list) : certificate option =
      fixed-reference literal gains it explicitly; points sharing one merge
      (that named individual is one individual). *)
   let is_fixed_key k =
-    k.[0] = '+' && (String.ends_with ~suffix:"*" k || Infer.is_proterm_name k)
+    k.pol && (k.l_singular || Infer.is_proterm_name k.l_name)
   in
   let merge_pass () =
     let arr = Array.of_list !points in
@@ -306,7 +307,7 @@ let check_inconsistent (props : prop list) : certificate option =
           (fun l ->
             if
               (not (pt_mem point l))
-              && not (sat implications (point.lits @ [ neg_key l ]))
+              && not (sat implications (point.lits @ [ neg_lit l ]))
             then (
               pt_add point l;
               changed := true))
@@ -325,14 +326,32 @@ let check_inconsistent (props : prop list) : certificate option =
   | None -> None
   | Some point ->
       let clash =
-        List.find_opt (fun k -> pt_mem point (neg_key k)) point.lits
-        |> Option.map (fun k -> (k, neg_key k))
+        List.find_opt (fun k -> pt_mem point (neg_lit k)) point.lits
+        |> Option.map (fun k -> (lit_key k, lit_key (neg_lit k)))
       in
-      Some { point = point.lits; clash; cancellation = find_cancellation canon }
+      Some
+        {
+          point = List.map lit_key point.lits;
+          clash;
+          cancellation = find_cancellation canon;
+        }
 
 (* ── The numerical decision (TFL⁺, PLAN 1.8) ────────────────────────────── *)
 
-let has_level (p : prop) = p.subject.level > 0 || p.predicate.level > 0
+let rec term_has_level = function
+  | Atom _ -> false
+  | Neg t -> term_has_level t
+  | Compound elements -> List.exists signed_term_has_level elements
+  | Rel { head; objects } ->
+      term_has_level head || List.exists signed_term_has_level objects
+  | PropTerm (Inner_prop p) -> has_level p
+  | PropTerm (Inner_term t) -> term_has_level t
+
+and signed_term_has_level (st : signed_term) =
+  st.level <> 0 || term_has_level st.term
+
+and has_level (p : prop) =
+  signed_term_has_level p.subject || signed_term_has_level p.predicate
 
 type numerical_decision = {
   n_valid : bool;
@@ -347,12 +366,11 @@ type numerical_decision = {
 
 (* A categorical side's algebraic coefficient: the occurrence sign times the
    term's own negation parity (so +(−P) counts as −P). Atomic by contract. *)
-let side_coeff (st : signed_term) : string * int =
+let side_coeff (st : signed_term) : (string * bool) * int =
   match core_lit st.term with
   | Some lit ->
       let occ = if st.sign = Minus then -1 else 1 in
-      ( (lit.l_name ^ if lit.l_singular then "*" else ""),
-        occ * if lit.pol then 1 else -1 )
+      (atom_key lit, occ * if lit.pol then 1 else -1)
   | None -> Infer.engine_error "numerical sides must be atomic"
 
 (* Castro-Manzano et al. 2018 §5, with the term-matched condition (iii): a
@@ -375,7 +393,7 @@ let numerical_decision (premises : prop list) (conclusion : prop) :
            or − (universal)")
     all;
   (* (i) the algebraic sum of the premises equals the conclusion. *)
-  let coeff : (string, int) Hashtbl.t = Hashtbl.create 16 in
+  let coeff : (string * bool, int) Hashtbl.t = Hashtbl.create 16 in
   let bump st factor =
     let key, c = side_coeff st in
     add_count coeff key (factor * c)

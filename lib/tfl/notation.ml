@@ -25,15 +25,23 @@ let parse_error message pos =
    occupy a single position, as in the JS reference. Malformed bytes decode to
    U+FFFD and fall through to "Unexpected character". *)
 let decode (src : string) : int array =
-  let out = ref [] in
+  (* Count first, then decode into the exact-sized array. The former cons-list
+     implementation retained one boxed list cell per code point and then
+     copied the whole source into an array, making large hostile inputs much
+     more expensive than their byte size suggested. *)
   let i = ref 0 in
   let n = String.length src in
+  let count = ref 0 in
   while !i < n do
     let d = String.get_utf_8_uchar src !i in
-    out := Uchar.to_int (Uchar.utf_decode_uchar d) :: !out;
-    i := !i + Uchar.utf_decode_length d
+    i := !i + Uchar.utf_decode_length d;
+    incr count
   done;
-  Array.of_list (List.rev !out)
+  i := 0;
+  Array.init !count (fun _ ->
+      let d = String.get_utf_8_uchar src !i in
+      i := !i + Uchar.utf_decode_length d;
+      Uchar.to_int (Uchar.utf_decode_uchar d))
 
 let cp_to_string (c : int) : string =
   let b = Buffer.create 4 in
@@ -64,7 +72,8 @@ let is_whitespace c =
   | _ -> false
 
 (* Bare-name characters, narrowed to ASCII letters per the port-language
-   decision (spec §16.4); quoted terms still carry arbitrary text. *)
+   decision (spec §16.4); quoted terms carry ordinary Unicode while refusing
+   controls that can alter terminal or bidirectional display. *)
 let is_name_start c = is_ascii_letter c
 
 let is_name_char c =
@@ -98,11 +107,29 @@ type token = { kind : token_kind; pos : int }
    out-of-contract (spec §16.3) — saturate rather than overflow. *)
 let level_add v d = if v >= 1_000_000_000 then v else (v * 10) + d
 
+(* Quoted names are eventually rendered in terminals as well as JSON. C0/C1
+   controls can execute terminal protocols, while Unicode bidirectional
+   controls can make a displayed formula appear to contain different text.
+   They have no legitimate identifier role, so refuse them at the language
+   boundary instead of relying on every future renderer to remember a
+   context-specific escape pass. *)
+let is_unsafe_quoted_name_char c =
+  (c >= 0x00 && c <= 0x1F)
+  || (c >= 0x7F && c <= 0x9F)
+  || c = 0x061C || c = 0x200E || c = 0x200F
+  || (c >= 0x202A && c <= 0x202E)
+  || (c >= 0x2066 && c <= 0x2069)
+
 (* Where the JS engine, admitting any Unicode letter, would start a name, the
-   OCaml engine sees an unrecognized character; advise quoting (spec §16.4). *)
+   OCaml engine sees an unrecognized character; advise quoting (spec §16.4).
+   Never interpolate a terminal or bidirectional control into the diagnostic:
+   a future human CLI may print the message without JSON escaping. *)
 let unexpected_char c =
-  let base = Printf.sprintf "Unexpected character '%s'" (cp_to_string c) in
-  if c >= 0x80 then base ^ " (quote the term to use non-ASCII names)" else base
+  if is_unsafe_quoted_name_char c then
+    Printf.sprintf "Unexpected unsafe character U+%04X" c
+  else
+    let base = Printf.sprintf "Unexpected character '%s'" (cp_to_string c) in
+    if c >= 0x80 then base ^ " (quote the term to use non-ASCII names)" else base
 
 let tokenize (src : string) : token array =
   let cps = decode src in
@@ -143,9 +170,18 @@ let tokenize (src : string) : token array =
         incr i
     | 0x22 (* double quote *) ->
         let j = ref (!i + 1) in
-        while !j < n && cps.(!j) <> 0x22 && cps.(!j) <> 0x0A do
+        while
+          !j < n
+          && cps.(!j) <> 0x22
+          && not (is_unsafe_quoted_name_char cps.(!j))
+        do
           incr j
         done;
+        if !j < n && is_unsafe_quoted_name_char cps.(!j) then
+          parse_error
+            "Control and bidirectional formatting characters are not allowed \
+             in quoted terms"
+            !j;
         if !j >= n || cps.(!j) <> 0x22 then parse_error "Unclosed quote" !i;
         if !j = !i + 1 then parse_error "Empty quoted term" !i;
         let text =
@@ -378,13 +414,17 @@ let at_end st what =
         None
 
 let make_state src = { tokens = tokenize src; i = 0 }
+let state_of_tokens tokens = { tokens; i = 0 }
 
-let parse_proposition src =
-  let st = make_state src in
+let parse_proposition_tokens tokens =
+  let st = state_of_tokens tokens in
   let subject = parse_signed st in
   let predicate = parse_signed st in
   at_end st "proposition";
   { subject; predicate }
+
+let parse_proposition src =
+  parse_proposition_tokens (tokenize src)
 
 let parse_term src =
   let st = make_state src in

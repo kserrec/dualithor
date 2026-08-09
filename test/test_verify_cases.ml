@@ -124,6 +124,10 @@ let () =
   expect_error
     [ String.concat "" (List.init 100 (fun _ -> "(")) ^ "A" ]
     "−A+B" "syntactic" (Some "premise 1") "nesting past the depth cap";
+  expect_error
+    (List.init (Tfl.Safe.max_argument_premises + 1) (fun _ -> "−A+B"))
+    "−A+B" "resource_limit" (Some "argument")
+    "premise count past the public cap is a resource refusal";
   (* Empty premise list is legal input, not an error: the conclusion alone
      decides. *)
   invalid [] "−A+B" "no premises: a contingent conclusion is invalid"

@@ -38,9 +38,9 @@
  (modules test_program)
  (libraries tfl test_support qcheck-core qcheck-core.runner))
 
-; The normative core-0.1 language contract (new-roadmap Phase 1). The cases
-; live in data so another implementation can consume the same corpus; this
-; executable checks notation, readings, results, completeness, and proof shape.
+; The normative core-0.1 cases live in data so another implementation can
+; consume the same corpus; this executable checks notation, readings, results,
+; completeness, and proof shape.
 
 (test
  (name test_conformance)

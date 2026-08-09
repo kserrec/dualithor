@@ -225,8 +225,11 @@ the OCaml source; every normative example is executable and green; no documented
 collapses unknown into false.
 
 **Delivered:** `docs/core-language.md` plus its corrected mechanics appendix define
-contract `core-0.1`; `data/conformance/core-0.1.json` contains 18 language-neutral examples
+contract `core-0.1`; `data/conformance/core-0.1.json` contains 26 language-neutral examples
 checked by `test/test_conformance.ml`. The focused corpus and forced full suite are green.
+The post-completion audit also fixed bounded public input, equivalence output/work budgets,
+terminal-safe names, immutable CI actions, security-fixed compiler/crypto floors, and a
+verified dependency lock without changing the next roadmap phase.
 
 ### Phase 2 — Public program runtime ⏭ NEXT
 

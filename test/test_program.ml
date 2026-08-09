@@ -105,6 +105,15 @@ let () =
       let r = query_prop fido (p "±Socrates*+Mortal") in
       check (r.q_verdict = Q_yes) "yes";
       check (r.support <> None) "support attached");
+  test "? proposition: numerical support for the contradictory returns no"
+    (fun () ->
+      let program = List.map p [ "+C^3-H"; "-C+E" ] in
+      let r = query_prop program (p "-E+H") in
+      check (r.q_verdict = Q_no) "the numerical contradictory is supported";
+      match r.support with
+      | Some support ->
+          check (support.meth = Tfl.Decide.Numerical) "numerical support"
+      | None -> failwith "no support attached");
 
   (* Program consistency *)
   test "a consistent program reports consistent" (fun () ->
@@ -177,6 +186,43 @@ let () =
       check
         (not (decide_equivalence (p "−S+P") (p "−P+S")).equivalent)
         "no A-conversion");
+  test "?= caps the union, not each input, before truth-table enumeration"
+    (fun () ->
+      let left = p "+(+a+b+c+d+e+f+g+h)+i" in
+      let right = p "+(+j+k+l+m+n+o+p)+q" in
+      let r = decide_equivalence left right in
+      check (r.e_method = "rewrite") "17 union atoms must bypass DNF";
+      check (not r.equivalent) "the disjoint conjunctions are not rewrites";
+      check (r.atoms = None && r.dnf = None) "no oversized truth table");
+  test "?= bounds DNF bytes even when 16 long atom names fit the atom cap"
+    (fun () ->
+      let names =
+        List.init 16 (fun i ->
+            Printf.sprintf "p%02d_%s" i (String.make 60 (Char.chr (97 + i))))
+      in
+      let conjunction =
+        String.concat "" (List.map (fun name -> "+" ^ name) names)
+      in
+      (* X -> X is true on every assignment, so the former implementation
+         materialized all 65,536 long rows even when comparing it to itself. *)
+      let tautology = p ("−(" ^ conjunction ^ ")+(" ^ conjunction ^ ")") in
+      let r = decide_equivalence tautology tautology in
+      check (r.e_method = "rewrite") "oversized DNF must use rewrite";
+      check r.equivalent "the bounded rewrite still recognizes identity";
+      check (r.atoms = None && r.dnf = None) "no DNF was materialized";
+      check (r.e_path = Some []) "identity carries the empty rewrite path");
+  test "?= bounds truth-table evaluation work for wide formulas" (fun () ->
+      let names = List.init 16 (fun i -> Printf.sprintf "p%d" i) in
+      let repeated =
+        List.init 12 (fun _ -> names)
+        |> List.flatten
+        |> List.map (fun name -> "+" ^ name)
+        |> String.concat ""
+      in
+      let tautology = p ("−(" ^ repeated ^ ")+(" ^ repeated ^ ")") in
+      let r = decide_equivalence tautology tautology in
+      check (r.e_method = "rewrite") "excessive evaluation must use rewrite";
+      check r.equivalent "the work fallback still recognizes identity");
 
   (* statement_model *)
   test "statementModel: propositional only — general terms opt out" (fun () ->

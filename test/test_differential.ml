@@ -8,7 +8,9 @@
 
    Documented divergences are normalized here, in the harness — never in the
    engine: the OCaml quoting hint appended to unrecognized non-ASCII
-   characters (LOG 2026-07-30) is stripped before message comparison. *)
+   characters (LOG 2026-07-30) is stripped before message comparison, and an
+   exact quoted display-control refusal is accepted without weakening any
+   other parser comparison. *)
 
 open Tfl.Notation
 
@@ -54,9 +56,27 @@ let print_fn_of = function
   | "parseTerm" -> "printTerm"
   | _ -> "printSignedTerm"
 
+let display_control_divergences = ref 0
+
+let is_display_control_refusal src message pos =
+  let expected =
+    Printf.sprintf
+      "Control and bidirectional formatting characters are not allowed in \
+       quoted terms (at position %d)"
+      pos
+  in
+  if message <> expected || pos < 0 then false
+  else
+    let cps = decode src in
+    pos < Array.length cps && is_unsafe_quoted_name_char cps.(pos)
+
 (* None = both engines agree on [src] via [fn]; Some d = disagreement d. *)
 let compare_on fn src : string option =
   match (ocaml_parse fn src, Shim_client.call shim fn [ `String src ]) with
+  | Failed (message, pos), _
+    when is_display_control_refusal src message pos ->
+      incr display_control_divergences;
+      None
   | Parsed (ast, printed), Ok js_ast -> (
       if not (Ast_json.json_equal ast js_ast) then
         Some
@@ -144,12 +164,12 @@ let normalize_numerical (j : Yojson.Safe.t) =
       | _ -> j)
   | _ -> j
 
-(* ── The 5.0 renderer deviations ─────────────────────────────────────────── *)
+(* ── Deliberate renderer deviations ───────────────────────────────────────── *)
 
 (* The JS reference has no authority over English rendering (PLAN, standing
    constraints, 2026-08-02): it is one earlier draft of an English generator and
-   two of its readings are wrong. Two constructions are now rendered
-   differently, and *only* those two are exempted here — everything else keeps
+   two of its readings are wrong. Four constructions are now rendered
+   differently, and *only* those four are exempted here — everything else keeps
    being compared byte-for-byte, and the exempted counts are printed and
    asserted below so the exemption cannot silently grow.
 
@@ -193,6 +213,20 @@ let comma_boundary (p : Tfl.Ast.prop) =
     if p.subject.level = 3 then not q_plus else q_plus
   else q_plus
 
+(* A nonzero quantity level blocks I/E conversion. The reference rebuilds the
+   converse at level 0 and then prefers it when that puts a fixed reference in
+   subject position, silently changing the quantified reading. This mirrors
+   the exact old conversion guard plus the fixed-subject preference. *)
+let level_blocks_fixed_predicate_orientation (p : Tfl.Ast.prop) =
+  let open Tfl.Ast in
+  let s_sign = p.subject.sign and q_sign = p.predicate.sign in
+  let i_like = (s_sign = Plus || s_sign = Wild) && q_sign = Plus in
+  let e_like = (s_sign = Minus || s_sign = Wild) && q_sign = Minus in
+  (p.subject.level <> 0 || p.predicate.level <> 0)
+  && (i_like || e_like)
+  && (not (Tfl.Infer.is_fixed_ref p.subject.term))
+  && Tfl.Infer.is_fixed_ref p.predicate.term
+
 (* Deviation 1 — a compound term joins with a space, not " and ". A
    one-element compound is unaffected: both joiners collapse to the element
    itself.
@@ -217,12 +251,21 @@ and prop_deviates (p : Tfl.Ast.prop) =
   term_deviates p.subject.term
   || term_deviates p.predicate.term
   || level_word_on_relation p || comma_boundary p
+  || level_blocks_fixed_predicate_orientation p
+
+let proof_has_no_givens (proof : Tfl.Derive.proof) =
+  let is_given (l : Tfl.Derive.line) =
+    (l.rule = "premise" || l.rule = "fact" || l.rule = "counterclaim")
+    && l.l_prop <> None
+  in
+  proof.found && proof.lines <> [] && not (List.exists is_given proof.lines)
 
 let proof_deviates (proof : Tfl.Derive.proof) =
-  List.exists
-    (fun (l : Tfl.Derive.line) ->
-      match l.l_prop with Some p -> prop_deviates p | None -> false)
-    proof.lines
+  proof_has_no_givens proof
+  || List.exists
+       (fun (l : Tfl.Derive.line) ->
+         match l.l_prop with Some p -> prop_deviates p | None -> false)
+       proof.lines
 
 (* Exemptions are counted separately for the corpus gate — a fixed, deterministic
    set of real formulas from tfl.test.js — and for the random gates, because only
@@ -242,11 +285,13 @@ let render_compared = ref 0
 let render_term_compared = ref 0
 let explain_compared = ref 0
 
-(* Which of the three deviations each gate actually reached. A deviation nobody
+(* Which renderer deviations each gate actually reached. A deviation nobody
    generates is a deviation nobody is testing. *)
 let saw_compound_dev = ref 0
 let saw_level_dev = ref 0
 let saw_comma_dev = ref 0
+let saw_fixed_level_dev = ref 0
+let saw_empty_givens_dev = ref 0
 
 (* Pinned corpus exemption counts. The corpus is every string literal in
    tfl.test.js, so this is a fixed set of formulas someone wrote on purpose, and
@@ -268,11 +313,14 @@ let corpus_prop_pin = 7
 let corpus_term_pin = 1
 
 let note_deviation (p : Tfl.Ast.prop) =
-  let level = level_word_on_relation p and comma = comma_boundary p in
+  let level = level_word_on_relation p
+  and comma = comma_boundary p
+  and fixed_level = level_blocks_fixed_predicate_orientation p in
   if level then incr saw_level_dev;
   if comma then incr saw_comma_dev;
+  if fixed_level then incr saw_fixed_level_dev;
   (* neither fired, so the exemption came from a compound term *)
-  if not (level || comma) then incr saw_compound_dev
+  if not (level || comma || fixed_level) then incr saw_compound_dev
 
 (* ── 1.4: inference core A over one proposition ─────────────────────────── *)
 
@@ -473,8 +521,9 @@ let diff_args =
       let pj = `List (List.map Ast_json.prop_to_json premises) in
       let cj = Ast_json.prop_to_json conclusion in
       expect_json "checkArgument" [ pj; cj ]
-        (normalize_numerical (Result_json.result_to_json
-           (Tfl.Decide.check_argument premises conclusion)))
+        (normalize_numerical
+           (Result_json.result_to_json
+              (Tfl.Decide.check_argument premises conclusion)))
       ||> fun () ->
       expect_json "checkInconsistent"
         [ `List (List.map Ast_json.prop_to_json (premises @ [ conclusion ])) ]
@@ -523,8 +572,9 @@ let diff_rel_args =
           Ast_json.prop_to_json conclusion;
           `Assoc [ ("maxLines", `Int 60) ];
         ]
-        (normalize_numerical (Result_json.result_to_json
-           (Tfl.Decide.check_argument ~max_lines:60 premises conclusion))))
+        (normalize_numerical
+           (Result_json.result_to_json
+              (Tfl.Decide.check_argument ~max_lines:60 premises conclusion))))
 
 (* Documented deviation (LOG 2026-08-01): the OCaml comment stripper is
    quote-aware and the frozen reference's is not, so a source with `--` inside
@@ -625,8 +675,9 @@ let diff_numerical =
           `List (List.map Ast_json.prop_to_json premises);
           Ast_json.prop_to_json conclusion;
         ]
-        (normalize_numerical (Result_json.result_to_json
-           (Tfl.Decide.check_argument premises conclusion))))
+        (normalize_numerical
+           (Result_json.result_to_json
+              (Tfl.Decide.check_argument premises conclusion))))
 
 let diff_render =
   gate "differential: readProp/readTerm strings agree byte-for-byte"
@@ -662,6 +713,7 @@ let diff_explain =
         (* explain_proof narrates its lines through read_prop, so a proof that
            mentions a deviating proposition inherits the exemption. *)
         if proof_deviates proof then (
+          if proof_has_no_givens proof then incr saw_empty_givens_dev;
           incr explain_skips;
           None)
         else (
@@ -677,7 +729,7 @@ let diff_explain =
       compare_proof
         (Tfl.Derive.indirect_proof ~max_lines:60 premises conclusion))
 
-(* ── 1.12: the two coverage gaps the 2026-07-30 bughunt probed ──────────── *)
+(* ── Arbitrary argument-shape coverage ──────────────────────────────────── *)
 
 (* (a) Arbitrary-shape arguments through checkArgument, comparing the
    *outcome*: both engines reject with the same EngineError, or both decide
@@ -689,6 +741,32 @@ type tally = { mutable decided : int; mutable rejected : int }
 
 let arbitrary_tally = { decided = 0; rejected = 0 }
 let valid_tally = { decided = 0; rejected = 0 }
+let recursive_level_skips = ref 0
+
+let recursive_level_error =
+  "quantity levels are supported only in categorical (atomic) syllogisms"
+
+(* The frozen reference checks only the two outer levels before choosing the
+   decision route. A valid level nested inside a proposition term is therefore
+   canonicalized away and sent to derivation. Core-0.1 requires the recursive
+   scan: the same input reaches the numerical guard and is refused as
+   non-atomic. Limit the exemption to inputs that pass validation, contain a
+   level recursively, and contain no outer level the reference can see. *)
+let has_only_nested_level (premises, conclusion) =
+  let props = premises @ [ conclusion ] in
+  let valid =
+    try
+      List.iter Tfl.Infer.validate_prop props;
+      true
+    with Tfl.Infer.Engine_error _ -> false
+  in
+  valid
+  && List.exists Tfl.Decide.has_level props
+  && not
+       (List.exists
+          (fun (p : Tfl.Ast.prop) ->
+            p.subject.level <> 0 || p.predicate.level <> 0)
+          props)
 
 let compare_check_argument tally (premises, conclusion) : string option =
   let args =
@@ -698,38 +776,75 @@ let compare_check_argument tally (premises, conclusion) : string option =
       `Assoc [ ("maxLines", `Int 60) ];
     ]
   in
-  let ocaml =
-    try
-      Ok
-        (normalize_numerical (Result_json.result_to_json
-           (Tfl.Decide.check_argument ~max_lines:60 premises conclusion)))
-    with Tfl.Infer.Engine_error m -> Error m
-  in
-  match (ocaml, Shim_client.call shim "checkArgument" args) with
-  | Ok expected, Ok js ->
-      if Ast_json.json_equal expected js then (
-        tally.decided <- tally.decided + 1;
-        None)
-      else
+  if has_only_nested_level (premises, conclusion) then
+    let ocaml_error =
+      try
+        ignore (Tfl.Decide.check_argument ~max_lines:60 premises conclusion);
+        None
+      with Tfl.Infer.Engine_error m -> Some m
+    in
+    match (ocaml_error, Shim_client.call shim "checkArgument" args) with
+    | Some m, Ok _ when m = recursive_level_error ->
+        incr recursive_level_skips;
+        None
+    | Some m, Ok js ->
         Some
-          (Printf.sprintf "checkArgument mismatch: ocaml %s vs js %s"
-             (Yojson.Safe.to_string expected)
+          (Printf.sprintf
+             "nested-level route: ocaml rejected with %S, expected %S; js \
+              decided %s"
+             m recursive_level_error (Yojson.Safe.to_string js))
+    | None, Ok js ->
+        Some
+          (Printf.sprintf
+             "nested-level route: ocaml unexpectedly decided; js decided %s"
              (Yojson.Safe.to_string js))
-  | Error m, Error { name = "EngineError"; message; _ } when m = message ->
-      tally.rejected <- tally.rejected + 1;
-      None
-  | Ok _, Error e ->
-      Some
-        (Printf.sprintf "checkArgument: ocaml decided, js raised %s (%s)" e.name
-           e.message)
-  | Error m, Ok js ->
-      Some
-        (Printf.sprintf "checkArgument: ocaml rejected (%s), js decided %s" m
-           (Yojson.Safe.to_string js))
-  | Error m, Error e ->
-      Some
-        (Printf.sprintf "checkArgument rejection mismatch: ocaml %S vs js %s %S"
-           m e.name e.message)
+    | Some m, Error e ->
+        Some
+          (Printf.sprintf
+             "nested-level route: expected a reference decision, got ocaml %S \
+              and js %s %S"
+             m e.name e.message)
+    | None, Error e ->
+        Some
+          (Printf.sprintf
+             "nested-level route: ocaml unexpectedly decided and js raised %s \
+              %S"
+             e.name e.message)
+  else
+    let ocaml =
+      try
+        Ok
+          (normalize_numerical
+             (Result_json.result_to_json
+                (Tfl.Decide.check_argument ~max_lines:60 premises conclusion)))
+      with Tfl.Infer.Engine_error m -> Error m
+    in
+    match (ocaml, Shim_client.call shim "checkArgument" args) with
+    | Ok expected, Ok js ->
+        if Ast_json.json_equal expected js then (
+          tally.decided <- tally.decided + 1;
+          None)
+        else
+          Some
+            (Printf.sprintf "checkArgument mismatch: ocaml %s vs js %s"
+               (Yojson.Safe.to_string expected)
+               (Yojson.Safe.to_string js))
+    | Error m, Error { name = "EngineError"; message; _ } when m = message ->
+        tally.rejected <- tally.rejected + 1;
+        None
+    | Ok _, Error e ->
+        Some
+          (Printf.sprintf "checkArgument: ocaml decided, js raised %s (%s)"
+             e.name e.message)
+    | Error m, Ok js ->
+        Some
+          (Printf.sprintf "checkArgument: ocaml rejected (%s), js decided %s" m
+             (Yojson.Safe.to_string js))
+    | Error m, Error e ->
+        Some
+          (Printf.sprintf
+             "checkArgument rejection mismatch: ocaml %S vs js %s %S" m e.name
+             e.message)
 
 let diff_arbitrary_args =
   gate
@@ -767,6 +882,7 @@ let diff_consistency_narration =
       | None -> None
       | Some proof ->
           if proof_deviates proof then (
+            if proof_has_no_givens proof then incr saw_empty_givens_dev;
             incr explain_skips;
             None)
           else (
@@ -789,8 +905,52 @@ let negative_control () =
         "✗ negative control: harness failed to detect the §16.4 divergence";
       false
 
+(* The hardened parser deliberately refuses display controls inside quoted
+   names even though the frozen JS reference accepts them. Pin both sides of
+   that boundary here: merely observing "some disagreement" would not prove
+   that the safe engine refused while the reference remained unchanged. *)
+let display_control_boundary () =
+  let expected =
+    "Control and bidirectional formatting characters are not allowed in \
+     quoted terms (at position 6)"
+  in
+  let check_one label src =
+    match
+      ( ocaml_parse "parseProposition" src,
+        Shim_client.call shim "parseProposition" [ `String src ] )
+    with
+    | Failed (message, 6), Ok _ when message = expected -> true
+    | Failed (message, pos), Ok _ ->
+        Printf.eprintf
+          "✗ display-control boundary (%s): OCaml refusal was %S at %d\n"
+          label message pos;
+        false
+    | Parsed _, Ok _ ->
+        Printf.eprintf
+          "✗ display-control boundary (%s): OCaml unexpectedly accepted it\n"
+          label;
+        false
+    | Failed _, Error e ->
+        Printf.eprintf
+          "✗ display-control boundary (%s): frozen JS also refused (%s: %s)\n"
+          label e.name e.message;
+        false
+    | Parsed _, Error e ->
+        Printf.eprintf
+          "✗ display-control boundary (%s): OCaml accepted but frozen JS \
+           refused (%s: %s)\n"
+          label e.name e.message;
+        false
+  in
+  List.for_all Fun.id
+    [
+      check_one "terminal escape" "+\"safe\x1b[31m\"+P";
+      check_one "bidirectional override" "+\"safe\u{202E}txt\"+P";
+    ]
+
 let () =
   let control_ok = negative_control () in
+  let display_control_ok = display_control_boundary () in
   let corpus_ok = corpus_gate () in
   let qcheck_failures =
     QCheck_base_runner.run_tests ~verbose:true
@@ -816,25 +976,31 @@ let () =
       ]
   in
   Shim_client.stop shim;
-  (* Coverage the two new gates actually reached — a gate that never fires
+  (* Coverage the guarded paths actually reached — a gate that never fires
      proves nothing, so the counts go in the report. *)
   Printf.printf
     "arbitrary shapes: %d decided identically, %d rejected identically\n\
      arbitrary valid shapes: %d decided identically, %d rejected identically\n\
      consistency narrations: %d proofs narrated\n\
      parseProgram: %d sources skipped (quoted-comment deviation)\n\
-     rendering exemptions (PLAN 5.0): corpus %d readProp + %d readTerm; random \
-     %d readProp + %d readTerm + %d explainProof, against %d + %d + %d \
-     compared byte-for-byte\n\
+     rendering exemptions: corpus %d readProp + %d readTerm; random %d \
+     readProp + %d readTerm + %d explainProof, against %d + %d + %d compared \
+     byte-for-byte\n\
      deviations reached: %d compound-term, %d level-on-relation, %d \
      comma-boundary\n\
-     numerical abstentions normalized (PLAN 5.3): %d\n"
+     numerical abstentions normalized (PLAN 5.3): %d\n\
+     quoted display-control refusals normalized: %d\n"
     arbitrary_tally.decided arbitrary_tally.rejected valid_tally.decided
     valid_tally.rejected !narrated !quote_comment_skips !corpus_prop_skips
     !corpus_term_skips !render_prop_skips !render_term_skips !explain_skips
     !render_compared !render_term_compared !explain_compared !saw_compound_dev
-    !saw_level_dev !saw_comma_dev !numerical_abstentions;
-  (* Named, not just counted: six strings is few enough to read, and a pin you
+    !saw_level_dev !saw_comma_dev !numerical_abstentions
+    !display_control_divergences;
+  Printf.printf
+    "core-0.1 divergences reached: %d level-blocked fixed orientations, %d \
+     premise-free explanations, %d recursively nested levels\n"
+    !saw_fixed_level_dev !saw_empty_givens_dev !recursive_level_skips;
+  (* Named, not just counted: this set is small enough to read, and a pin you
      cannot see the contents of is a number nobody can check. *)
   List.iter
     (fun e -> Printf.printf "  exempted from the corpus: %s\n" e)
@@ -847,7 +1013,7 @@ let () =
         on purpose. Exactly these many are exempted; changing that number is a
         deliberate edit to this line, which is a reviewable diff. This is the
         4.8 pinned-eval-list pattern.
-     2. **Both deviations are reached.** An exemption for a construction nobody
+     2. **Every deviation is reached.** An exemption for a construction nobody
         generates tests nothing.
      3. **The un-exempted surface stays large.** The exempted fraction of the
         random gate is a property of the generator (Gen.prop_gen builds compound
@@ -867,8 +1033,8 @@ let () =
     if got > 0 then true
     else (
       Printf.eprintf
-        "\226\156\151 rendering exemption: the %s deviation was never reached \
-         \226\128\148 it is ungated\n"
+        "\226\156\151 differential exemption: the %s deviation was never \
+         reached \226\128\148 it is ungated\n"
         label;
       false)
   in
@@ -890,6 +1056,9 @@ let () =
         expect_reached "compound-term" !saw_compound_dev;
         expect_reached "level-on-relation" !saw_level_dev;
         expect_reached "comma-boundary" !saw_comma_dev;
+        expect_reached "level-blocked fixed orientation" !saw_fixed_level_dev;
+        expect_reached "premise-free explanation" !saw_empty_givens_dev;
+        expect_reached "recursively nested level" !recursive_level_skips;
         (* the 5.3 deviation must be exercised too, or the normalization is
            covering a case the gates never generate *)
         expect_reached "numerical abstention" !numerical_abstentions;
@@ -898,7 +1067,8 @@ let () =
   in
   exit
     (if
-       (not control_ok) || (not corpus_ok) || (not exemption_ok)
+       (not control_ok) || (not display_control_ok) || (not corpus_ok)
+       || (not exemption_ok)
        || qcheck_failures <> 0
      then 1
      else 0)

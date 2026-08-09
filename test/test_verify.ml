@@ -57,7 +57,10 @@ let () =
   case "numerical" [ "+H^1+I" ] "+H+I" "valid" (Some "numerical");
   case "lexical" [ "@@@" ] "-A+C" "error:lexical" None;
   case "syntactic" [ "-A+" ] "-A+C" "error:syntactic" None;
-  case "outside" [ "±A+B" ] "-S+P" "error:outside_fragment" None
+  case "outside" [ "±A+B" ] "-S+P" "error:outside_fragment" None;
+  case "resource limit"
+    (List.init (Tfl.Safe.max_argument_premises + 1) (fun _ -> "−A+B"))
+    "−A+B" "error:resource_limit" None
 
 let glossed = List.for_all (fun (l : Tfl_verify.trace_line) -> l.gloss <> "")
 
@@ -235,9 +238,9 @@ let () =
 
   (* at the depth that overflowed the stack (measured at 200k; LOG
      2026-08-01) it must still be that refusal, not a crash *)
-  test "300k levels is still a refusal, not a crash" (fun () ->
+  test "300k levels is still a bounded refusal, not a crash" (fun () ->
       match Tfl.Safe.parse_program (nest 300_000) with
-      | Error { kind = Tfl.Safe.Syntactic; _ } -> ()
+      | Error { kind = Tfl.Safe.Resource_limit; where = Some "line 1"; _ } -> ()
       | Ok _ -> check false "300k levels accepted"
       | Error _ -> check false "300k levels misclassified");
 

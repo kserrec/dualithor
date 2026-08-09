@@ -11,7 +11,12 @@
    routing on this record must treat [Unknown] as "abstain or escalate", never
    as "the argument is bad". *)
 
-type error_class = Lexical | Syntactic | Outside_fragment | Internal
+type error_class =
+  | Lexical
+  | Syntactic
+  | Outside_fragment
+  | Resource_limit
+  | Internal
 
 type error_info = {
   error_class : error_class;
@@ -51,6 +56,7 @@ let of_failure (f : Tfl.Safe.failure) : error_info =
       | Tfl.Safe.Lexical -> Lexical
       | Tfl.Safe.Syntactic -> Syntactic
       | Tfl.Safe.Outside_fragment -> Outside_fragment
+      | Tfl.Safe.Resource_limit -> Resource_limit
       | Tfl.Safe.Internal -> Internal);
     message = f.message;
     pos = f.pos;
@@ -175,6 +181,7 @@ let class_name = function
   | Lexical -> "lexical"
   | Syntactic -> "syntactic"
   | Outside_fragment -> "outside_fragment"
+  | Resource_limit -> "resource_limit"
   | Internal -> "internal"
 
 let meth_name = function
@@ -231,6 +238,7 @@ let of_json (json : Yojson.Safe.t) : (result, string) Stdlib.result =
       | "lexical" -> Lexical
       | "syntactic" -> Syntactic
       | "outside_fragment" -> Outside_fragment
+      | "resource_limit" -> Resource_limit
       | "internal" -> Internal
       | s -> failwith ("unknown error class " ^ s)
     in

@@ -1,9 +1,10 @@
 # TFL core language reference
 
-**Contract version:** `core-0.1`
-**Normative date:** 2026-08-09
-**Status:** normative for the inherited core implemented before the version-1 extension
-roadmap
+| Contract metadata | Value |
+|---|---|
+| Version | `core-0.1` |
+| Normative date | 2026-08-09 |
+| Status | Normative for the inherited core implemented before the version-1 extension roadmap |
 
 This document fixes the language that exists today. A future phase may extend or revise
 it, but an implementation change does not silently change the language: the reference,
@@ -107,9 +108,13 @@ A bare name starts with an ASCII letter and continues with ASCII letters, digits
 ASCII primes, or subscript digits `₀` through `₉`. A name may not start with a digit.
 Hyphens are signs, so a name such as `non-smoker` must be quoted.
 
-Quoted names accept any text except a double quote or U+000A line feed. Empty and unclosed
-quoted names are errors. There is no escape syntax inside a quoted name. A trailing `*`
-after a bare or quoted name makes it singular.
+Quoted names accept Unicode text except a double quote, C0 controls U+0000 through
+U+001F, C1 controls U+007F through U+009F, and the bidirectional formatting controls
+U+061C, U+200E, U+200F, U+202A through U+202E, and U+2066 through U+2069. Empty,
+unclosed, and control-bearing quoted names are lexical errors. There is no escape syntax
+inside a quoted name. A trailing `*` after a bare or quoted name makes it singular. A `*`
+inside the quotes is name content, so general `"A*"` and singular `A*` are different terms
+throughout inference.
 
 Typographic `′` becomes one ASCII prime and `″` becomes two. For compatibility, a double
 quote immediately following a bare-name character is also read as a double prime; a quote
@@ -192,8 +197,8 @@ Program parsing collects independent per-line lexical or syntactic errors and re
 other successfully parsed lines. Parsing does not validate inference-fragment restrictions;
 the operation that consumes the program does that. The current low-level program API can
 therefore represent a partially parsed program. A caller must not execute it as a complete
-program without first refusing its `errors` entries. Phase 2 supplies that production
-compile boundary.
+program without first refusing its `errors` entries. A production compile boundary is not
+part of `core-0.1`.
 
 ## 5. Validation and structured failure
 
@@ -204,6 +209,7 @@ Parsing and inference validation are separate:
 - `syntactic`: valid tokens do not form the required proposition, or nesting exceeds 64;
 - `outside_fragment`: a proposition parses but the requested inference procedure does not
   support its shape;
+- `resource_limit`: otherwise valid-shaped input exceeds a public size or work budget;
 - `internal`: an unexpected implementation defect reached the total boundary.
 
 These are failures, not logical verdicts. An `outside_fragment` result does not mean
@@ -245,9 +251,11 @@ Inference canonicalization:
   do not convert.
 
 The inherited canonicalizer drops quantity levels. Numerical arguments are routed to the
-numerical procedure before inference canonicalization, so this does not change their
-current verdict, but canonical identity must not be used to compare levelled propositions.
-This is an implementation limit, not a claim that “most” and “some” mean the same thing.
+numerical procedure before inference canonicalization, including levels recursively nested
+inside proposition terms, so this does not change their current verdict. A nested level
+outside the atomic numerical fragment is refused rather than compared through canonical
+identity. Canonical identity must not be used to compare levelled propositions. This is an
+implementation limit, not a claim that “most” and “some” mean the same thing.
 
 ## 7. Inference and proof objects
 
@@ -317,14 +325,13 @@ The current checker stops after finding support for the requested conclusion. It
 also search for support for its contradictory, so an inconsistent program can hide
 two-sided support behind the first result. The separate consistency operation can expose
 some such contradictions, but the public four-state `both` contract is not implemented
-until Phase 25. Code must not describe the current checker as paraconsistent or
-four-valued.
+in `core-0.1`. Code must not describe the current checker as paraconsistent or four-valued.
 
 ### 8.3 Numerical sufficient-condition procedure
 
-If any proposition has a nonzero level, the entire argument routes to the numerical
-procedure. It accepts only atomic categorical propositions with no wild subject. It checks
-three conditions:
+If any proposition has a nonzero level anywhere in its term tree, the entire argument
+routes to the numerical procedure. It accepts only atomic categorical propositions with no
+wild subject. It checks three conditions:
 
 1. the signed algebraic sum of all premise term occurrences equals the conclusion;
 2. the number of particular premises equals the number of particular conclusions, which
@@ -356,7 +363,7 @@ trustworthy. P/Z argument decision is complete. Numerical and non-atomic derivat
 decision are incomplete even when they return a sound positive proof.
 
 The current argument-result record does not expose a `complete` field. Callers must use the
-method distinction exactly as above until Phase 2 adds stable completeness metadata.
+method distinction exactly as above rather than infer completeness from a verdict.
 
 ## 10. Program operations
 
@@ -371,8 +378,8 @@ A ground program query returns:
 For an atomic-categorical program, the operation checks both sides with complete P/Z
 decision. Its `unknown` is therefore a complete open-world answer: neither proposition
 follows. For a non-atomic or numerical program, `unknown` can instead be procedural
-incompleteness. The current record does not carry the distinction; method and fragment
-must be retained until Phase 2 fixes the record.
+incompleteness. The current record does not carry the distinction, so callers must retain
+the method and fragment alongside the answer.
 
 ### 10.2 Term-description query
 
@@ -398,9 +405,12 @@ claim of consistency when `complete=false`.
 
 ### 10.4 Equivalence
 
-For two eligible purely propositional forms containing one through sixteen lowercase
-ASCII atoms, equivalence is decided completely by a truth table over their union. The
-result method is `dnf`, and its rows record the satisfying assignments of the left input.
+For two eligible purely propositional forms whose combined union contains one through
+sixteen lowercase ASCII atoms, equivalence is decided completely by a truth table only
+when its estimated DNF is at most 8,388,608 bytes and evaluation is at most 8,388,608
+AST-node visits. The result method is `dnf`, and its rows record the satisfying
+assignments of the left input. Inputs that exceed the atom, output, or evaluation budget
+use the bounded rewrite method instead.
 
 All other level-0 forms use a breadth-first closure of the left proposition under
 obversion and contraposition, with conversion and double negation absorbed by canonical
@@ -416,15 +426,16 @@ branch. The central rules are:
 - a negative term is prefixed `non-`;
 - compound elements are joined by spaces because the compound is one term;
 - relation objects read `some`, `every`, or no quantity for fixed-wild;
-- a fixed-reference proposition is oriented with that reference as grammatical subject
-  when conversion licenses it;
+- a level-0 fixed-reference proposition is oriented with that reference as grammatical
+  subject when conversion licenses it; numerical propositions never convert for display;
 - levels read `many`, `most`, and `few`; level 3 reverses displayed predicate polarity;
 - relational-subject and relational-predicate readings use a comma when otherwise their
   boundary would disappear.
 
 Proof explanations summarize the given lines and either the last proved proposition or
-the two clashing propositions before `⊥`. The formal proof remains authoritative when a
-reading is awkward.
+the two clashing propositions before `⊥`. When a proof has no given line, its conclusion is
+a standalone capitalized sentence rather than an empty `Because` clause. The formal proof
+remains authoritative when a reading is awkward.
 
 ## 12. Known limits and bounds
 
@@ -437,19 +448,24 @@ These are implementation or procedure limits, not language truths:
 | Numerical consistency | Not implemented | `consistent=true, complete=false, numerical=true` is an abstention. |
 | Contradictory support | Argument checker returns the first supported side | No `both` result exists yet; check consistency separately and do not claim four-state behavior. |
 | Term query | Restricted rules, 300 lines, no proof/completeness record | Returned descriptions are supported but not advertised exhaustive. |
+| Truth-table equivalence | At most 16 atoms, 8,388,608 estimated DNF bytes, and 8,388,608 estimated AST-node visits | Any exceeded budget falls back to incomplete bounded rewrite search. |
 | Rewrite equivalence | Immediate-rule closure, 64 nodes | A path proves equivalence; no path does not prove non-equivalence. |
 | Relation passives | At most nine participants; guarded scope swaps | Unsupported transformations are not converse rules. |
 | Canonical levels | Inference canonicalization erases levels | Never use the level-less key as numerical semantic equality. |
-| Names | Bare ASCII only; quoted names have no quote escape | Quote non-ASCII or punctuation-bearing names; a literal quote is unrepresentable in a name. |
+| Names | Bare ASCII only; quoted names have no quote escape and reject terminal/bidirectional controls | Quote ordinary non-ASCII or punctuation-bearing names; quotes and unsafe display controls are unrepresentable. |
 | Nesting | Total boundary accepts at most 64 bracket levels | Deeper input is a syntactic refusal, not an internal crash. |
+| Proposition source | 65,536 bytes through `Tfl.Safe` | Larger input is `resource_limit`, before token allocation. |
+| Argument source | 1,024 premises and 1,048,576 combined bytes | Larger input is `resource_limit` attributed to the argument. |
+| Program source | 1,048,576 bytes total, 65,536 bytes per line, 10,000 physical lines, and 1,024 parsed propositions | Larger input is `resource_limit`; ordinary per-line parse errors remain collectable. |
+| JSON-lines protocol | 1,048,576 bytes per request line | The line is drained and refused as `resource_limit`; the next request remains readable. |
 | Proof decoration | Cancellation has a 500,000-node budget | Missing cancellation never changes a P/Z verdict. |
-| Source locations | Program entries retain only line and per-line code-point position | Full file spans and Unicode columns arrive in Phase 5. |
+| Source locations | Program entries retain only line and per-line code-point position | Full file spans and Unicode columns are not exposed. |
 | Proterms | Constants, not bound pronouns | Core TFL has no cross-term or cross-sentence anaphora resolution. |
 
 ## 13. Executable conformance corpus
 
 [`core-0.1.json`](../data/conformance/core-0.1.json) contains named examples for every
-construct and operation required by Phase 1. Each case fixes:
+construct and operation required by `core-0.1`. Each case fixes:
 
 - the language rule it demonstrates;
 - one focus proposition's canonical source spelling, inference canonical form, and exact

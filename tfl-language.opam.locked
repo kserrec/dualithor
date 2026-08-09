@@ -1,0 +1,118 @@
+opam-version: "2.0"
+name: "tfl-language"
+version: "dev"
+synopsis:
+  "A proof-producing logic programming language based on term logic (TFL)"
+maintainer: "Kyle Serrecchia <kserrec@gmail.com>"
+authors: "Kyle Serrecchia <kserrec@gmail.com>"
+license: "MIT"
+homepage: "https://github.com/kserrec/tfl-verify"
+bug-reports: "https://github.com/kserrec/tfl-verify/issues"
+depends: [
+  "angstrom" {= "0.16.1"}
+  "asn1-combinators" {= "0.3.2"}
+  "astring" {= "0.8.5"}
+  "base" {= "v0.16.5"}
+  "base-bigarray" {= "base"}
+  "base-bytes" {= "base"}
+  "base-threads" {= "base"}
+  "base-unix" {= "base"}
+  "base64" {= "3.5.2"}
+  "bigstringaf" {= "0.10.0"}
+  "bos" {= "0.3.0"}
+  "ca-certs" {= "1.0.3"}
+  "cmdliner" {= "2.1.1"}
+  "cohttp" {= "6.2.2"}
+  "cohttp-lwt" {= "6.2.2"}
+  "cohttp-lwt-unix" {= "6.2.2"}
+  "conduit" {= "8.0.0"}
+  "conduit-lwt" {= "8.0.0"}
+  "conduit-lwt-unix" {= "8.0.0"}
+  "conf-gmp" {= "5"}
+  "conf-gmp-powm-sec" {= "4"}
+  "conf-pkg-config" {= "5"}
+  "cppo" {= "1.8.0"}
+  "csexp" {= "1.5.2"}
+  "digestif" {= "1.3.1"}
+  "domain-name" {= "0.5.0"}
+  "dune" {= "3.24.2"}
+  "dune-configurator" {= "3.24.2"}
+  "duration" {= "0.3.1"}
+  "eqaf" {= "0.10"}
+  "fmt" {= "0.11.0"}
+  "fpath" {= "0.7.3"}
+  "gmap" {= "0.3.0"}
+  "http" {= "6.2.2"}
+  "ipaddr" {= "5.6.2"}
+  "ipaddr-sexp" {= "5.6.2"}
+  "kdf" {= "1.1.0"}
+  "logs" {= "0.10.0"}
+  "lwt" {= "6.1.2"}
+  "macaddr" {= "5.6.2"}
+  "magic-mime" {= "1.3.1"}
+  "mirage-crypto" {= "2.3.0"}
+  "mirage-crypto-ec" {= "2.3.0"}
+  "mirage-crypto-pk" {= "2.3.0"}
+  "mirage-crypto-rng" {= "2.3.0"}
+  "ocaml" {= "4.14.4"}
+  "ocaml-base-compiler" {= "4.14.4"}
+  "ocaml-compiler-libs" {= "v0.12.4"}
+  "ocaml-config" {= "2"}
+  "ocaml-options-vanilla" {= "1"}
+  "ocaml-syntax-shims" {= "1.0.0"}
+  "ocamlbuild" {= "0.16.1"}
+  "ocamlfind" {= "1.9.8"}
+  "ocplib-endian" {= "1.2"}
+  "ohex" {= "0.2.0"}
+  "ppx_derivers" {= "1.2.1"}
+  "ppx_sexp_conv" {= "v0.16.0"}
+  "ppxlib" {= "0.35.0"}
+  "ptime" {= "1.2.0"}
+  "qcheck-core" {= "0.91" & with-test}
+  "re" {= "1.14.0"}
+  "rresult" {= "0.7.0"}
+  "sexplib0" {= "v0.16.0"}
+  "stdlib-shims" {= "0.3.0"}
+  "stringext" {= "1.6.0"}
+  "tls" {= "2.1.2"}
+  "tls-lwt" {= "2.1.2"}
+  "topkg" {= "1.1.1"}
+  "uri" {= "4.4.0"}
+  "uri-sexp" {= "4.4.0"}
+  "x509" {= "1.1.1"}
+  "yojson" {= "3.0.0"}
+  "zarith" {= "1.14"}
+]
+build: [
+  ["dune" "subst"] {dev}
+  [
+    "dune"
+    "build"
+    "-p"
+    name
+    "-j"
+    jobs
+    "@install"
+    "@runtest" {with-test}
+    "@doc" {with-doc}
+  ]
+]
+dev-repo: "git+https://github.com/kserrec/tfl-verify.git"
+pin-depends: [
+  [
+    "mirage-crypto.2.3.0"
+    "git+https://github.com/mirage/mirage-crypto.git#00ed1238df988c6c109c753cedb87388d352a60c"
+  ]
+  [
+    "mirage-crypto-ec.2.3.0"
+    "git+https://github.com/mirage/mirage-crypto.git#00ed1238df988c6c109c753cedb87388d352a60c"
+  ]
+  [
+    "mirage-crypto-pk.2.3.0"
+    "git+https://github.com/mirage/mirage-crypto.git#00ed1238df988c6c109c753cedb87388d352a60c"
+  ]
+  [
+    "mirage-crypto-rng.2.3.0"
+    "git+https://github.com/mirage/mirage-crypto.git#00ed1238df988c6c109c753cedb87388d352a60c"
+  ]
+]

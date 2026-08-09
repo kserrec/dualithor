@@ -11,11 +11,11 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: ocaml/setup-ocaml@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: ocaml/setup-ocaml@605a7e998e76e035b82c14d618a6e1010732c4ce # v3.7.1
         with:
-          ocaml-compiler: "4.14"
-      - run: opam install . --deps-only --with-test
+          ocaml-compiler: "4.14.4"
+      - run: opam install . --deps-only --with-test --locked --yes
       - run: opam exec -- dune build
       - run: opam exec -- dune test
 

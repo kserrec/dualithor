@@ -21,7 +21,13 @@ let orientations (p : prop) : prop list =
   let s_sign = slot_quantity p.subject and q_sign = p.predicate.sign in
   let i_like = (s_sign = Plus || s_sign = Wild) && q_sign = Plus in
   let e_like = (s_sign = Minus || s_sign = Wild) && q_sign = Minus in
-  if (not i_like) && not e_like then [ p ]
+  (* I/E conversion is a level-0 equivalence. Rebuilding an orientation with
+     [Infer.st] drops levels, and "most S is P" does not convert to "P is most
+     S" in any case. *)
+  if
+    p.subject.level <> 0 || p.predicate.level <> 0
+    || ((not i_like) && not e_like)
+  then [ p ]
   else
     let base = if i_like then Plus else Minus in
     [

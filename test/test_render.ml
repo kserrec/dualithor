@@ -32,6 +32,11 @@ let () =
       check_eq (read_prop (p "+V^2+C")) "most v is c";
       check_eq (read_prop (p "+C^3-H")) "few c is h";
       check_eq (read_prop (p "+C^3+H")) "few c is not h");
+  test "readProp: a fixed predicate never converts away a quantity level"
+    (fun () ->
+      check_eq (read_prop (p "+Man^1+Socrates*")) "many man is Socrates";
+      check_eq (read_prop (p "+Man^2+Socrates*")) "most man is Socrates";
+      check_eq (read_prop (p "+Man^3+Socrates*")) "few man is not Socrates");
 
   (* readTerm/readProp: probe-verified reference strings *)
   test "readTerm: compounds, negations, relations, brackets" (fun () ->
@@ -77,5 +82,11 @@ let () =
       match explain_proof { found = true; lines = [] } with
       | None -> ()
       | Some s -> failwith ("unexpected explanation: " ^ s));
+  test "explainProof: a premise-free tautology has no empty Because clause"
+    (fun () ->
+      let proof = Tfl.Derive.derive [] (p "-(+A+B)+(+A+B)") in
+      match explain_proof proof with
+      | Some s -> check_eq s "Every a b is a b."
+      | None -> failwith "no explanation");
 
   finish "render unit tests"

@@ -81,6 +81,14 @@ rendering 130,000 — **884,000 generated inputs**, plus the corpus.
 
 ## Results
 
+Revalidated 2026-08-09 in the isolated, locked OCaml 4.14.4 switch after the
+hostile-input boundary hardening. All 18 gates — **884,000 generated inputs**
+plus the corpus — passed with zero unnormalized disagreements. The random
+parser families reached and exactly normalized 5,418 quoted display-control
+refusals under documented divergence 6; the negative controls separately
+proved that ANSI escape and right-to-left override input is refused by OCaml
+and still accepted by the frozen reference.
+
 Run 2026-08-01, OCaml 4.14.1 (native) against Node's `engine/tfl.js`, single core,
 **12m14s** across the gates.
 
@@ -124,8 +132,10 @@ nothing, so the harness counts it:
 
 A clean run means nothing unless the harness can detect a real divergence, so the run
 begins with a negative control: `+É+P`, the documented §16.4 case, where the JS reference
-parses `É` as a bare name and the OCaml engine raises a lexical error. The run fails if
-that comparison comes back clean.
+parses `É` as a bare name and the OCaml engine raises a lexical error. It also checks an
+ANSI terminal escape and a Unicode right-to-left override inside quoted names: the hardened
+OCaml boundary must refuse each one while the frozen reference must still accept it. The
+run fails if any of those controls stops proving the intended boundary.
 
 ## Documented divergences
 
@@ -134,19 +144,19 @@ the engine.
 
 1. **Non-ASCII bare names** (port-spec §16.4, Kyle 2026-07-29). OCaml bare-name letters are
    ASCII only; a non-ASCII letter in bare-name position raises a lexical error where the JS
-   reference accepts it as a name. Quoted terms still accept arbitrary text, so no
-   expressive power is lost. Generators keep names ASCII; the one case that straddles it is
-   the negative control above. The OCaml error appends a quoting hint, which the harness
-   strips before comparing message text.
+   reference accepts it as a name. Quoted terms still accept ordinary Unicode, so ordinary
+   non-ASCII names remain expressible. Generators keep names ASCII; the one case that
+   straddles it is the negative control above. The OCaml error appends a quoting hint, which
+   the harness strips before comparing message text.
 2. **Canonical sort ordering** (§16.1). The JS engine sorts with UTF-16 code-unit order;
    OCaml compares UTF-8 bytes (code-point order). The two agree on the whole BMP and differ
    only for astral-plane characters. Sort order never changes a verdict — only which of
    several equivalent canonical spellings wins — and the generators stay inside the BMP, so
    this run does not straddle the difference.
-3. **Deep nesting** (§16.5). Pathologically deep input overflows the stack on both sides:
-   `RangeError` in JS, `Stack_overflow` in OCaml. Generated depth is capped so both engines
-   stay in their sound range. PLAN 1.14 replaces the OCaml behaviour with a structured
-   depth error in the total `Safe` API.
+3. **Deep nesting** (§16.5). The frozen reference can overflow with `RangeError`. The total
+   OCaml `Safe` boundary measures nesting before recursive parsing and returns a structured
+   syntactic refusal above depth 64. Generated differential depth remains bounded, while
+   `test/test_safe.ml` pins the hardened boundary directly.
 4. **`side_coeff` on a non-atomic side.** OCaml raises a clean `EngineError` where the JS
    reference throws a `TypeError`. The input is unreachable from parsed text (2026-07-30
    bughunt); the OCaml behaviour is the saner one and is kept.
@@ -155,10 +165,22 @@ the engine.
    and ~days at 20 — so the OCaml engine gives it a 500,000-node budget and reports no
    cancellation when it runs out. Verdicts are decided *before* that search runs and the
    cancellation only decorates the certificate, so the cap is verdict-safe by construction;
-   the search stays complete through 9 re-usable universals. **This is the one deliberate
-   behavioural deviation of the OCaml engine from the reference.** The gates above never
-   reach the budget — their generated sets are three or four propositions — so this run
-   neither exercises nor contradicts it; `test/test_safe.ml` pins the behaviour directly.
+   the search stays complete through 9 re-usable universals. The gates above never reach
+   the budget — their generated sets are three or four propositions — so this run neither
+   exercises nor contradicts it; `test/test_safe.ml` pins the behaviour directly.
+6. **Quoted display controls** (landed 2026-08-09). The OCaml parser refuses C0/C1 terminal
+   controls and Unicode bidirectional formatting controls inside quoted names before those
+   names can reach any human-facing renderer. The reference accepts them. Two exact harness
+   controls prove that OCaml refuses an ANSI escape and a right-to-left override while JS
+   still accepts both. Random-token comparisons normalize only an exact OCaml refusal whose
+   reported source position contains one of those forbidden code points; notation units and
+   the `core-0.1` corpus pin the refusal itself.
+7. **Truth-table materialization budgets** (landed 2026-08-09). A union of at most sixteen
+   atoms ordinarily takes the complete truth-table path, but OCaml falls back to bounded
+   rewrite search when estimated AST evaluation or DNF output would exceed 8,388,608 work
+   units or bytes. The reference materializes the table without those budgets. The
+   adversarial sixteen-atom case is pinned in unit and `core-0.1` conformance tests and is
+   intentionally not sent to the unbounded reference process.
 
 ## What the handover changes
 
