@@ -1,8 +1,9 @@
 # Engine surface — failure taxonomy and the total API
 
-**Status: implemented and hardened (`core-0.1`, 2026-08-09).** `lib/tfl/safe.ml` is the total surface;
-`test/test_safe.ml` holds the contract checks and the adversarial fuzz. The inventory below
-is what `lib/tfl/` raises and how each refusal is classified.
+**Status: implemented and hardened (`core-0.1`, 2026-08-09).** `lib/tfl/safe.ml` is the
+total primitive-input surface, and `lib/tfl/runtime.ml` is the total complete-program
+surface. `test/test_safe.ml` holds the contract checks and adversarial fuzz. The inventory
+below is what `lib/tfl/` raises and how each refusal is classified.
 
 ## Why this exists
 
@@ -176,6 +177,7 @@ type failure = {
 
 val kind_name     : failure_kind -> string
 val parse         : ?where:string -> string -> (Ast.prop, failure) result
+val parse_term    : ?where:string -> string -> (Ast.term, failure) result
 val parse_all     : string -> string list -> (Ast.prop list, failure) result
 val check         : premises:string list -> conclusion:string
                  -> (Decide.result, failure) result
@@ -185,6 +187,10 @@ val parse_program : string -> (Program.parsed_program, failure) result
 (An earlier revision of this table listed a `describe` helper that was never
 implemented; removed 2026-08-01.)
 
+`parse_term` applies the same source-size, tokenization, lexical/syntactic, and nesting
+guards as `parse`, using the term grammar rather than the proposition grammar. It exists so
+the public term-description runtime never calls an unguarded parser.
+
 `parse_program` closes the gap the original depth guard left open: the depth cap lived
 only in `Safe.parse`, so the program-loading path could still exhaust the stack — measured
 as a hard `Stack_overflow` at 200k nesting levels. The wrapper first caps total and
@@ -193,6 +199,13 @@ program parser reads, and names the offending line (`where = "line N"`).
 Per-line syntax errors remain collected in the returned program's `errors`
 field, exactly as the underlying `Program.parse_program` reports them; programs
 are loaded through this wrapper and nowhere else.
+
+`Tfl.Runtime.compile` builds on this guarded parse. It refuses the whole program when any
+line appears in `errors`, recovers the lexical/syntactic class for every bad line, validates
+every successful proposition under its source-line label, and exposes only an abstract
+compiled value. Ground queries, term descriptions, consistency, and equivalence then stay
+inside total guarded calls. The stable record and process schemas are specified in
+[`runtime-api.md`](runtime-api.md).
 
 `check` validates each proposition under its own label before deciding, so a fragment
 refusal names the premise that caused it rather than the argument as a whole —

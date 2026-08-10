@@ -1,19 +1,19 @@
 (lang dune 3.6)
 
-(name tfl-language)
+(name horos)
 
 (authors "Kyle Serrecchia <kserrec@gmail.com>")
 (maintainers "Kyle Serrecchia <kserrec@gmail.com>")
 (license MIT)
-(homepage https://github.com/kserrec/tfl-verify)
-(bug_reports https://github.com/kserrec/tfl-verify/issues)
+(homepage https://github.com/kserrec/horos)
+(bug_reports https://github.com/kserrec/horos/issues)
 (source
- (github kserrec/tfl-verify))
+ (github kserrec/horos))
 
 (generate_opam_files true)
 
 (package
- (name tfl-language)
+ (name horos)
  (synopsis "A proof-producing logic programming language based on term logic (TFL)")
  (depends
   (ocaml

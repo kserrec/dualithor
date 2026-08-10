@@ -1,4 +1,4 @@
-# tfl-language: Project Plan
+# Horos: Project Plan
 
 ## Active decision — 2026-08-08
 
@@ -10,10 +10,10 @@ Those projects are discontinued. Their code, datasets, reports, and negative res
 the repository as historical evidence, but no old phase is active and `$next` must never
 select work from an old roadmap. Git history preserves the superseded plan.
 
-The repository and project are now named **`tfl-language`**. The language is called **TFL**
-and its eventual human-facing executable is **`tfl`**.
+The project is now named **Horos**, and its repository and package are named **`horos`**.
+The language is called **TFL** and its eventual human-facing executable is **`tfl`**.
 
-Phase 1 is complete. Phase 2 is the next implementation phase.
+Phases 1 and 2 are complete. Phase 3 is the next implementation phase.
 
 ## What we are building
 
@@ -231,7 +231,7 @@ The post-completion audit also fixed bounded public input, equivalence output/wo
 terminal-safe names, immutable CI actions, security-fixed compiler/crypto floors, and a
 verified dependency lock without changing the next roadmap phase.
 
-### Phase 2 — Public program runtime ⏭ NEXT
+### Phase 2 — Public program runtime ✅ COMPLETE — 2026-08-09
 
 1. Add one total production API that compiles a complete program and refuses execution if
    any source line is malformed.
@@ -246,7 +246,14 @@ verified dependency lock without changing the next roadmap phase.
 already-implemented program operation without calling an internal OCaml module or
 receiving an uncaught exception.
 
-### Phase 3 — `.tfl` files and the human command line
+**Delivered:** `Tfl.Runtime` is the one total production API over an abstract,
+all-lines-valid compiled program. Stable records expose canonical TFL, English, explicit
+completeness reasons, and proof/certificate/numerical/equivalence support. The
+`horos-runtime-0.1` JSON-lines commands compile, query, describe, check consistency, and
+compare equivalence without breaking the existing request/reply stream. Focused runtime,
+program, safety, and process-boundary tests are green.
+
+### Phase 3 — `.tfl` files and the human command line ⏭ NEXT
 
 1. Define UTF-8 `.tfl` files and implement file loading with stable line and column
    locations.
@@ -773,7 +780,7 @@ advantage or conclude that no unique practical advantage was demonstrated.
 4. Run the full unit, conformance, property, oracle, differential, fuzz, integration,
    example, and application suites; publish exact known limitations.
 5. Tag version 1 only after the repository, package metadata, changelog, license, and
-   release artifacts all name `tfl-language` consistently.
+   release artifacts all name Horos consistently.
 
 **Acceptance:** a clean machine can install TFL, complete the tutorial, run and test a
 multi-file variable-and-recursion program, use every stable profile, inspect its proof, and

@@ -1,4 +1,4 @@
 (library
  (name tfl_verify)
- (public_name tfl-language.verify)
+ (public_name horos.verify)
  (libraries tfl yojson))

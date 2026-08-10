@@ -1,8 +1,8 @@
-; The inherited JSON-over-stdio engine boundary. Phase 2 will expose all
-; program operations here; Phase 3 will add the separate human-facing CLI.
+; The JSON-over-stdio engine boundary. Phase 2 exposes all program operations
+; here; Phase 3 will add the separate human-facing CLI.
 
 (executable
  (name tfl_cli)
- (public_name tfl-language)
+ (public_name horos)
  (modules tfl_cli)
  (libraries tfl tfl_verify yojson))

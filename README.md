@@ -1,7 +1,8 @@
-# tfl-language
+# Horos
 
-An in-development, proof-producing logic programming language based on Term Functor Logic
-(TFL), implemented in OCaml.
+Horos is an in-development, proof-producing logic programming language based on Term
+Functor Logic (TFL), implemented in OCaml. Its name comes from the ancient Greek word for
+“term.”
 
 The project is being rebuilt around the language that was already hiding inside the former
 TFL-Verify research system. The existing engine can parse TFL, decide supported fragments,
@@ -12,12 +13,12 @@ REPL, answer variables, a defined rule and recursion layer, modules, diagnostics
 provenance, debugging, data interfaces, editor support, packaging, and real application
 comparisons.
 
-**Current status (2026-08-09):** Phase 1 is complete. The inherited core now has a
-[normative language reference](docs/core-language.md) and a 26-case executable
-conformance corpus covering its notation, results, completeness boundaries, and proof
-shapes. Phase 2, the public program runtime, is next. [PLAN.md](PLAN.md) is the only active
-plan; it completely supersedes the old regulatory-verification product and proposed human
-study.
+**Current status (2026-08-09):** Phases 1 and 2 are complete. The inherited core has a
+[normative language reference](docs/core-language.md), a 26-case executable conformance
+corpus, and a [total public runtime](docs/runtime-api.md) that compiles whole programs and
+exposes every existing operation through OCaml and JSON-lines interfaces. Phase 3, `.tfl`
+files and the human command line, is next. [PLAN.md](PLAN.md) is the only active plan; it
+completely supersedes the old regulatory-verification product and proposed human study.
 
 ## What TFL is intended to provide
 
@@ -59,11 +60,11 @@ opam exec -- dune build
 opam exec -- dune test
 ```
 
-The current executable is still a JSON-lines engine boundary while the human-facing `tfl`
-command is pending. For example:
+The current `horos` executable is a JSON-lines engine boundary while the human-facing
+`tfl` command is pending. For example:
 
 ```bash
-printf '%s\n' '{"cmd":"check","premises":["-M+P","-S+M"],"conclusion":"-S+P"}' | opam exec -- dune exec bin/tfl_cli.exe
+printf '%s\n' '{"cmd":"query","program":"+-Socrates*+Man\n-Man+Mortal","query":"+-Socrates*+Mortal"}' | opam exec -- dune exec bin/tfl_cli.exe
 ```
 
 ## Repository layout
@@ -71,6 +72,7 @@ printf '%s\n' '{"cmd":"check","premises":["-M+P","-S+M"],"conclusion":"-S+P"}' |
 - `PLAN.md` — the authoritative language roadmap and acceptance checks.
 - `docs/core-language.md` — the normative `core-0.1` syntax, semantics, result, and limits
   reference; `docs/port-spec.md` is its detailed mechanics appendix.
+- `docs/runtime-api.md` — the total OCaml runtime and `horos-runtime-0.1` JSON contract.
 - `data/conformance/core-0.1.json` — language-neutral normative examples checked by the
   test suite.
 - `lib/tfl/` — syntax, inference, program, rendering, and safety kernel.

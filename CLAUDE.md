@@ -4,7 +4,7 @@ Guidance for coding agents working in this repository.
 
 ## What this is
 
-`tfl-language` is an OCaml implementation of a proof-producing logic programming language
+Horos is an OCaml implementation of a proof-producing logic programming language
 based on term logic (TFL). The existing parser, inference engine, program operations,
 renderer, and correctness harness are the language kernel. The active job is to build the
 complete language described in `PLAN.md` without silently replacing TFL semantics with
@@ -21,10 +21,11 @@ old project look as though it never existed.
 `docs/port-spec.md` is its detailed mechanics appendix, and
 `data/conformance/core-0.1.json` is its executable, language-neutral example corpus. An
 implementation disagreement with those artifacts is a contract defect, not an implicit
-language change.
+language change. `docs/runtime-api.md` specifies the total `Tfl.Runtime` production API and
+the `horos-runtime-0.1` JSON-lines boundary.
 
-**Naming convention:** the project and repository are `tfl-language`; the language is TFL;
-the eventual human executable is `tfl`. In ordinary code and documentation, call the logic
+**Naming convention:** the project is Horos, the repository and package are `horos`; the
+language is TFL; the eventual human executable is `tfl`. In ordinary code and documentation, call the logic
 “term logic” or “TFL.” Spell out the literature name only where it adds needed context,
 because “functor” otherwise means an unrelated OCaml module construct.
 
@@ -34,6 +35,7 @@ because “functor” otherwise means an unrelated OCaml module construct.
 opam exec -- dune build
 opam exec -- dune test
 opam exec -- dune exec test/test_conformance.exe
+opam exec -- dune exec test/test_runtime.exe
 
 # Both long gates are required after a change to existing OCaml inference behavior.
 opam exec -- dune exec test/test_oracle.exe -- -n 20000

@@ -1,6 +1,6 @@
 # Security
 
-TFL Language is currently a local OCaml library and a JSON-lines command
+Horos is currently a local OCaml library and a JSON-lines command
 process. It has no network server, authentication layer, browser surface, or
 multi-user state. Its primary hostile-input boundary is nevertheless real:
 formulas and JSON may come from language models, files, pipes, or future
@@ -17,8 +17,9 @@ can use the repository's GitHub issue tracker.
 
 ## Security boundaries
 
-Untrusted text must enter through `Tfl.Safe` or `bin/tfl_cli.ml`, not through
-the low-level parser and inference modules directly. Those low-level modules
+Untrusted complete programs must enter through `Tfl.Runtime`; individual propositions may
+enter through `Tfl.Safe`, and external process requests enter through `bin/tfl_cli.ml`.
+They must not use the low-level parser and inference modules directly. Those low-level modules
 remain available to trusted OCaml callers and do not independently promise
 hostile-input resource isolation.
 
@@ -61,7 +62,7 @@ sequence or visually reverses the formal source.
 - The supported compiler line is OCaml `>= 4.14.4` and `< 5.0`. This
   excludes the audited OCaml 4.14.1 vulnerabilities OSEC-2026-01,
   OSEC-2026-04, and OSEC-2026-05.
-- `tfl-language.opam.locked` fixes the complete tested dependency graph, and
+- `horos.opam.locked` fixes the complete tested dependency graph, and
   CI installs it with `opam install --locked`.
 - Mirage Crypto 2.3.0 fixes OSEC-2026-14 and OSEC-2026-15. Until that release
   reaches the official opam index, the four interdependent Mirage Crypto

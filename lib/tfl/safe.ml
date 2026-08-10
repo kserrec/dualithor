@@ -101,7 +101,7 @@ let guard ?where (f : unit -> 'a) : ('a, failure) result =
    syntactic phases remain distinct without decoding and allocating the source
    twice. *)
 
-let parse ?where (src : string) : (Ast.prop, failure) result =
+let parse_with ?where parser (src : string) =
   match source_too_large ?where src with
   | Some failure -> Error failure
   | None -> (
@@ -113,11 +113,17 @@ let parse ?where (src : string) : (Ast.prop, failure) result =
           match too_deep tokens with
           | Some pos -> Error { (depth_failure pos) with where }
           | None -> (
-              match Notation.parse_proposition_tokens tokens with
-              | p -> Ok p
+              match parser tokens with
+              | parsed -> Ok parsed
               | exception Notation.Parse_error { message; pos } ->
                   Error { kind = Syntactic; message; pos = Some pos; where }
               | exception e -> Error (unexpected ?where e))))
+
+let parse ?where (src : string) : (Ast.prop, failure) result =
+  parse_with ?where Notation.parse_proposition_tokens src
+
+let parse_term ?where (src : string) : (Ast.term, failure) result =
+  parse_with ?where Notation.parse_term_tokens src
 
 let parse_all (label : string) (sources : string list) :
     (Ast.prop list, failure) result =

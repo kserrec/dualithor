@@ -101,8 +101,14 @@ let any_level props = List.exists Decide.has_level props
    equivalences for canonical bookkeeping — never Add, whose compounds would
    bury the answer), collect every derived proposition about the term, then
    keep only the strongest. Strongest first. *)
-let query_term ?max_lines ?(slack = 6) (program : prop list) (term : term) :
-    (prop * string) list =
+type term_answer = {
+  answer_prop : prop;
+  answer_text : string;
+  answer_proof : Derive.proof;
+}
+
+let query_term_detailed ?max_lines ?(slack = 6) (program : prop list)
+    (term : term) : term_answer list =
   List.iter Infer.validate_prop program;
   if any_level program then
     Infer.engine_error
@@ -130,8 +136,8 @@ let query_term ?max_lines ?(slack = 6) (program : prop list) (term : term) :
      dedupe by prop key. *)
   let cands = ref [] in
   let seen : (string, unit) Hashtbl.t = Hashtbl.create 16 in
-  Array.iter
-    (fun (l : Derive.sat_line) ->
+  Array.iteri
+    (fun idx (l : Derive.sat_line) ->
       if l.rule <> "It" then
         match
           List.find_opt
@@ -148,11 +154,11 @@ let query_term ?max_lines ?(slack = 6) (program : prop list) (term : term) :
               && not (Hashtbl.mem seen dk)
             then (
               Hashtbl.add seen dk ();
-              cands := display :: !cands))
+              cands := (display, idx) :: !cands))
     lines;
   let cands = List.rev !cands in
   (* Unary entailment a ⊢ b (equivalences + Simp weakening), small-fuel. *)
-  let implies a b =
+  let implies (a, _) (b, _) =
     let b_key = Notation.print_proposition (Infer.canon_prop b) in
     if Notation.print_proposition (Infer.canon_prop a) = b_key then true
     else
@@ -174,7 +180,7 @@ let query_term ?max_lines ?(slack = 6) (program : prop list) (term : term) :
     cands;
   let sorted =
     List.sort
-      (fun a b ->
+      (fun (a, _) (b, _) ->
         let d = Infer.prop_nodes b - Infer.prop_nodes a in
         if d <> 0 then d
         else
@@ -183,7 +189,19 @@ let query_term ?max_lines ?(slack = 6) (program : prop list) (term : term) :
             (Notation.print_proposition b))
       !kept
   in
-  List.map (fun p -> (p, Notation.print_proposition p)) sorted
+  List.map
+    (fun (p, idx) ->
+      {
+        answer_prop = p;
+        answer_text = Notation.print_proposition p;
+        answer_proof = Derive.extract lines [ idx ] None;
+      })
+    sorted
+
+let query_term ?max_lines ?slack (program : prop list) (term : term) :
+    (prop * string) list =
+  query_term_detailed ?max_lines ?slack program term
+  |> List.map (fun answer -> (answer.answer_prop, answer.answer_text))
 
 (* ── ? proposition query: the three-way verdict ─────────────────────────── *)
 

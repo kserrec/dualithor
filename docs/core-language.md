@@ -193,12 +193,12 @@ nonblank line contains one proposition. Two adjacent ASCII or typographic minus 
 outside a name begin a comment through the end of that line. `--` inside a quoted name is
 name content, not a comment.
 
-Program parsing collects independent per-line lexical or syntactic errors and retains the
-other successfully parsed lines. Parsing does not validate inference-fragment restrictions;
-the operation that consumes the program does that. The current low-level program API can
-therefore represent a partially parsed program. A caller must not execute it as a complete
-program without first refusing its `errors` entries. A production compile boundary is not
-part of `core-0.1`.
+Low-level program parsing collects independent per-line lexical or syntactic errors and
+retains the other successfully parsed lines. Parsing does not validate inference-fragment
+restrictions; the operation that consumes the program does that. `Tfl.Program` can therefore
+represent a partial parse for tooling, but `Tfl.Runtime.compile` is the production boundary:
+it returns an abstract executable program only when every source line parses and validates.
+This compile boundary is a host/runtime layer over `core-0.1`, not new logical syntax.
 
 ## 5. Validation and structured failure
 
@@ -362,8 +362,9 @@ negative conclusion. It does not describe proof length or whether a successful p
 trustworthy. P/Z argument decision is complete. Numerical and non-atomic derivation
 decision are incomplete even when they return a sound positive proof.
 
-The current argument-result record does not expose a `complete` field. Callers must use the
-method distinction exactly as above rather than infer completeness from a verdict.
+The low-level `Decide.result` does not expose a `complete` field. The production
+`Tfl.Runtime` record exposes both the method and explicit `{ complete; reason }` metadata;
+callers of lower-level trusted modules must still use the method distinction above.
 
 ## 10. Program operations
 
@@ -378,8 +379,7 @@ A ground program query returns:
 For an atomic-categorical program, the operation checks both sides with complete P/Z
 decision. Its `unknown` is therefore a complete open-world answer: neither proposition
 follows. For a non-atomic or numerical program, `unknown` can instead be procedural
-incompleteness. The current record does not carry the distinction, so callers must retain
-the method and fragment alongside the answer.
+incompleteness. `Tfl.Runtime` carries this distinction directly in its completeness record.
 
 ### 10.2 Term-description query
 
@@ -387,8 +387,9 @@ the method and fragment alongside the answer.
 or `Pass`. It omits tautologies, keeps only answers about T, removes answers entailed by a
 stronger retained answer under the unary rules, then sorts by descending term-node size
 and canonical text. The default board limit is 300 lines, with size slack 6. The operation
-rejects levels and does not expose proof or completeness metadata. Its answer list must not
-be advertised as complete beyond what its bounded rule set establishes.
+rejects levels. The production runtime attaches the extracted derivation to every returned
+answer and marks the whole answer set incomplete with reason `bounded-term-saturation`; it
+must not be advertised as complete beyond what its bounded rule set establishes.
 
 ### 10.3 Consistency
 
@@ -400,8 +401,9 @@ The consistency record has `consistent`, `complete`, and `numerical` fields:
 - any nonzero level: `consistent=true, complete=false, numerical=true`, meaning numerical
   consistency is not implemented.
 
-The Boolean `consistent=true` must always be read together with `complete`. It is not a
-claim of consistency when `complete=false`.
+The low-level Boolean `consistent=true` must always be read together with `complete`. It is
+not a claim of consistency when `complete=false`; the production runtime reports that case
+as `undetermined` instead of `consistent`.
 
 ### 10.4 Equivalence
 

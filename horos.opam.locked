@@ -1,13 +1,13 @@
 opam-version: "2.0"
-name: "tfl-language"
+name: "horos"
 version: "dev"
 synopsis:
   "A proof-producing logic programming language based on term logic (TFL)"
 maintainer: "Kyle Serrecchia <kserrec@gmail.com>"
 authors: "Kyle Serrecchia <kserrec@gmail.com>"
 license: "MIT"
-homepage: "https://github.com/kserrec/tfl-verify"
-bug-reports: "https://github.com/kserrec/tfl-verify/issues"
+homepage: "https://github.com/kserrec/horos"
+bug-reports: "https://github.com/kserrec/horos/issues"
 depends: [
   "angstrom" {= "0.16.1"}
   "asn1-combinators" {= "0.3.2"}
@@ -97,7 +97,7 @@ build: [
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/kserrec/tfl-verify.git"
+dev-repo: "git+https://github.com/kserrec/horos.git"
 pin-depends: [
   [
     "mirage-crypto.2.3.0"

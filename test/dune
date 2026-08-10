@@ -38,6 +38,14 @@
  (modules test_program)
  (libraries tfl test_support qcheck-core qcheck-core.runner))
 
+; Phase 2 production runtime: complete-program compilation, stable records,
+; completeness metadata, and proof support for every existing operation.
+
+(test
+ (name test_runtime)
+ (modules test_runtime)
+ (libraries tfl test_support))
+
 ; The normative core-0.1 cases live in data so another implementation can
 ; consume the same corpus; this executable checks notation, readings, results,
 ; completeness, and proof shape.

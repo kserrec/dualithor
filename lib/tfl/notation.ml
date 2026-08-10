@@ -426,11 +426,13 @@ let parse_proposition_tokens tokens =
 let parse_proposition src =
   parse_proposition_tokens (tokenize src)
 
-let parse_term src =
-  let st = make_state src in
+let parse_term_tokens tokens =
+  let st = state_of_tokens tokens in
   let t = parse_term_inner st in
   at_end st "term";
   t
+
+let parse_term src = parse_term_tokens (tokenize src)
 
 let parse_signed_term src =
   let st = make_state src in
