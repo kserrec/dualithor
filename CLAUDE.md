@@ -22,7 +22,8 @@ old project look as though it never existed.
 `data/conformance/core-0.1.json` is its executable, language-neutral example corpus. An
 implementation disagreement with those artifacts is a contract defect, not an implicit
 language change. `docs/runtime-api.md` specifies the total `Tfl.Runtime` production API and
-the `horos-runtime-0.1` JSON-lines boundary.
+the `horos-runtime-0.1` JSON-lines boundary. `docs/command-line.md` specifies UTF-8 `.tfl`
+files, the human `tfl` executable, `tfl-cli-0.1`, diagnostic locations, and exit statuses.
 
 **Naming convention:** the project is Horos, the repository and package are `horos`; the
 language is TFL; the eventual human executable is `tfl`. In ordinary code and documentation, call the logic
@@ -36,6 +37,9 @@ opam exec -- dune build
 opam exec -- dune test
 opam exec -- dune exec test/test_conformance.exe
 opam exec -- dune exec test/test_runtime.exe
+opam exec -- dune exec test/test_source_file.exe
+opam exec -- dune build bin/tfl_command.exe
+opam exec -- dune exec test/test_tfl_command.exe
 
 # Both long gates are required after a change to existing OCaml inference behavior.
 opam exec -- dune exec test/test_oracle.exe -- -n 20000

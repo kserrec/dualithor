@@ -6,6 +6,7 @@
 | Introduced | 2026-08-09 |
 | OCaml module | `Tfl.Runtime` |
 | Process | `horos` (`bin/tfl_cli.exe` in the source tree) |
+| Human command | `tfl`, specified separately in [command-line.md](command-line.md) |
 
 This is the production boundary for executing a complete `core-0.1` TFL program. The
 lower-level `Tfl.Program` module deliberately retains partial parses for tooling and
@@ -109,3 +110,8 @@ errors rather than runtime records.
 The older `check`, `parse`, and `render` commands remain available with their existing
 response shapes. This preserves callers using the original argument-checking boundary while
 the complete-program commands add the production runtime.
+
+The human `tfl` executable is not a second JSON-lines protocol. It loads one UTF-8 `.tfl`
+file, prints terminal-oriented text by default, and emits `tfl-cli-0.1` only when the user
+requests `--json`. Its structured operation fields reuse the serializers above so proof,
+completeness, and evidence records cannot drift from this process boundary.

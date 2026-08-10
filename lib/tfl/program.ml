@@ -50,7 +50,7 @@ let strip_comment (cps : int array) : int array =
   match scan 0 with None -> cps | Some i -> Array.sub cps 0 i
 
 (* JS String.trim: strip the same whitespace set the tokenizer skips. *)
-let trim_cps (cps : int array) : int array =
+let trim_cps_with_start (cps : int array) : int array * int =
   let n = Array.length cps in
   let s = ref 0 in
   while !s < n && Notation.is_whitespace cps.(!s) do
@@ -60,7 +60,9 @@ let trim_cps (cps : int array) : int array =
   while !e > !s && Notation.is_whitespace cps.(!e - 1) do
     decr e
   done;
-  Array.sub cps !s (!e - !s)
+  (Array.sub cps !s (!e - !s), !s)
+
+let trim_cps cps = fst (trim_cps_with_start cps)
 
 let cps_to_string (cps : int array) : string =
   let b = Buffer.create (Array.length cps) in
@@ -70,8 +72,21 @@ let cps_to_string (cps : int array) : string =
 (* The code a program line contributes: comment stripped, then trimmed. Safe
    checks nesting depth on this same text before parsing (PLAN 3.1), so the
    two must not drift apart. *)
-let line_code (raw : string) : string =
-  cps_to_string (trim_cps (strip_comment (Notation.decode raw)))
+let line_code_with_start (raw : string) : string * int =
+  let code, start =
+    Notation.decode raw |> strip_comment |> trim_cps_with_start
+  in
+  (cps_to_string code, start)
+
+let line_code raw = fst (line_code_with_start raw)
+
+(* Translate a zero-based parser position in [line_code raw] back to a
+   one-based Unicode code-point column in the original physical line. This is
+   the Phase 3 file-loader location contract; Phase 5 will carry full spans
+   through the AST. *)
+let source_column raw pos =
+  let _, start = line_code_with_start raw in
+  start + max 0 pos + 1
 
 (* Line-oriented; per-line ParseErrors are collected, not thrown. Note:
    parse_program does not validate — fragment validation happens in the

@@ -247,3 +247,20 @@
  (modules test_cli)
  (libraries yojson unix)
  (deps ../bin/tfl_cli.exe))
+
+; Phase 3 file loading: bounded UTF-8 input and stable one-based code-point
+; source locations before Phase 5 introduces full AST spans.
+
+(test
+ (name test_source_file)
+ (modules test_source_file)
+ (libraries tfl test_support))
+
+; The human [tfl] command is exercised from a temporary directory, outside the
+; checkout, so its file behavior cannot depend on the repository working dir.
+
+(test
+ (name test_tfl_command)
+ (modules test_tfl_command)
+ (libraries tfl_cli_support test_support yojson unix)
+ (deps ../bin/tfl_command.exe))

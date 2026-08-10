@@ -1,8 +1,20 @@
-; The JSON-over-stdio engine boundary. Phase 2 exposes all program operations
-; here; Phase 3 will add the separate human-facing CLI.
+; The Phase 2 JSON-over-stdio boundary and Phase 3 human command share stable
+; runtime-record encoders but remain separate executable interfaces.
+
+(library
+ (name tfl_cli_support)
+ (wrapped false)
+ (modules command_status runtime_json)
+ (libraries tfl yojson))
 
 (executable
  (name tfl_cli)
  (public_name horos)
  (modules tfl_cli)
- (libraries tfl tfl_verify yojson))
+ (libraries tfl tfl_verify tfl_cli_support yojson))
+
+(executable
+ (name tfl_command)
+ (public_name tfl)
+ (modules tfl_command)
+ (libraries tfl tfl_cli_support yojson))

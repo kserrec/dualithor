@@ -200,6 +200,15 @@ represent a partial parse for tooling, but `Tfl.Runtime.compile` is the producti
 it returns an abstract executable program only when every source line parses and validates.
 This compile boundary is a host/runtime layer over `core-0.1`, not new logical syntax.
 
+The Phase 3 filesystem boundary accepts only paths with the case-sensitive `.tfl` suffix
+and only well-formed UTF-8 bytes. It does not normalize the file before compilation.
+Located statements and diagnostics use one-based physical lines and one-based Unicode
+code-point columns in the original line, including leading whitespace; columns are never
+UTF-8 byte offsets or display-dependent tab stops. A malformed UTF-8 sequence is a lexical
+file error. These file and location rules are host/runtime behavior over `core-0.1`, not
+additional logical syntax. The complete command contract is in
+[command-line.md](command-line.md).
+
 ## 5. Validation and structured failure
 
 Parsing and inference validation are separate:

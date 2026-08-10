@@ -13,11 +13,14 @@ REPL, answer variables, a defined rule and recursion layer, modules, diagnostics
 provenance, debugging, data interfaces, editor support, packaging, and real application
 comparisons.
 
-**Current status (2026-08-09):** Phases 1 and 2 are complete. The inherited core has a
+**Current status (2026-08-10):** Phases 1 through 3 are complete. The inherited core has a
 [normative language reference](docs/core-language.md), a 26-case executable conformance
 corpus, and a [total public runtime](docs/runtime-api.md) that compiles whole programs and
-exposes every existing operation through OCaml and JSON-lines interfaces. Phase 3, `.tfl`
-files and the human command line, is next. [PLAN.md](PLAN.md) is the only active plan; it
+exposes every existing operation through OCaml and JSON-lines interfaces. The installable
+[`tfl` command](docs/command-line.md) now checks UTF-8 `.tfl` files, runs ground and term
+queries, renders propositions, provides explicit JSON mode, and distinguishes logical and
+operational outcomes by exit status. Phase 4, the interactive shell, is next.
+[PLAN.md](PLAN.md) is the only active plan; it
 completely supersedes the old regulatory-verification product and proposed human study.
 
 ## What TFL is intended to provide
@@ -60,8 +63,24 @@ opam exec -- dune build
 opam exec -- dune test
 ```
 
-The current `horos` executable is a JSON-lines engine boundary while the human-facing
-`tfl` command is pending. For example:
+Save a program such as this as `knowledge.tfl`:
+
+```text
+±Socrates*+Man
+−Man+Mortal
+```
+
+The human command works from any directory after installation:
+
+```bash
+tfl check knowledge.tfl
+tfl query knowledge.tfl '±Socrates*+Mortal'
+tfl describe knowledge.tfl 'Socrates*'
+tfl render '−Man+Mortal'
+```
+
+Add `--json` to request the stable `tfl-cli-0.1` machine record. The separate `horos`
+executable remains the long-lived JSON-lines engine boundary. For example:
 
 ```bash
 printf '%s\n' '{"cmd":"query","program":"+-Socrates*+Man\n-Man+Mortal","query":"+-Socrates*+Mortal"}' | opam exec -- dune exec bin/tfl_cli.exe
@@ -73,6 +92,8 @@ printf '%s\n' '{"cmd":"query","program":"+-Socrates*+Man\n-Man+Mortal","query":"
 - `docs/core-language.md` — the normative `core-0.1` syntax, semantics, result, and limits
   reference; `docs/port-spec.md` is its detailed mechanics appendix.
 - `docs/runtime-api.md` — the total OCaml runtime and `horos-runtime-0.1` JSON contract.
+- `docs/command-line.md` — `.tfl` file, human command, JSON mode, diagnostic-location, and
+  exit-status contracts.
 - `data/conformance/core-0.1.json` — language-neutral normative examples checked by the
   test suite.
 - `lib/tfl/` — syntax, inference, program, rendering, and safety kernel.

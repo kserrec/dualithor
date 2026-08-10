@@ -13,7 +13,7 @@ select work from an old roadmap. Git history preserves the superseded plan.
 The project is now named **Horos**, and its repository and package are named **`horos`**.
 The language is called **TFL** and its eventual human-facing executable is **`tfl`**.
 
-Phases 1 and 2 are complete. Phase 3 is the next implementation phase.
+Phases 1 through 3 are complete. Phase 4 is the next implementation phase.
 
 ## What we are building
 
@@ -258,7 +258,7 @@ strengthened the three CLI checks that mutations survived: the oversized-line dr
 describe answers' serialized proof support, and the evidence `kind` discriminators of the
 public JSON schema.
 
-### Phase 3 — `.tfl` files and the human command line ⏭ NEXT
+### Phase 3 — `.tfl` files and the human command line ✅ COMPLETE — 2026-08-10
 
 1. Define UTF-8 `.tfl` files and implement file loading with stable line and column
    locations.
@@ -272,7 +272,19 @@ public JSON schema.
 **Acceptance:** from outside the repository, a user can run a `.tfl` file, distinguish every
 outcome by both text and exit status, and request the corresponding JSON record.
 
-### Phase 4 — Interactive shell
+**Delivered:** `Tfl.Source_file` loads bounded, case-sensitive `.tfl` paths, rejects
+malformed UTF-8 before compilation, and maps statements and every line-attributed failure
+to one-based physical lines and Unicode code-point columns in the original source. The
+installable `tfl` executable checks files, runs ground queries, describes terms, and renders
+propositions with terminal text by default and explicit `tfl-cli-0.1` under `--json`. Exit
+statuses distinguish success, complete logical non-entailment, input/compile failure,
+incomplete search, and internal failure; incomplete contradictory support stays incomplete
+rather than overclaiming non-entailment. The existing `horos` JSON-lines boundary shares
+runtime serializers and remains byte-contract compatible. Focused loader, command,
+runtime, program, process, and adversarial suites are green; the forced full suite and an
+isolated-prefix install/query from outside the checkout are also green.
+
+### Phase 4 — Interactive shell ⏭ NEXT
 
 1. Add a REPL that loads a program once and accepts ground queries, term queries,
    consistency checks, equivalence checks, reload, help, and quit.
