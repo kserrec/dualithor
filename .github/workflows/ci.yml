@@ -94,11 +94,12 @@ jobs:
       - name: installed tfl works outside the checkout
         run: |
           opam install . --locked --yes
+          installed_tfl="$(opam var bin)/tfl"
           smoke_dir="$RUNNER_TEMP/horos-installed-smoke"
           mkdir -p "$smoke_dir"
           printf '%s\n' '-Man+Animal' > "$smoke_dir/knowledge.tfl"
           cd "$smoke_dir"
-          output="$(opam exec -- tfl check --json knowledge.tfl)"
+          output="$("$installed_tfl" check --json knowledge.tfl)"
           case "$output" in
             *'"schema":"tfl-cli-0.1"'*'"exit_status":0'*) ;;
             *)
