@@ -45,10 +45,14 @@ tfl check [--json] FILE.tfl
 tfl query [--json] FILE.tfl PROPOSITION
 tfl describe [--json] FILE.tfl TERM
 tfl render [--json] PROPOSITION
+tfl [--json] --help
 ```
 
 `PROPOSITION` and `TERM` are each one operating-system argument. Shell users must quote an
 expression when it contains spaces or shell-significant characters.
+
+`--help` and `-h` print the command reference and exit successfully. With `--json`, help is
+a successful `help` operation whose `usage` field contains the same reference text.
 
 ### `check`
 
@@ -120,6 +124,11 @@ Successful operations add their corresponding stable runtime fields. File-backed
 operations also add `file`; `check` statement records add one-based `line` and `column`.
 Query and description results use the same proposition, completeness, support, proof, and
 evidence encodings as `horos-runtime-0.1`.
+
+Machine output is always well-formed UTF-8. Valid UTF-8 text is unchanged; if an
+operating-system string contains a malformed byte, that byte is represented visibly as the
+four ASCII characters `\xNN`, with uppercase hexadecimal digits. The raw path bytes are
+still used for filesystem access; this display encoding exists only at the JSON boundary.
 
 Failures set `ok` to `false` and contain an `errors` array. Each error has `class`,
 `message`, `source`, `line`, and `column`; a field is JSON `null` only when no source

@@ -115,28 +115,23 @@ let safe_kind = function
 let source_line lines number =
   if number > 0 && number <= Array.length lines then lines.(number - 1) else ""
 
+let source_column lines number position =
+  Program.source_column (source_line lines number) position
+
 let diagnostic_of_safe path lines (failure : Safe.failure) =
   let line = line_number failure.where in
   let column =
     Option.map
       (fun number ->
-        Program.source_column (source_line lines number)
-          (Option.value ~default:0 failure.pos))
+        source_column lines number (Option.value ~default:0 failure.pos))
       line
   in
-  {
-    kind = safe_kind failure.kind;
-    message = failure.message;
-    path;
-    line;
-    column;
-  }
+  diagnostic ?line ?column (safe_kind failure.kind) path failure.message
 
 let locate_statement lines (statement : Runtime.statement) =
-  let raw = source_line lines statement.line in
   {
     line = statement.line;
-    column = Program.source_column raw 0;
+    column = source_column lines statement.line 0;
     source = statement.source;
     proposition = statement.proposition;
   }

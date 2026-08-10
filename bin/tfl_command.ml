@@ -17,6 +17,7 @@ let usage =
   tfl query [--json] FILE.tfl PROPOSITION
   tfl describe [--json] FILE.tfl TERM
   tfl render [--json] PROPOSITION
+  tfl [--json] --help
 
 FILE.tfl must be well-formed UTF-8. PROPOSITION and TERM are single command-line
 arguments; quote them in the shell when they contain spaces or special characters.
@@ -29,8 +30,44 @@ Exit statuses:
   4  internal failure
 |}
 
+(* Yojson deliberately preserves string bytes without validating UTF-8. Unix
+   paths do the same, so normalize every string at the final machine boundary
+   instead of relying on each record builder to remember which values came
+   from the operating system. *)
+let escape_invalid_utf8 text =
+  let hex = "0123456789ABCDEF" in
+  let escaped = Buffer.create (String.length text) in
+  let rec copy byte =
+    if byte < String.length text then (
+      let decoded = String.get_utf_8_uchar text byte in
+      if Uchar.utf_decode_is_valid decoded then (
+        let width = Uchar.utf_decode_length decoded in
+        Buffer.add_substring escaped text byte width;
+        copy (byte + width))
+      else
+        let value = Char.code text.[byte] in
+        Buffer.add_string escaped "\\x";
+        Buffer.add_char escaped hex.[value lsr 4];
+        Buffer.add_char escaped hex.[value land 0x0F];
+        copy (byte + 1))
+  in
+  copy 0;
+  Buffer.contents escaped
+
+let rec json_with_valid_utf8 (json : Yojson.Safe.t) : Yojson.Safe.t =
+  match json with
+  | `String text -> `String (escape_invalid_utf8 text)
+  | `Assoc fields ->
+      `Assoc
+        (List.map
+           (fun (name, value) ->
+             (escape_invalid_utf8 name, json_with_valid_utf8 value))
+           fields)
+  | `List values -> `List (List.map json_with_valid_utf8 values)
+  | (`Null | `Bool _ | `Int _ | `Intlit _ | `Float _) as scalar -> scalar
+
 let output_json json =
-  print_endline (Yojson.Safe.to_string json);
+  print_endline (Yojson.Safe.to_string (json_with_valid_utf8 json));
   flush stdout
 
 let output_human text =
@@ -110,13 +147,24 @@ let input_diagnostic label (failure : Tfl.Safe.failure) =
     column = Option.map (fun position -> position + 1) failure.pos;
   }
 
-let failure_status diagnostics =
-  if
-    List.exists
-      (fun diagnostic -> diagnostic.class_name = "internal")
-      diagnostics
-  then Command_status.Internal_failure
+let status_of_source_failures failures =
+  let is_internal (failure : Tfl.Source_file.diagnostic) =
+    failure.kind = Tfl.Source_file.Internal
+  in
+  if List.exists is_internal failures then Command_status.Internal_failure
   else Command_status.Input_failure
+
+let status_of_safe_failure (failure : Tfl.Safe.failure) =
+  match failure.kind with
+  | Tfl.Safe.Internal -> Command_status.Internal_failure
+  | _ -> Command_status.Input_failure
+
+let safe_or_fail ~json ~operation ~input_label = function
+  | Ok result -> result
+  | Error failure ->
+      emit_failure ~json operation
+        (status_of_safe_failure failure)
+        [ input_diagnostic input_label failure ]
 
 let located_statement_json (statement : Tfl.Source_file.statement) =
   `Assoc
@@ -134,26 +182,30 @@ let completeness_text (completeness : Tfl.Runtime.completeness) =
     | Some reason -> "incomplete: " ^ Tfl.Runtime.incompleteness_name reason
     | None -> "incomplete"
 
-let load_or_fail ~json operation path continue =
+let load_or_fail ~json operation path =
   match Tfl.Source_file.load path with
-  | Ok loaded -> continue loaded
+  | Ok loaded -> loaded
   | Error failures ->
       let diagnostics = List.map source_diagnostic failures in
-      emit_failure ~json operation (failure_status diagnostics) diagnostics
+      emit_failure ~json operation
+        (status_of_source_failures failures)
+        diagnostics
+
+let file_field loaded = ("file", `String (Tfl.Source_file.path loaded))
 
 let run_check ~json path =
-  load_or_fail ~json "check" path (fun loaded ->
-      let statements = Tfl.Source_file.statements loaded in
-      let count = List.length statements in
-      let human =
-        Printf.sprintf "%s: OK (%d statement%s)" path count
-          (if count = 1 then "" else "s")
-      in
-      emit_result ~json "check" Command_status.Success human
-        [
-          ("file", `String (Tfl.Source_file.path loaded));
-          ("statements", `List (List.map located_statement_json statements));
-        ])
+  let loaded = load_or_fail ~json "check" path in
+  let statements = Tfl.Source_file.statements loaded in
+  let count = List.length statements in
+  let human =
+    Printf.sprintf "%s: OK (%d statement%s)" path count
+      (if count = 1 then "" else "s")
+  in
+  emit_result ~json "check" Command_status.Success human
+    [
+      file_field loaded;
+      ("statements", `List (List.map located_statement_json statements));
+    ]
 
 let query_status (result : Tfl.Runtime.query_result) =
   match result.verdict with
@@ -190,16 +242,14 @@ let query_human (result : Tfl.Runtime.query_result) =
     support
 
 let run_query ~json path source =
-  load_or_fail ~json "query" path (fun loaded ->
-      match Tfl.Runtime.query (Tfl.Source_file.runtime loaded) source with
-      | Error failure ->
-          let diagnostics = [ input_diagnostic "query" failure ] in
-          emit_failure ~json "query" (failure_status diagnostics) diagnostics
-      | Ok result ->
-          let status = query_status result in
-          emit_result ~json "query" status (query_human result)
-            (("file", `String (Tfl.Source_file.path loaded))
-            :: Runtime_json.query_fields result))
+  let loaded = load_or_fail ~json "query" path in
+  let result =
+    Tfl.Runtime.query (Tfl.Source_file.runtime loaded) source
+    |> safe_or_fail ~json ~operation:"query" ~input_label:"query"
+  in
+  let status = query_status result in
+  emit_result ~json "query" status (query_human result)
+    (file_field loaded :: Runtime_json.query_fields result)
 
 let describe_human (result : Tfl.Runtime.term_result) =
   let answers =
@@ -218,19 +268,17 @@ let describe_human (result : Tfl.Runtime.term_result) =
     (completeness_text result.completeness)
 
 let run_describe ~json path source =
-  load_or_fail ~json "describe" path (fun loaded ->
-      match Tfl.Runtime.describe (Tfl.Source_file.runtime loaded) source with
-      | Error failure ->
-          let diagnostics = [ input_diagnostic "term" failure ] in
-          emit_failure ~json "describe" (failure_status diagnostics) diagnostics
-      | Ok result ->
-          let status =
-            if result.completeness.complete then Command_status.Success
-            else Command_status.Incomplete_search
-          in
-          emit_result ~json "describe" status (describe_human result)
-            (("file", `String (Tfl.Source_file.path loaded))
-            :: Runtime_json.describe_fields result))
+  let loaded = load_or_fail ~json "describe" path in
+  let result =
+    Tfl.Runtime.describe (Tfl.Source_file.runtime loaded) source
+    |> safe_or_fail ~json ~operation:"describe" ~input_label:"term"
+  in
+  let status =
+    if result.completeness.complete then Command_status.Success
+    else Command_status.Incomplete_search
+  in
+  emit_result ~json "describe" status (describe_human result)
+    (file_field loaded :: Runtime_json.describe_fields result)
 
 let proposition_of_ast proposition : Tfl.Runtime.proposition =
   {
@@ -241,17 +289,16 @@ let proposition_of_ast proposition : Tfl.Runtime.proposition =
   }
 
 let run_render ~json source =
-  match Tfl.Safe.parse ~where:"proposition" source with
-  | Error failure ->
-      let diagnostics = [ input_diagnostic "proposition" failure ] in
-      emit_failure ~json "render" (failure_status diagnostics) diagnostics
-  | Ok proposition ->
-      let proposition = proposition_of_ast proposition in
-      let human =
-        Printf.sprintf "%s\nTFL: %s" proposition.english proposition.tfl
-      in
-      emit_result ~json "render" Command_status.Success human
-        [ ("proposition", Runtime_json.proposition_json proposition) ]
+  let proposition =
+    Tfl.Safe.parse ~where:"proposition" source
+    |> safe_or_fail ~json ~operation:"render" ~input_label:"proposition"
+    |> proposition_of_ast
+  in
+  let human =
+    Printf.sprintf "%s\nTFL: %s" proposition.english proposition.tfl
+  in
+  emit_result ~json "render" Command_status.Success human
+    [ ("proposition", Runtime_json.proposition_json proposition) ]
 
 let usage_failure ~json message =
   let diagnostic =
@@ -286,9 +333,9 @@ let main () =
   let initial_json = List.exists (( = ) "--json") arguments in
   match extract_json arguments with
   | Error message -> usage_failure ~json:initial_json message
-  | Ok (_json, ([ "--help" ] | [ "-h" ])) ->
-      output_human usage;
-      exit 0
+  | Ok (json, ([ "--help" ] | [ "-h" ])) ->
+      emit_result ~json "help" Command_status.Success usage
+        [ ("usage", `String usage) ]
   | Ok (json, [ "check"; path ]) -> run_check ~json path
   | Ok (json, [ "query"; path; proposition ]) ->
       run_query ~json path proposition

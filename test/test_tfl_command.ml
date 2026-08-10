@@ -56,6 +56,16 @@ let with_temp contents run =
 
 let json output = Yojson.Safe.from_string output
 
+let well_formed_utf8 text =
+  let rec scan byte =
+    if byte >= String.length text then true
+    else
+      let decoded = String.get_utf_8_uchar text byte in
+      Uchar.utf_decode_is_valid decoded
+      && scan (byte + Uchar.utf_decode_length decoded)
+  in
+  scan 0
+
 let string_field name value =
   match Yojson.Safe.Util.member name value with
   | `String result -> result
@@ -74,6 +84,14 @@ let contains text fragment =
     && (String.sub text offset fragment_length = fragment || search (offset + 1))
   in
   fragment = "" || search 0
+
+let with_non_utf8_temp contents run =
+  let path, channel = Filename.open_temp_file "horos-command-\255-" ".tfl" in
+  output_string channel contents;
+  close_out channel;
+  Fun.protect
+    ~finally:(fun () -> if Sys.file_exists path then Sys.remove path)
+    (fun () -> run path)
 
 let () =
   test "the five public outcome classes have stable exit statuses" (fun () ->
@@ -235,5 +253,58 @@ let () =
           "2  input, file, usage, or compile failure";
           "3  incomplete search";
           "4  internal failure";
+        ];
+      List.iter
+        (fun arguments ->
+          let status, output =
+            run_from (Filename.get_temp_dir_name ()) arguments
+          in
+          check (status = 0) "machine help exit";
+          check (well_formed_utf8 output) "machine help is valid UTF-8";
+          let response = json output in
+          check
+            (Yojson.Safe.Util.member "ok" response = `Bool true)
+            "machine help succeeds";
+          check_eq (string_field "schema" response) "tfl-cli-0.1";
+          check_eq (string_field "operation" response) "help";
+          check_eq (string_field "status" response) "success";
+          check (int_field "exit_status" response = 0) "machine help status";
+          check
+            (contains (string_field "usage" response) "4  internal failure")
+            "machine help carries usage text")
+        [
+          [ "--json"; "--help" ];
+          [ "--help"; "--json" ];
+          [ "--json"; "-h" ];
+          [ "-h"; "--json" ];
         ]);
+  test "machine output safely represents non-UTF-8 Unix path bytes" (fun () ->
+      with_non_utf8_temp "−Man+Animal\n" (fun path ->
+          check
+            (not (well_formed_utf8 path))
+            "the probe path contains a malformed UTF-8 byte";
+          let directory = Filename.dirname path
+          and file = Filename.basename path in
+          let status, output = run_from directory [ "check"; "--json"; file ] in
+          check (status = 0) "non-UTF-8 path success exit";
+          check (well_formed_utf8 output) "success JSON is valid UTF-8";
+          let response = json output in
+          check
+            (contains (string_field "file" response) "\\xFF")
+            "success JSON visibly escapes the malformed path byte";
+          Sys.remove path;
+          let status, output = run_from directory [ "check"; "--json"; file ] in
+          check (status = 2) "non-UTF-8 path failure exit";
+          check (well_formed_utf8 output) "failure JSON is valid UTF-8";
+          let response = json output in
+          let first_error =
+            Yojson.Safe.Util.member "errors" response
+            |> Yojson.Safe.Util.to_list |> List.hd
+          in
+          check
+            (contains (string_field "source" first_error) "\\xFF")
+            "failure source visibly escapes the malformed path byte";
+          check
+            (contains (string_field "message" first_error) "\\xFF")
+            "failure message visibly escapes the malformed path byte"));
   finish "tfl command tests"
