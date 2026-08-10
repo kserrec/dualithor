@@ -49,8 +49,10 @@ node engine/tfl.test.js
 node engine/oracle.js -n 20000
 ```
 
-The opam switch is `default` with system OCaml 4.14.1. `opam exec --` supplies the
-environment. `dune test` caches results; use `--force` when a real rerun is required.
+The local `default` opam switch uses system OCaml 4.14.1 and is a development convenience,
+not a supported release environment. Package and CI verification use the security-fixed
+OCaml 4.14.4 contract. `opam exec --` supplies the selected environment. `dune test`
+caches results; use `--force` when a real rerun is required.
 
 ## Semantic and correctness bar
 
@@ -72,10 +74,11 @@ environment. `dune test` caches results; use `--force` when a real rerun is requ
   phase in the plan before changing code.
 - Build the smallest complete implementation of the current phase. Do not add plugin
   systems, generalized frameworks, configuration, or abstractions without a current use.
-- A dependency must earn its place. Keep `yojson` for the JSON boundary, the existing
-  Cohttp/TLS stack for the legacy network client while that code remains, and `qcheck` for
-  property testing. Any new dependency needs a real use site and a one-line cost/reason
-  record before it is added.
+- A dependency must earn its place. Keep `yojson` for the JSON boundary and `qcheck` for
+  property testing. The Cohttp/TLS graph exists only for tests and manual development of
+  the retained legacy translation client; it must not enter the normal installed Horos
+  runtime. Any new dependency needs a real use site and a one-line cost/reason record
+  before it is added.
 - Tests protect concrete threats: a wrong verdict, hidden incompleteness, changed proof,
   unsafe input, nondeterministic build, or interface drift. Do not add coverage filler.
 - Public operations are total and bounded. User mistakes, resource limits, and internal
@@ -86,8 +89,8 @@ environment. `dune test` caches results; use `--force` when a real rerun is requ
 ## Public-repository hygiene
 
 - No secrets, private notes, unexplained binaries, or encoded blobs are committed.
-- `.env`, licensed benchmark corpora, model caches, and raw external datasets remain
-  untracked under their existing rules.
+- `.env`, every `*.env`, `.env.*`, and `*.env.*` variant, licensed benchmark corpora,
+  model caches, and raw external datasets remain untracked under their existing rules.
 - New version-1 examples and tests run offline with no account, model, API key, or network
   dependency.
 

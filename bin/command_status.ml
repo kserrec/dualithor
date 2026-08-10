@@ -18,3 +18,16 @@ let name = function
   | Input_failure -> "input-failure"
   | Incomplete_search -> "incomplete-search"
   | Internal_failure -> "internal-failure"
+
+type unexpected_failure = {
+  status : t;
+  message : string;
+}
+
+let unexpected_failure error =
+  { status = Internal_failure; message = Printexc.to_string error }
+
+let protect run =
+  match run () with
+  | value -> Ok value
+  | exception error -> Error (unexpected_failure error)

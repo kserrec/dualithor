@@ -1,5 +1,15 @@
 _build/
+
+# Dune regenerates this root package manifest for @install; the authoritative
+# package contract lives in dune-project and the generated opam files.
+/*.install
+
+# Dotenv files are opaque secret containers in every directory and naming
+# variant; none belongs in repository history.
 .env
+*.env
+.env.*
+*.env.*
 
 # Local spend ledger (tokens/costs/ids, never credentials) — a growing
 # machine log, not repo material.

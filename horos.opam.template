@@ -1,8 +1,10 @@
-# Horos requires Mirage Crypto 2.3.0, which fixes OSEC-2026-14 and OSEC-2026-15 but was not yet in
-# the official opam index when this floor landed. All four packages come from
-# one release and constrain one another to the exact version, so pin the whole
-# set to the peeled v2.3.0 commit. Remove these pins once 2.3.0 is indexed; keep
-# the >= 2.3.0 dependency floors in dune-project.
+# Horos's retained development-only translation tests require Mirage Crypto
+# 2.3.0, which fixes OSEC-2026-14 and OSEC-2026-15 but was not yet in the
+# official opam index when this floor landed. All four packages come from one
+# release and constrain one another to the exact version, so pin the whole set
+# to the peeled v2.3.0 commit. Remove these pins once 2.3.0 is indexed; keep the
+# test-only >= 2.3.0 dependency floors in dune-project. A normal Horos install
+# does not select this network/TLS graph.
 pin-depends: [
   [
     "mirage-crypto.2.3.0"

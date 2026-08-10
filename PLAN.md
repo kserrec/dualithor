@@ -284,6 +284,21 @@ runtime serializers and remains byte-contract compatible. Focused loader, comman
 runtime, program, process, and adversarial suites are green; the forced full suite and an
 isolated-prefix install/query from outside the checkout are also green.
 
+The post-delivery Phase 3 security audit found and fixed two hostile-path defects: human
+output now renders terminal controls and malformed path bytes visibly, and the loader
+rejects FIFOs, devices, sockets, directories, and symlinks to nonregular targets without
+waiting for content. Repository guards now cover every dotenv filename variant. The
+historical translation client's Lwt/Cohttp/TLS/Mirage graph is retained for tests and
+manual development but filtered out of a normal Horos installation in both the generated
+manifest and transitive lock.
+
+The follow-on Phase 3 test audit used ten targeted invalid mutations to challenge those
+claims. It closed every surviving gap with deterministic check/open race and descriptor
+inheritance probes, loader byte-cap and exact file-semantics cases, separate standard
+output/error capture, multi-diagnostic and usage matrices, full terminal-control class
+coverage, explicit unexpected-exception classification, and a clean normal-install CI job
+that invokes the installed public `tfl` name outside the checkout.
+
 ### Phase 4 — Interactive shell ⏭ NEXT
 
 1. Add a REPL that loads a program once and accepts ground queries, term queries,

@@ -19,6 +19,31 @@ jobs:
       - run: opam exec -- dune build
       - run: opam exec -- dune test
 
+      # Dotenv names are opaque secret containers regardless of where they
+      # appear or which suffix they use. Check both the ignore contract and
+      # the irreversible tracked-history boundary.
+      - name: dotenv files stay ignored and untracked
+        run: |
+          for p in \
+            .env .env.local service.env service.env.local \
+            nested/.env nested/.env.local nested/service.env nested/service.env.local
+          do
+            git check-ignore -q --no-index "$p" \
+              || { echo "::error::$p is no longer gitignored"; exit 1; }
+          done
+          tracked=$(git ls-files -- \
+            ':(glob).env' \
+            ':(glob).env.*' \
+            ':(glob)**/.env' \
+            ':(glob)**/.env.*' \
+            ':(glob)**/*.env' \
+            ':(glob)**/*.env.*')
+          if [ -n "$tracked" ]; then
+            echo "::error::dotenv files are tracked"
+            echo "$tracked"
+            exit 1
+          fi
+
       # Licensed benchmark corpora must stay out of a public MIT repo's
       # history, and history is the part you cannot take back (2026-08-01
       # audit). Fails if an ignore rule is dropped or a corpus gets tracked.
@@ -32,3 +57,53 @@ jobs:
           if [ -n "$tracked" ]; then
             echo "::error::corpus or cache files are tracked: $tracked"; exit 1
           fi
+
+  normal-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: ocaml/setup-ocaml@605a7e998e76e035b82c14d618a6e1010732c4ce # v3.7.1
+        with:
+          ocaml-compiler: "4.14.4"
+
+      # This intentionally omits --with-test. Compare the clean switch before
+      # and after dependency installation so any test/development package that
+      # leaks into the shipped runtime fails by name, including a transitive
+      # package whose filter is accidentally dropped from the lock.
+      - name: normal installation excludes the test and network graph
+        run: |
+          before="$RUNNER_TEMP/horos-packages-before.txt"
+          after="$RUNNER_TEMP/horos-packages-after.txt"
+          opam list --installed --short --color=never | sort > "$before"
+          opam install . --deps-only --locked --yes
+          opam list --installed --short --color=never | sort > "$after"
+          while IFS= read -r package
+          do
+            case "$package" in
+              dune|yojson) ;;
+              *)
+                echo "::error::normal Horos dependency leaked into the runtime: $package"
+                exit 1
+                ;;
+            esac
+          done < <(comm -13 "$before" "$after")
+
+      # Install the actual package and invoke its public executable from a
+      # directory outside the checkout. A renamed or missing public_name can
+      # no longer pass merely because _build/default/bin/tfl_command.exe exists.
+      - name: installed tfl works outside the checkout
+        run: |
+          opam install . --locked --yes
+          smoke_dir="$RUNNER_TEMP/horos-installed-smoke"
+          mkdir -p "$smoke_dir"
+          printf '%s\n' '-Man+Animal' > "$smoke_dir/knowledge.tfl"
+          cd "$smoke_dir"
+          output="$(opam exec -- tfl check --json knowledge.tfl)"
+          case "$output" in
+            *'"schema":"tfl-cli-0.1"'*'"exit_status":0'*) ;;
+            *)
+              echo "::error::installed tfl did not return the Phase 3 machine contract"
+              echo "$output"
+              exit 1
+              ;;
+          esac

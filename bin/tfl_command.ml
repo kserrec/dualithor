@@ -10,6 +10,12 @@ type diagnostic = {
 }
 
 let cli_schema = "tfl-cli-0.1"
+let hex = "0123456789ABCDEF"
+
+let add_byte_escape buffer value =
+  Buffer.add_string buffer "\\x";
+  Buffer.add_char buffer hex.[value lsr 4];
+  Buffer.add_char buffer hex.[value land 0x0F]
 
 let usage =
   {|Usage:
@@ -19,8 +25,9 @@ let usage =
   tfl render [--json] PROPOSITION
   tfl [--json] --help
 
-FILE.tfl must be well-formed UTF-8. PROPOSITION and TERM are single command-line
-arguments; quote them in the shell when they contain spaces or special characters.
+FILE.tfl must name a regular, well-formed UTF-8 file. PROPOSITION and TERM are
+single command-line arguments; quote them in the shell when they contain spaces or
+special characters.
 
 Exit statuses:
   0  success
@@ -35,7 +42,6 @@ Exit statuses:
    instead of relying on each record builder to remember which values came
    from the operating system. *)
 let escape_invalid_utf8 text =
-  let hex = "0123456789ABCDEF" in
   let escaped = Buffer.create (String.length text) in
   let rec copy byte =
     if byte < String.length text then (
@@ -46,9 +52,45 @@ let escape_invalid_utf8 text =
         copy (byte + width))
       else
         let value = Char.code text.[byte] in
-        Buffer.add_string escaped "\\x";
-        Buffer.add_char escaped hex.[value lsr 4];
-        Buffer.add_char escaped hex.[value land 0x0F];
+        add_byte_escape escaped value;
+        copy (byte + 1))
+  in
+  copy 0;
+  Buffer.contents escaped
+
+(* Human output has trusted layout but interpolates operating-system paths and
+   language text. Escape controls at those field boundaries so a hostile path
+   cannot clear a terminal, create a hyperlink, or forge another output line.
+   Unicode formatting controls are visible too, preventing bidi/zero-width
+   path spoofing without changing ordinary UTF-8 text. *)
+let is_terminal_format_control code_point =
+  code_point <= 0x1F
+  || (code_point >= 0x7F && code_point <= 0x9F)
+  || code_point = 0x061C
+  || (code_point >= 0x200B && code_point <= 0x200F)
+  || (code_point >= 0x2028 && code_point <= 0x202E)
+  || (code_point >= 0x2060 && code_point <= 0x206F)
+  || code_point = 0xFEFF
+  || (code_point >= 0xFFF9 && code_point <= 0xFFFB)
+
+let add_code_point_escape buffer code_point =
+  if code_point <= 0x7F then add_byte_escape buffer code_point
+  else Buffer.add_string buffer (Printf.sprintf "\\u{%04X}" code_point)
+
+let escape_terminal_field text =
+  let escaped = Buffer.create (String.length text) in
+  let rec copy byte =
+    if byte < String.length text then
+      let decoded = String.get_utf_8_uchar text byte in
+      if Uchar.utf_decode_is_valid decoded then (
+        let width = Uchar.utf_decode_length decoded in
+        let code_point = Uchar.to_int (Uchar.utf_decode_uchar decoded) in
+        if is_terminal_format_control code_point then
+          add_code_point_escape escaped code_point
+        else Buffer.add_substring escaped text byte width;
+        copy (byte + width))
+      else (
+        add_byte_escape escaped (Char.code text.[byte]);
         copy (byte + 1))
   in
   copy 0;
@@ -106,14 +148,16 @@ let failure_json operation status diagnostics =
     ]
 
 let human_diagnostic diagnostic =
+  let source = escape_terminal_field diagnostic.source
+  and class_name = escape_terminal_field diagnostic.class_name
+  and message = escape_terminal_field diagnostic.message in
   let location =
     match (diagnostic.line, diagnostic.column) with
-    | Some line, Some column ->
-        Printf.sprintf "%s:%d:%d" diagnostic.source line column
-    | Some line, None -> Printf.sprintf "%s:%d" diagnostic.source line
-    | None, _ -> diagnostic.source
+    | Some line, Some column -> Printf.sprintf "%s:%d:%d" source line column
+    | Some line, None -> Printf.sprintf "%s:%d" source line
+    | None, _ -> source
   in
-  Printf.sprintf "%s: %s: %s" location diagnostic.class_name diagnostic.message
+  Printf.sprintf "%s: %s: %s" location class_name message
 
 let emit_result ~json operation status human fields =
   if json then output_json (success_json operation status fields)
@@ -198,7 +242,9 @@ let run_check ~json path =
   let statements = Tfl.Source_file.statements loaded in
   let count = List.length statements in
   let human =
-    Printf.sprintf "%s: OK (%d statement%s)" path count
+    Printf.sprintf "%s: OK (%d statement%s)"
+      (escape_terminal_field path)
+      count
       (if count = 1 then "" else "s")
   in
   emit_result ~json "check" Command_status.Success human
@@ -232,11 +278,13 @@ let query_human (result : Tfl.Runtime.query_result) =
     match result.support with
     | None -> ""
     | Some support ->
-        Printf.sprintf "\nSupport: %s [%s]" support.proposition.english
-          support.proposition.tfl
+        Printf.sprintf "\nSupport: %s [%s]"
+          (escape_terminal_field support.proposition.english)
+          (escape_terminal_field support.proposition.tfl)
   in
   Printf.sprintf "%s\nQuery: %s [%s]\nMethod: %s (%s)%s" outcome
-    result.query.english result.query.tfl
+    (escape_terminal_field result.query.english)
+    (escape_terminal_field result.query.tfl)
     (Tfl.Runtime.method_name result.method_)
     (completeness_text result.completeness)
     support
@@ -258,12 +306,15 @@ let describe_human (result : Tfl.Runtime.term_result) =
     | answers ->
         answers
         |> List.map (fun (answer : Tfl.Runtime.term_answer) ->
-            Printf.sprintf "  %s [%s]" answer.proposition.english
-              answer.proposition.tfl)
+            Printf.sprintf "  %s [%s]"
+              (escape_terminal_field answer.proposition.english)
+              (escape_terminal_field answer.proposition.tfl))
         |> String.concat "\n"
   in
   Printf.sprintf "What follows about %s [%s]:\n%s\nMethod: %s (%s)"
-    result.term.english result.term.tfl answers
+    (escape_terminal_field result.term.english)
+    (escape_terminal_field result.term.tfl)
+    answers
     (Tfl.Runtime.method_name result.method_)
     (completeness_text result.completeness)
 
@@ -295,7 +346,9 @@ let run_render ~json source =
     |> proposition_of_ast
   in
   let human =
-    Printf.sprintf "%s\nTFL: %s" proposition.english proposition.tfl
+    Printf.sprintf "%s\nTFL: %s"
+      (escape_terminal_field proposition.english)
+      (escape_terminal_field proposition.tfl)
   in
   emit_result ~json "render" Command_status.Success human
     [ ("proposition", Runtime_json.proposition_json proposition) ]
@@ -346,18 +399,17 @@ let main () =
       usage_failure ~json (Printf.sprintf "invalid arguments for %S" command)
 
 let () =
-  match main () with
-  | () -> ()
-  | exception error ->
+  match Command_status.protect main with
+  | Ok () -> ()
+  | Error unexpected ->
       let json = Array.to_list Sys.argv |> List.exists (( = ) "--json") in
       let diagnostic =
         {
           class_name = "internal";
-          message = Printexc.to_string error;
+          message = unexpected.message;
           source = "tfl";
           line = None;
           column = None;
         }
       in
-      emit_failure ~json "command" Command_status.Internal_failure
-        [ diagnostic ]
+      emit_failure ~json "command" unexpected.status [ diagnostic ]

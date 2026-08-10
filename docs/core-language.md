@@ -201,7 +201,9 @@ it returns an abstract executable program only when every source line parses and
 This compile boundary is a host/runtime layer over `core-0.1`, not new logical syntax.
 
 The Phase 3 filesystem boundary accepts only paths with the case-sensitive `.tfl` suffix
-and only well-formed UTF-8 bytes. It does not normalize the file before compilation.
+that resolve to regular filesystem files, and only well-formed UTF-8 bytes. Named pipes,
+devices, sockets, and directories are file-input failures; the loader does not wait for or
+read from them. It does not normalize a regular file before compilation.
 Located statements and diagnostics use one-based physical lines and one-based Unicode
 code-point columns in the original line, including leading whitespace; columns are never
 UTF-8 byte offsets or display-dependent tab stops. A malformed UTF-8 sequence is a lexical

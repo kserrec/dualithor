@@ -63,6 +63,10 @@ opam exec -- dune build
 opam exec -- dune test
 ```
 
+`--with-test` deliberately installs the larger offline test and retained legacy-translation
+development graph. A normal Horos package installation selects no Lwt, Cohttp, TLS, or
+Mirage Crypto dependency; the shipped `tfl` and `horos` commands have no network client.
+
 Save a program such as this as `knowledge.tfl`:
 
 ```text

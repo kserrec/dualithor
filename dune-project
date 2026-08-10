@@ -23,13 +23,16 @@
   dune
   (qcheck-core :with-test)
   yojson
-  lwt
-  cohttp-lwt-unix
-  tls-lwt
+  ;; The retained translation client is historical development code, not an
+  ;; installed Horos runtime. Keep its network/TLS graph behind [with-test] so
+  ;; a normal [tfl] installation has no network stack.
+  (lwt :with-test)
+  (cohttp-lwt-unix :with-test)
+  (tls-lwt :with-test)
   ;; TLS reaches these packages transitively. Keep the fixed security release
-  ;; in the solver contract while the exact temporary source pins live in the
-  ;; generated opam template.
-  (mirage-crypto (>= 2.3.0))
-  (mirage-crypto-rng (>= 2.3.0))
-  (mirage-crypto-pk (>= 2.3.0))
-  (mirage-crypto-ec (>= 2.3.0))))
+  ;; in the development solver contract while the exact temporary source pins
+  ;; live in the generated opam template.
+  (mirage-crypto (and :with-test (>= 2.3.0)))
+  (mirage-crypto-rng (and :with-test (>= 2.3.0)))
+  (mirage-crypto-pk (and :with-test (>= 2.3.0)))
+  (mirage-crypto-ec (and :with-test (>= 2.3.0)))))

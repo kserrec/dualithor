@@ -1,4 +1,4 @@
-(** Total, bounded loading of one UTF-8 [.tfl] source file. *)
+(** Total, bounded loading of one regular UTF-8 [.tfl] source file. *)
 
 type failure_kind =
   | File
@@ -30,3 +30,13 @@ val load : string -> (loaded, diagnostic list) result
 val path : loaded -> string
 val runtime : loaded -> Runtime.program
 val statements : loaded -> statement list
+
+(** Synchronization hooks for deterministic filesystem-boundary regression
+    tests. This module is not a stable production API. *)
+module For_testing : sig
+  val load :
+    ?after_stat:(unit -> unit) ->
+    ?after_open:(Unix.file_descr -> unit) ->
+    string ->
+    (loaded, diagnostic list) result
+end

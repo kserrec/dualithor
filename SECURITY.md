@@ -1,10 +1,11 @@
 # Security
 
-Horos is currently a local OCaml library and a JSON-lines command
-process. It has no network server, authentication layer, browser surface, or
-multi-user state. Its primary hostile-input boundary is nevertheless real:
-formulas and JSON may come from language models, files, pipes, or future
-integrations and must be treated as untrusted.
+Horos is currently a local OCaml library, a JSON-lines command process, and the
+human-facing `tfl` command. It has no network server, authentication layer,
+browser surface, or multi-user state. Its primary hostile-input boundary is
+nevertheless real: formulas, JSON, paths, and source files may come from language
+models, scripts, repositories, or future integrations and must be treated as
+untrusted.
 
 The repository also retains an optional OpenRouter translation client from the
 earlier research system. Invoking that client sends supplied text to a hosted
@@ -31,6 +32,7 @@ The guarded boundaries enforce these limits:
 | One proposition source | 65,536 bytes | `resource_limit` |
 | One argument | 1,024 premises and 1,048,576 combined source bytes | `resource_limit` attributed to `argument` |
 | One program | 1,048,576 bytes total, 65,536 bytes per line, 10,000 physical lines, and 1,024 parsed propositions | `resource_limit` |
+| One `.tfl` path | Opened target must be a regular file; read is capped at 1,048,576 bytes | `file` refusal for pipes, devices, sockets, and directories; `resource_limit` for excess bytes |
 | Parser nesting | 64 open parentheses or brackets | `syntactic` refusal before recursive descent |
 | Complete truth-table equivalence | 16 atoms, at most 8,388,608 estimated DNF bytes, and at most 8,388,608 estimated AST-node visits | Falls back to bounded, incomplete rewrite equivalence |
 
@@ -41,34 +43,47 @@ The CLI reads incrementally rather than calling `input_line`, so its request
 limit applies before JSON parsing or whole-line allocation.
 
 Quoted names reject C0 and C1 controls, including terminal escape characters,
-and Unicode bidirectional formatting controls. This prevents a future
-human-facing terminal command from printing a name that executes a control
-sequence or visually reverses the formal source.
+and Unicode bidirectional formatting controls. Independently, the human `tfl`
+boundary visibly escapes controls, malformed bytes, bidi marks, and zero-width
+formatting in every interpolated field. Operating-system filenames can therefore
+be diagnosed without executing a terminal sequence or forging a second line.
+
+The `.tfl` loader checks the path type, opens with nonblocking and close-on-exec
+flags, then verifies the opened descriptor is still regular before reading. The
+second check closes the type-check/open race for nonregular replacements; a FIFO
+or symlink to one cannot wait for a writer before refusal.
 
 ## Secrets and repository data
 
-- `OPENROUTER_API_KEY` belongs only in the gitignored `.env` file. The
-  current local file is mode `0600`; a new checkout or copied secret file
-  should preserve owner-only permissions. Tests, cached replies, and usage
+- `OPENROUTER_API_KEY` belongs only in a local, owner-protected dotenv file.
+  `.env`, `*.env`, `.env.*`, and `*.env.*` are ignored in every directory, and
+  CI rejects any tracked dotenv filename. Tests, cached replies, and usage
   records must never contain the credential.
 - Third-party benchmark corpora and cached model output stay under ignored
   data directories. CI checks that `data/raw/`, `data/results/`,
   `data/eval/`, and `data/cache/` remain ignored and untracked.
 - The 2026-08-09 history scan found no credential-shaped value in tracked
-  history and no tracked `.env` file.
+  history and no tracked dotenv file.
 
 ## Build and dependency integrity
 
 - The supported compiler line is OCaml `>= 4.14.4` and `< 5.0`. This
   excludes the audited OCaml 4.14.1 vulnerabilities OSEC-2026-01,
   OSEC-2026-04, and OSEC-2026-05.
-- `horos.opam.locked` fixes the complete tested dependency graph, and
-  CI installs it with `opam install --locked`.
+- `horos.opam.locked` fixes the complete tested dependency graph, and CI
+  installs it with `opam install --locked --with-test`. Every package reachable
+  only through the retained translation client or test suite keeps its
+  `with-test` filter in the transitive lock.
+- A normal Horos install selects OCaml, Dune, `yojson`, and OCaml's base Unix
+  support; it does not select Lwt, Cohttp, TLS, or Mirage Crypto. Those roughly
+  70 packages remain available only for offline tests and manual development of
+  the historical translation client.
 - Mirage Crypto 2.3.0 fixes OSEC-2026-14 and OSEC-2026-15. Until that release
   reaches the official opam index, the four interdependent Mirage Crypto
-  packages are source-pinned to the peeled upstream v2.3.0 commit
-  `00ed1238df988c6c109c753cedb87388d352a60c`. The version floors remain in
-  `dune-project`; the temporary source pins can be removed after indexing.
+  packages used by the development-only network graph are source-pinned to the
+  peeled upstream v2.3.0 commit
+  `00ed1238df988c6c109c753cedb87388d352a60c`. The test-only version floors remain
+  in `dune-project`; the temporary source pins can be removed after indexing.
 - GitHub Actions are pinned to full immutable commit hashes, and the workflow
   token has only `contents: read`.
 - The generated opam metadata passes `opam lint`. The locked graph and the
@@ -95,6 +110,10 @@ rerunning the dependency audit and full test gates.
 - Rewrite equivalence is intentionally incomplete. Exceeding a truth-table
   resource budget can therefore turn a complete comparison into a documented
   rewrite result, never into a false claim of completeness.
+- A regular file can still wait on an unavailable network filesystem. Phase 33
+  owns enforceable wall-time and cancellation controls; the Phase 3 hardening
+  closes the immediately exploitable local FIFO/device case without claiming a
+  portable filesystem deadline that OCaml 4.14 cannot enforce safely here.
 
 ## Audit history
 
@@ -114,6 +133,26 @@ rerunning the dependency audit and full test gates.
   rather than `internal`, the package rename left CI's pinned, read-only,
   path-based workflow intact, and the commit adds no secret or stale-name
   leak. No new finding; no code change required.
+- **2026-08-10:** audited the Phase 3 `.tfl` loader and human command. Concrete
+  hostile filenames proved raw ESC/newline terminal injection, and a named-pipe
+  probe proved that `open_in_bin` could wait indefinitely before the documented
+  byte bound began. Fixed both boundaries with visible field escaping and a
+  nonblocking, descriptor-verified regular-file loader; added direct FIFO,
+  symlink, control-path, malformed-byte, and invalid-path regressions. Expanded
+  dotenv ignores and CI tracking guards to every naming variant. Moved the
+  legacy Lwt/Cohttp/TLS/Mirage graph behind `with-test` throughout the generated
+  manifest and transitive lock, leaving the installed commands network-free.
+  The locked dependency solve, full forced suite, opam lint, and an
+  isolated-prefix install/check/query all passed under OCaml 4.14.4.
+- **2026-08-10:** mutation-audited the Phase 3 regression tests after the
+  security fixes. Ten deliberately invalid boundary changes initially survived:
+  install-name drift, removal of nonblocking/close-on-exec/post-open checks,
+  unbounded file reading, wrong output streams, truncated diagnostics, duplicate
+  machine flags, incomplete control escaping, uppercase suffix acceptance,
+  regular-symlink refusal, and internal-status misclassification. Added
+  deterministic regressions for every case plus a clean non-test installation
+  job that rejects any dependency beyond Dune and `yojson` before installing and
+  invoking the public `tfl` executable outside the checkout.
 - **2026-08-09:** audited the full working session and complete 70-package
   dependency graph. Fixed streaming request allocation, duplicate parser
   tokenization, proposition/program/argument size bounds, DNF output and work

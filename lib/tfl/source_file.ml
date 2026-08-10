@@ -43,20 +43,69 @@ let diagnostic ?line ?column kind path message =
   { kind; message; path; line; column }
 
 let file_failure path message = diagnostic File path message
+let regular_file_message = "TFL source path must refer to a regular file"
 
-let read_bounded path =
-  match open_in_bin path with
-  | exception Sys_error message -> Error (file_failure path message)
-  | channel ->
+let unix_failure path error =
+  file_failure path (Printf.sprintf "%s: %s" path (Unix.error_message error))
+
+let operation_failure path = function
+  | Unix.Unix_error (error, _, _) -> unix_failure path error
+  | Sys_error message | Invalid_argument message -> file_failure path message
+  | error ->
+      diagnostic Internal path
+        ("Unexpected file-operation failure: " ^ Printexc.to_string error)
+
+let close_noerr descriptor =
+  try Unix.close descriptor with Unix.Unix_error _ -> ()
+
+let regular_file_stats path =
+  match Unix.stat path with
+  | stats when stats.st_kind = Unix.S_REG -> Ok ()
+  | _ -> Error (file_failure path regular_file_message)
+  | exception error -> Error (operation_failure path error)
+
+let open_regular ?(after_stat = fun () -> ())
+    ?(after_open = fun (_ : Unix.file_descr) -> ()) path =
+  match regular_file_stats path with
+  | Error _ as failure -> failure
+  | Ok () -> (
+      match after_stat () with
+      | exception error -> Error (operation_failure path error)
+      | () -> (
+          match
+            Unix.openfile path
+              [ Unix.O_RDONLY; Unix.O_NONBLOCK; Unix.O_CLOEXEC ]
+              0
+          with
+          | descriptor -> (
+              match after_open descriptor with
+              | exception error ->
+                  close_noerr descriptor;
+                  Error (operation_failure path error)
+              | () -> (
+                  match Unix.fstat descriptor with
+                  | stats when stats.st_kind = Unix.S_REG -> Ok descriptor
+                  | _ ->
+                      close_noerr descriptor;
+                      Error (file_failure path regular_file_message)
+                  | exception error ->
+                      close_noerr descriptor;
+                      Error (operation_failure path error)))
+          | exception error -> Error (operation_failure path error)))
+
+let read_bounded ?after_stat ?after_open path =
+  match open_regular ?after_stat ?after_open path with
+  | Error _ as failure -> failure
+  | Ok descriptor ->
       Fun.protect
-        ~finally:(fun () -> close_in_noerr channel)
+        ~finally:(fun () -> close_noerr descriptor)
         (fun () ->
           let chunk = Bytes.create 65_536 in
           let contents = Buffer.create 4_096 in
           let rec read total =
             let remaining = Safe.max_program_bytes + 1 - total in
             let requested = min (Bytes.length chunk) remaining in
-            match input channel chunk 0 requested with
+            match Unix.read descriptor chunk 0 requested with
             | 0 -> Ok (Buffer.contents contents)
             | count when total + count > Safe.max_program_bytes ->
                 Error
@@ -70,6 +119,8 @@ let read_bounded path =
           in
           match read 0 with
           | result -> result
+          | exception Unix.Unix_error (error, _, _) ->
+              Error (unix_failure path error)
           | exception Sys_error message -> Error (file_failure path message)
           | exception error ->
               Error
@@ -146,7 +197,7 @@ let compile path source =
       in
       Ok { source_path = path; compiled; located_statements }
 
-let load path =
+let load_with_hooks ?after_stat ?after_open path =
   if not (Filename.check_suffix path ".tfl") then
     Error
       [
@@ -154,9 +205,15 @@ let load path =
           "TFL source files must use the case-sensitive .tfl extension";
       ]
   else
-    match read_bounded path with
+    match read_bounded ?after_stat ?after_open path with
     | Error failure -> Error [ failure ]
     | Ok source -> (
         match validate_utf8 path source with
         | Error failure -> Error [ failure ]
         | Ok () -> compile path source)
+
+let load path = load_with_hooks path
+
+module For_testing = struct
+  let load = load_with_hooks
+end

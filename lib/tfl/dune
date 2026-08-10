@@ -1,3 +1,4 @@
 (library
  (name tfl)
- (public_name horos.tfl))
+ (public_name horos.tfl)
+ (libraries unix))

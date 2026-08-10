@@ -14,12 +14,15 @@ operations and cannot change a logical result.
 
 ## `.tfl` source files
 
-A source path must have the case-sensitive `.tfl` suffix. Its bytes must be well-formed
-UTF-8 and must fit the existing one-mebibyte program-source limit. The file contains the
-same line-oriented `core-0.1` program accepted by `Tfl.Runtime.compile`: after surrounding
-whitespace and a trailing `--` comment are removed, every nonblank physical line is one
-proposition. Imports, declarations, query syntax, and commands are not source-file syntax
-in this phase.
+A source path must have the case-sensitive `.tfl` suffix and resolve to a regular
+filesystem file. Named pipes, devices, sockets, and directories are rejected as file input
+without reading content or waiting for a pipe writer; a symbolic link is accepted only
+when its opened target is regular. Regular-file bytes must be well-formed UTF-8 and fit the
+existing one-mebibyte program-source limit. The file contains the same line-oriented
+`core-0.1` program accepted by `Tfl.Runtime.compile`: after surrounding whitespace and a
+trailing `--` comment are removed, every nonblank physical line is one proposition.
+Imports, declarations, query syntax, and commands are not source-file syntax in this
+phase.
 
 Locations are stable across every `tfl` command:
 
@@ -53,6 +56,13 @@ expression when it contains spaces or shell-significant characters.
 
 `--help` and `-h` print the command reference and exit successfully. With `--json`, help is
 a successful `help` operation whose `usage` field contains the same reference text.
+
+Human output keeps only the command's own line breaks raw. Control characters from an
+interpolated path, diagnostic, or language value are rendered visibly: ASCII controls and
+malformed bytes use `\xNN`, while C1, Unicode bidirectional, and zero-width formatting
+controls use `\u{NNNN}`. Ordinary well-formed UTF-8 remains unchanged. A hostile filename
+therefore cannot clear or retitle the terminal, create a terminal hyperlink, or forge
+another output line.
 
 ### `check`
 
@@ -120,6 +130,11 @@ can return supported answers with status `3`, and `query` can return an exact op
 }
 ```
 
+Every structured record, including a handled failure, is written to standard output and
+leaves standard error empty. Human successes and help use standard output; human input,
+file, usage, and internal failures use standard error. This separation lets scripts parse
+machine output without merging diagnostic streams.
+
 Successful operations add their corresponding stable runtime fields. File-backed
 operations also add `file`; `check` statement records add one-based `line` and `column`.
 Query and description results use the same proposition, completeness, support, proof, and
@@ -134,7 +149,9 @@ Failures set `ok` to `false` and contain an `errors` array. Each error has `clas
 `message`, `source`, `line`, and `column`; a field is JSON `null` only when no source
 location applies. The process exit status and the JSON `exit_status` field always agree.
 
-The command does not require an account, network connection, model, or new external
-package. File reading, UTF-8 validation, argument parsing, and exit classification use the
-OCaml standard library; `yojson`, already required by the existing process boundary,
-serializes explicit machine mode.
+The command does not require an account, network connection, or model. File reading, UTF-8
+validation, argument parsing, terminal escaping, and exit classification use OCaml's
+standard distribution; `yojson`, already required by the existing process boundary,
+serializes explicit machine mode. The retained legacy translation client and its
+Lwt/Cohttp/TLS dependency graph are test/development-only package dependencies and are not
+selected by a normal Horos installation.
