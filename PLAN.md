@@ -251,7 +251,12 @@ all-lines-valid compiled program. Stable records expose canonical TFL, English, 
 completeness reasons, and proof/certificate/numerical/equivalence support. The
 `horos-runtime-0.1` JSON-lines commands compile, query, describe, check consistency, and
 compare equivalence without breaking the existing request/reply stream. Focused runtime,
-program, safety, and process-boundary tests are green.
+program, safety, and process-boundary tests are green. The 2026-08-10 post-completion
+security audit probed the new boundary hostilely and found no defect (recorded in
+SECURITY.md); the same day's test audit falsification-tested the Phase 2 suites and
+strengthened the three CLI checks that mutations survived: the oversized-line drain, the
+describe answers' serialized proof support, and the evidence `kind` discriminators of the
+public JSON schema.
 
 ### Phase 3 — `.tfl` files and the human command line ⏭ NEXT
 

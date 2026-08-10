@@ -83,6 +83,18 @@ let field name line =
   | `Null -> "<absent>"
   | v -> Yojson.Safe.to_string v
 
+(* The "kind" discriminators of an evidence array, in order. These strings are
+   the horos-runtime-0.1 variant tags a caller switches on; a renamed tag or a
+   renamed "kind" field is silent interface drift (proven survivable by the
+   2026-08-10 test audit until pinned here). *)
+let evidence_kinds json =
+  Yojson.Safe.Util.member "evidence" json
+  |> Yojson.Safe.Util.to_list
+  |> List.map (fun e ->
+         match Yojson.Safe.Util.member "kind" e with
+         | `String k -> k
+         | _ -> "<missing>")
+
 let () =
   let help = run_help "horos" in
   check "help names the installed executable"
@@ -112,6 +124,8 @@ let () =
       {|{"cmd":"describe","program":"+-Socrates*+Man\n-Man+Animal\n-Man+Mortal","term":"Socrates*"}|};
       {|{"cmd":"consistency","program":"+-Socrates*+Man\n-Man+Mortal\n+-Socrates*-Mortal"}|};
       {|{"cmd":"equivalence","left":"-Dog+Mammal","right":"-(−Mammal)+(−Dog)"}|};
+      (* the fifth evidence variant: a numerical decision record *)
+      {|{"cmd":"query","program":"+C^3-H\n-C+E","query":"-E+H"}|};
     ]
   in
   let replies = run requests in
@@ -166,22 +180,29 @@ let () =
     && Yojson.Safe.Util.member "complete"
          (Yojson.Safe.Util.member "completeness" query_json)
        = `Bool true
-    && Yojson.Safe.Util.member "support" query_json <> `Null);
+    && List.mem "closure-certificate"
+         (evidence_kinds (Yojson.Safe.Util.member "support" query_json)));
   let describe_json = Yojson.Safe.from_string r.(13) in
+  let describe_answers =
+    Yojson.Safe.Util.member "answers" describe_json |> Yojson.Safe.Util.to_list
+  in
   check "term descriptions carry proof support"
     (field "method" r.(13) = "bounded-saturation"
-    && List.length
-         (Yojson.Safe.Util.member "answers" describe_json
-         |> Yojson.Safe.Util.to_list)
-       = 3);
+    && List.length describe_answers = 3
+    && List.for_all
+         (fun answer ->
+           Yojson.Safe.Util.member "lines"
+             (Yojson.Safe.Util.member "support" answer)
+           |> Yojson.Safe.Util.to_list
+           <> [])
+         describe_answers);
   let consistency_json = Yojson.Safe.from_string r.(14) in
   check "program consistency exposes its refutation evidence"
     (field "status" r.(14) = "inconsistent"
     && Yojson.Safe.Util.member "complete"
          (Yojson.Safe.Util.member "completeness" consistency_json)
        = `Bool true
-    && Yojson.Safe.Util.member "evidence" consistency_json
-       |> Yojson.Safe.Util.to_list |> List.length > 0);
+    && List.mem "proof" (evidence_kinds consistency_json));
   let equivalence_json = Yojson.Safe.from_string r.(15) in
   check "equivalence exposes its bounded rewrite witness"
     (field "equivalent" r.(15) = "true"
@@ -189,8 +210,14 @@ let () =
     && Yojson.Safe.Util.member "complete"
          (Yojson.Safe.Util.member "completeness" equivalence_json)
        = `Bool false
-    && Yojson.Safe.Util.member "evidence" equivalence_json
-       |> Yojson.Safe.Util.to_list |> List.length = 1);
+    && evidence_kinds equivalence_json = [ "rewrite-path" ]);
+  let numerical_support =
+    Yojson.Safe.Util.member "support" (Yojson.Safe.from_string r.(16))
+  in
+  check "a numerical no carries its decision record across the boundary"
+    (field "verdict" r.(16) = "no"
+    && field "method" r.(16) = "numerical"
+    && List.mem "numerical-decision" (evidence_kinds numerical_support));
 
   (* A truth table near the public atom limit is much larger than an OS pipe.
      Reading it before sending the following request proves the documented
@@ -206,7 +233,8 @@ let () =
   check "a response larger than an OS pipe completes without deadlock"
     (Array.length replies = 2
     && String.length replies.(0) > 500_000
-    && field "method" replies.(0) = "dnf");
+    && field "method" replies.(0) = "dnf"
+    && evidence_kinds (Yojson.Safe.from_string replies.(0)) = [ "truth-table" ]);
   check "the request after a large response is still processed"
     (field "ok" replies.(1) = "true");
 
@@ -218,8 +246,12 @@ let () =
 
   (* The limit has to apply while reading, before Yojson allocates a complete
      hostile line. Draining the rejected line is equally important: the valid
-     request after it proves the long-lived process remains synchronized. *)
-  let oversized = String.make (1_048_576 + 1) 'x' in
+     request after it proves the long-lived process remains synchronized. The
+     overflow tail must be well past the cap — with a single excess byte the
+     undrained remainder is only the newline, and the 2026-08-10 test audit
+     proved a drain-free reader passes that. Leftover junk this long instead
+     surfaces as a spurious extra reply and fails the reply count. *)
+  let oversized = String.make (1_048_576 + 1_024) 'x' in
   let replies =
     run [ oversized; {|{"cmd":"parse","tfl":"-Man+Mortal"}|} ]
     |> Array.of_list

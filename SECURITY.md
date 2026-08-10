@@ -102,6 +102,18 @@ rerunning the dependency audit and full test gates.
   then bounded cancellation search.
 - **2026-08-01:** added ignore and CI tracking guards for licensed corpora and
   cached model data; recorded parser and equivalence amplification risks.
+- **2026-08-10:** audited the Phase 2 delta (the `Tfl.Runtime` production API,
+  the `horos-runtime-0.1` JSON-lines commands, and the Horos rename) with live
+  hostile-input probes: million-level JSON nesting, oversized requests,
+  premise floods under the request cap, terminal-control and invalid UTF-8
+  bytes in program text, saturation-heavy term descriptions, and over-deep
+  query nesting. Every probe was refused with the documented class and the
+  process stayed synchronized; invalid bytes are replaced with U+FFFD before
+  any echo, so replies remain valid UTF-8 JSON. Confirmed `unknown` never
+  carries fabricated support, engine refusals classify as `outside_fragment`
+  rather than `internal`, the package rename left CI's pinned, read-only,
+  path-based workflow intact, and the commit adds no secret or stale-name
+  leak. No new finding; no code change required.
 - **2026-08-09:** audited the full working session and complete 70-package
   dependency graph. Fixed streaming request allocation, duplicate parser
   tokenization, proposition/program/argument size bounds, DNF output and work
