@@ -98,6 +98,8 @@ printf '%s\n' '{"cmd":"query","program":"+-Socrates*+Man\n-Man+Mortal","query":"
 
 ## Repository layout
 
+- `ARCHITECTURE.md` — the codebase map for a new owner: the kernel modules, how
+  they layer, and the paths a query takes from input to verdict.
 - `PLAN.md` — the authoritative language roadmap and acceptance checks.
 - `docs/core-language.md` — the normative `core-0.1` syntax, semantics, result, and limits
   reference; `docs/port-spec.md` is its detailed mechanics appendix.

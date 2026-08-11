@@ -133,9 +133,14 @@ rerunning the dependency audit and full test gates.
   generator-scale inputs (≤5 candidates) stay far under the 8,000,000-node
   budget, so no differential-compared result changed. Pinned by a
   `test/test_program.ml` regression that fails if either saturation loses the
-  shared budget. No secret, command-injection, path-traversal, network, or CI
-  exposure was found; the legacy OpenRouter client remains dev-only and
-  TLS-verified.
+  shared budget, and by a `test/test_cli.ml` process-boundary gate (added in the
+  same-day test audit) that fails if a dense-program `describe` is answered
+  instead of refused as `resource_limit`. No secret, command-injection,
+  path-traversal, network, or CI exposure was found; the legacy OpenRouter client
+  remains dev-only and TLS-verified.
+  A test audit the same day falsified the invariant-guarding suites (work-budget,
+  request-size, terminal escaping, regular-file, and verdict tests) — every
+  mutation was caught — and found no worthless or wrong-target test.
 - **2026-07-30:** restricted the CI token to `contents: read`; identified and
   then bounded cancellation search.
 - **2026-08-01:** added ignore and CI tracking guards for licensed corpora and

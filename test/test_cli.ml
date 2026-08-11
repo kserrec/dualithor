@@ -310,6 +310,45 @@ let () =
   check "the request after inference work exhaustion is still processed"
     (field "ok" replies.(1) = "true");
 
+  (* The describe operation had its own unbounded path: its candidate-
+     subsumption step is quadratic in the collected candidate count, and that
+     count follows the program's proposition count, not the line cap. A legal
+     ~7 KB program of many same-subject facts blocked the lockstep stream for
+     seconds (audit 2026-08-11). The deterministic regression signal is the
+     class of the reply: with the shared work budget the search refuses with
+     `resource_limit`, and the following request still gets a reply; without it
+     the same input returns a successful answer set (and blocks the stream on
+     the way). No wall-clock bound is asserted — `dune test` runs the suites in
+     parallel, so elapsed time here is contended and not a reliable signal; the
+     bounded-latency guarantee is pinned deterministically by the raised work
+     limit in the Program regression. *)
+  let dense_program =
+    String.concat "\\n" (List.init 900 (fun i -> Printf.sprintf "-A+B%d" i))
+  in
+  let replies =
+    run
+      [
+        Printf.sprintf
+          {|{"cmd":"describe","program":"%s","term":"A"}|}
+          dense_program;
+        {|{"cmd":"parse","tfl":"-Man+Mortal"}|};
+      ]
+    |> Array.of_list
+  in
+  (* Extract the refusal class without assuming a refusal: a non-refused
+     describe (the pre-fix behavior) has no "errors" array, and that must read
+     as a clean assertion failure, not a crash inside the test. *)
+  let refusal_class reply =
+    match Yojson.Safe.Util.member "errors" (Yojson.Safe.from_string reply) with
+    | `List (failure :: _) -> Yojson.Safe.Util.member "class" failure
+    | _ -> `Null
+  in
+  check "a pathological valid describe is refused as resource_limit, not answered"
+    (Array.length replies = 2
+    && refusal_class replies.(0) = `String "resource_limit");
+  check "the request after describe work exhaustion is still processed"
+    (field "ok" replies.(1) = "true");
+
   (* Valid JSON is not necessarily a request object. Yojson's member helper
      raises on these shapes, so the object check must happen before lookup. *)
   let replies =
