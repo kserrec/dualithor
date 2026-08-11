@@ -113,8 +113,17 @@ let () =
               check
                 (first.line = 1 && first.column = 2)
                 "ideographic space counts as one source column";
+              check_eq first.path path;
+              check_eq first.source_line "　−Man+Animal";
               check
-                (second.line = 3 && second.column = 2)
+                (first.span.start_pos.line = 1
+                && first.span.start_pos.column = 2
+                && first.span.end_pos.line = 1
+                && first.span.end_pos.column = 13)
+                "the first program entry retains its complete source span";
+              check
+                (second.line = 3 && second.column = 2
+                && second.span.start_pos.codepoint_offset = 15)
                 "blank lines and a leading tab retain stable locations";
               check_eq second.source "±Socrates*+Man"
           | _ -> failwith "expected two located statements"));
@@ -130,6 +139,17 @@ let () =
               check
                 (first.line = Some 1 && first.column = Some 3)
                 "the non-ASCII leading space is one column, not three bytes";
+              check
+                (Option.map
+                   (fun span -> span.Tfl.Source.start_pos.column)
+                   first.span
+                 = Some 3
+                && Option.map
+                     (fun span -> span.Tfl.Source.end_pos.column)
+                     first.span
+                   = Some 4
+                && first.source_line = Some "　+É+P")
+                "the lexical diagnostic carries its source line and caret range";
               check (second.line = Some 2)
                 "the independent syntax error retains its physical line";
               check
@@ -146,6 +166,13 @@ let () =
               check
                 (diagnostic.line = Some 2 && diagnostic.column = Some 4)
                 "first malformed byte location";
+              check
+                (Option.map
+                   (fun span -> span.Tfl.Source.end_pos.column)
+                   diagnostic.span
+                 = Some 4
+                && diagnostic.source_line = Some ("+S+" ^ "\xC3\x28"))
+                "malformed UTF-8 uses a zero-width source span at the bad byte";
               check_eq diagnostic.message "File is not well-formed UTF-8"
           | _ -> failwith "expected one UTF-8 diagnostic"));
   test "the file loader requires the .tfl extension" (fun () ->

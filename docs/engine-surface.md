@@ -1,9 +1,10 @@
 # Engine surface — failure taxonomy and the total API
 
-**Status: implemented and hardened (`core-0.1`, 2026-08-09).** `lib/tfl/safe.ml` is the
-total primitive-input surface, and `lib/tfl/runtime.ml` is the total complete-program
-surface. `test/test_safe.ml` holds the contract checks and adversarial fuzz. The inventory
-below is what `lib/tfl/` raises and how each refusal is classified.
+**Status: implemented and hardened (`core-0.1`; source spans extended in Phase 5,
+2026-08-11).** `lib/tfl/safe.ml` is the total primitive-input surface, and
+`lib/tfl/runtime.ml` is the total complete-program surface. `test/test_safe.ml` holds the
+contract checks and adversarial fuzz. The inventory below is what `lib/tfl/` raises and how
+each refusal is classified.
 
 ## Why this exists
 
@@ -15,19 +16,23 @@ bounded rather than an exception that escapes into the caller.
 
 Three requirements follow:
 
-1. **Classified.** Every refusal of an *input* falls into one of four classes. A fifth
-   kind, `Internal`, classifies the engine rather than the input.
+1. **Classified.** Every refusal retains a precise class. The vocabulary also reserves a
+   distinct name-resolution class for the Phase 17 compiler and an incomplete-search class
+   for operations that cannot return an exhaustive result. `Internal` classifies the
+   engine rather than the input.
 2. **Total.** The public entry points never raise. Not for malformed input, not for
    adversarial input, not for input that hits an internal limit.
 3. **Bounded.** No input makes the engine run unboundedly. A refusal must arrive.
 
-## The four input classes
+## Diagnostic and operation classes
 
 | class | means | router reading |
 |---|---|---|
 | `Lexical` | the input contains a character or token the notation has no reading for | not TFL text at all — the model emitted prose, FOL, or garbage |
 | `Syntactic` | the tokens are legal but do not form a proposition | the model was aiming at TFL and missed — a candidate for one repair attempt |
+| `Name_resolution` | parsed source names a declaration the compiler cannot resolve | a compiler error, distinct from malformed notation; dormant until declarations arrive in Phase 17 |
 | `Outside_fragment` | the input parses to a well-formed AST that the inference layer refuses | genuinely TFL, but not something this engine decides — escalate, never guess |
+| `Incomplete_search` | an accepted operation stops without an exhaustive result | preserve the partial result and its reason; never call it false or invalid |
 | `Resource_limit` | source that reached a public boundary exceeds a byte, count, or work budget | reduce or split the input; retrying it unchanged cannot help |
 
 The split between the first two is exactly the tokenizer/parser boundary, which makes it
@@ -41,14 +46,20 @@ signal an FOL pipeline cannot produce.
 `Outside_fragment` is **not** the same as the `Unknown` verdict. `Unknown` means the
 argument was accepted, searched within fuel, and neither proved nor refuted (port-spec
 §12). `Outside_fragment` means it was never searched. `Resource_limit` instead says the
-public boundary deliberately did not attempt the work. Collapsing any of them would
-destroy information a caller needs.
+public boundary deliberately did not attempt the work. Current runtime queries carry
+incomplete search in their result's `completeness` record and the command status rather
+than returning a `Safe.failure`; the separate `Incomplete_search` kind prevents a future
+failure-returning operation from collapsing it into another class. Collapsing any of these
+states would destroy information a caller needs.
 
 ## Inventory: every refusal the engine raises today
 
 ### `Lexical` — `Notation.Parse_error` from the tokenizer
 
-Each carries a 0-based `pos` into the source string.
+Each carries a half-open zero-based Unicode code-point range, `pos` through `end_pos`, into
+the parser input, plus a one-based line/column span and the offending physical source line
+when source text exists. These values are Unicode code-point positions, never UTF-8 byte
+offsets.
 
 | message | raised when |
 |---|---|
@@ -124,11 +135,11 @@ Truth-table equivalence also falls back to bounded rewrite search before an esti
 or AST-evaluation cost can exceed 8,388,608 units. Because fallback is a supported
 incomplete result rather than an input failure, it does not return `Resource_limit`.
 
-## The fifth kind: `Internal`
+## The engine-failure kind: `Internal`
 
-There is a fifth failure kind, `Internal`, and it is deliberately **not** one of the four
-input classes: it classifies the engine, not the input. A caller must never treat "the
-engine broke" as "this input is outside the fragment" — one is a bug to fix, the other an
+`Internal` is deliberately **not** an input class: it classifies the engine, not the input.
+A caller must never treat "the engine broke" as "this input is outside the fragment" — one
+is a bug to fix, the other an
 escalation to make, and folding them together would let a defect hide inside an expected
 outcome. It exists so the API can be total without a crash ever being *reported* as a
 refusal, and the fuzz run below is the evidence it never fires. (A deviation from PLAN
@@ -164,7 +175,9 @@ their generated sets are far too small — so the divergence is real but unobser
 type failure_kind =
   | Lexical
   | Syntactic
+  | Name_resolution
   | Outside_fragment
+  | Incomplete_search
   | Resource_limit
   | Internal
 
@@ -172,11 +185,18 @@ type failure = {
   kind    : failure_kind;
   message : string;        (* the engine's own text, unmodified *)
   pos     : int option;    (* 0-based index into the source; parse failures only *)
+  end_pos : int option;    (* exclusive 0-based Unicode code-point index *)
   where   : string option; (* "premise 2" | "conclusion" | "argument" *)
+  span    : Source.span option;
+  source_line : string option;
 }
 
 val kind_name     : failure_kind -> string
+val parse_located : ?where:string -> string
+                  -> (Ast.prop Source.located, failure) result
 val parse         : ?where:string -> string -> (Ast.prop, failure) result
+val parse_term_located : ?where:string -> string
+                       -> (Ast.term Source.located, failure) result
 val parse_term    : ?where:string -> string -> (Ast.term, failure) result
 val parse_all     : string -> string list -> (Ast.prop list, failure) result
 val check         : premises:string list -> conclusion:string
@@ -189,7 +209,9 @@ implemented; removed 2026-08-01.)
 
 `parse_term` applies the same source-size, tokenization, lexical/syntactic, and nesting
 guards as `parse`, using the term grammar rather than the proposition grammar. It exists so
-the public term-description runtime never calls an unguarded parser.
+the public term-description runtime never calls an unguarded parser. The located variants
+retain the exact top-level token range on success; ordinary `parse` and `parse_term` remain
+compatibility projections of those records.
 
 `parse_program` closes the gap the original depth guard left open: the depth cap lived
 only in `Safe.parse`, so the program-loading path could still exhaust the stack — measured

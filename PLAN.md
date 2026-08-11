@@ -13,7 +13,7 @@ select work from an old roadmap. Git history preserves the superseded plan.
 The project is now named **Horos**, and its repository and package are named **`horos`**.
 The language is called **TFL** and its eventual human-facing executable is **`tfl`**.
 
-Phases 1 through 4 are complete. Phase 5 is the next implementation phase.
+Phases 1 through 5 are complete. Phase 6 is the next implementation phase.
 
 ## What we are building
 
@@ -359,10 +359,11 @@ five isolated unchanged `test_safe` runs all passed. That load-sensitive timing 
 remains deferred to Phase 1 test maintenance rather than being weakened in this interface
 test audit.
 
-### Phase 5 — Source spans and compiler diagnostics
+### Phase 5 — Source spans and compiler diagnostics ✅ COMPLETE — 2026-08-11
 
-1. Carry file, line, column, and source span from tokens through program entries,
-   declarations, and query errors.
+1. Carry file, line, column, and source span from tokens through current program entries and
+   query errors. Establish the shared span contract that Phase 17 declarations must use;
+   declaration syntax does not exist in the current language.
 2. Report multiple independent compile errors in one run with the offending source line
    and a caret range.
 3. Separate lexical, syntactic, name-resolution, outside-fragment, incomplete-search, and
@@ -372,6 +373,21 @@ test audit.
 **Acceptance:** every user-caused failure points to actionable source text; byte offsets are
 never mislabeled as character columns; internal failures are never presented as bad user
 input.
+
+**Delivered:** `Tfl.Source` now defines half-open, Unicode-code-point source ranges and
+line/column spans shared by notation tokens, current program entries, runtime queries,
+source-file diagnostics, and verifier error records. Human diagnostics print the exact raw
+source line and caret range; JSON exposes the same span, raw source, and source path while
+retaining the earlier position fields for compatibility. Compilation preserves multiple
+independent lexical or syntactic errors, malformed UTF-8 receives a zero-width location at
+the last valid code-point boundary, and the public taxonomy distinguishes lexical,
+syntactic, name-resolution, outside-fragment, incomplete-search, and internal failures.
+Name-resolution is reserved for Phase 17 because no declaration syntax exists yet, and
+incomplete bounded searches remain ordinary result statuses rather than fabricated input
+errors. Machine boundaries visibly encode malformed bytes instead of emitting invalid UTF-8
+JSON. Focused Unicode, malformed-file, multi-error, human, JSON, runtime, verifier, and
+long-lived CLI regressions pass, as does the forced full repository suite including oracle,
+corpus, safe-input, and differential gates. Inference verdict behavior is unchanged.
 
 ## Milestone II — Implement the published TFL extension family
 

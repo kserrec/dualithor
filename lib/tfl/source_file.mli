@@ -4,7 +4,9 @@ type failure_kind =
   | File
   | Lexical
   | Syntactic
+  | Name_resolution
   | Outside_fragment
+  | Incomplete_search
   | Resource_limit
   | Internal
 
@@ -14,12 +16,17 @@ type diagnostic = {
   path : string;
   line : int option;
   column : int option;
+  span : Source.span option;
+  source_line : string option;
 }
 
 type statement = {
+  path : string;
   line : int;
   column : int;
   source : string;
+  source_line : string;
+  span : Source.span;
   proposition : Runtime.proposition;
 }
 

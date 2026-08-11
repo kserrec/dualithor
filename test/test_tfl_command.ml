@@ -403,9 +403,24 @@ let () =
             |> Yojson.Safe.Util.to_list
           in
           check (List.length statements = 2) "two statement records";
+          let first = List.hd statements in
           check
-            (Yojson.Safe.Util.member "column" (List.hd statements) = `Int 2)
-            "machine location uses a code-point column"));
+            (Yojson.Safe.Util.member "column" first = `Int 2)
+            "machine location uses a code-point column";
+          check_eq (string_field "source_path" first) file;
+          check_eq (string_field "source_line" first) "　±Socrates*+Man";
+          let start =
+            Yojson.Safe.Util.member "span" first
+            |> Yojson.Safe.Util.member "start"
+          and finish =
+            Yojson.Safe.Util.member "span" first
+            |> Yojson.Safe.Util.member "end"
+          in
+          check
+            (Yojson.Safe.Util.member "codepoint_offset" start = `Int 1
+            && Yojson.Safe.Util.member "column" start = `Int 2
+            && Yojson.Safe.Util.member "column" finish = `Int 16)
+            "the statement JSON carries a half-open code-point span"));
   test "terminal fallback keeps prompts and interrupt recovery" (fun () ->
       let choose ~json ~term ~stdin_is_terminal ~stdout_is_terminal =
         Repl_input.choose_input_mode ~json ~term ~stdin_is_terminal
@@ -954,7 +969,10 @@ let () =
           and file = Filename.basename path in
           let status, output = run_from directory [ "check"; file ] in
           check
-            (status = 2 && contains output (file ^ ":1:3: lexical:"))
+            (status = 2
+            && contains output (file ^ ":1:3: lexical:")
+            && contains output "\n  | 　+É+P\n"
+            && contains output "^")
             "human compile diagnostic";
           let status, output = run_from directory [ "check"; "--json"; file ] in
           let response = json output in
@@ -966,7 +984,16 @@ let () =
             (status = 2
             && string_field "status" response = "input-failure"
             && Yojson.Safe.Util.member "line" first_error = `Int 1
-            && Yojson.Safe.Util.member "column" first_error = `Int 3)
+            && Yojson.Safe.Util.member "column" first_error = `Int 3
+            && string_field "source_line" first_error = "　+É+P"
+            && Yojson.Safe.Util.member "column"
+                 (Yojson.Safe.Util.member "start"
+                    (Yojson.Safe.Util.member "span" first_error))
+               = `Int 3
+            && Yojson.Safe.Util.member "column"
+                 (Yojson.Safe.Util.member "end"
+                    (Yojson.Safe.Util.member "span" first_error))
+               = `Int 4)
             "machine compile diagnostic"));
   test "every independent file diagnostic crosses the command boundary"
     (fun () ->
@@ -978,7 +1005,10 @@ let () =
           in
           check (status = 2 && stdout = "") "human multi-error exit";
           check
-            (contains stderr (file ^ ":1:3:") && contains stderr (file ^ ":2:"))
+            (contains stderr (file ^ ":1:3:")
+            && contains stderr (file ^ ":2:")
+            && contains stderr "　+É+P" && contains stderr "+oops("
+            && count_char stderr '^' >= 2)
             "human output includes both file diagnostics";
           let status, stdout, stderr =
             run_from_streams directory [ "check"; "--json"; file ]
@@ -995,6 +1025,65 @@ let () =
             && Yojson.Safe.Util.member "line" (List.hd (List.tl errors))
                = `Int 2)
             "machine errors retain both physical lines"));
+  test "query-input failures carry source excerpts and ranges in both modes"
+    (fun () ->
+      with_temp "−Man+Animal\n" (fun path ->
+          let directory = Filename.dirname path
+          and file = Filename.basename path
+          and query = "　+É+P" in
+          let status, output = run_from directory [ "query"; file; query ] in
+          check
+            (status = 2
+            && contains output "query:1:3: lexical:"
+            && contains output query && contains output "^")
+            "human query diagnostic has the source and caret";
+          let status, output =
+            run_from directory [ "query"; "--json"; file; query ]
+          in
+          let response = json output in
+          let failure =
+            Yojson.Safe.Util.member "errors" response
+            |> Yojson.Safe.Util.to_list |> List.hd
+          in
+          let span = Yojson.Safe.Util.member "span" failure in
+          check
+            (status = 2
+            && string_field "class" failure = "lexical"
+            && string_field "source_line" failure = query
+            && Yojson.Safe.Util.member "codepoint_offset"
+                 (Yojson.Safe.Util.member "start" span)
+               = `Int 2
+            && Yojson.Safe.Util.member "column"
+                 (Yojson.Safe.Util.member "start" span)
+               = `Int 3
+            && Yojson.Safe.Util.member "column"
+                 (Yojson.Safe.Util.member "end" span)
+               = `Int 4)
+            "machine query diagnostic has an explicit code-point span";
+          let status, output =
+            run_from directory [ "query"; file; "  ±General+Thing " ]
+          in
+          check
+            (status = 2
+            && contains output "outside_fragment"
+            && contains output "±General+Thing"
+            && count_char output '^' = 14)
+            "human fragment refusal is distinct and underlines the proposition";
+          let status, output =
+            run_from directory [ "query"; "--json"; file; "  ±General+Thing " ]
+          in
+          let refusal =
+            Yojson.Safe.Util.member "errors" (json output)
+            |> Yojson.Safe.Util.to_list |> List.hd
+          in
+          check
+            (status = 2
+            && string_field "class" refusal = "outside_fragment"
+            && Yojson.Safe.Util.member "column"
+                 (Yojson.Safe.Util.member "start"
+                    (Yojson.Safe.Util.member "span" refusal))
+               = `Int 3)
+            "machine fragment refusal is separate from syntax and search status"));
   test "describe and render expose human text and corresponding JSON" (fun () ->
       with_temp "±Socrates*+Man\n−Man+Mortal\n" (fun path ->
           let directory = Filename.dirname path

@@ -1,6 +1,13 @@
 type proposition = { tfl : string; canonical : string; english : string }
 type term = { tfl : string; canonical : string; english : string }
-type statement = { line : int; source : string; proposition : proposition }
+
+type statement = {
+  line : int;
+  source : string;
+  source_line : string;
+  span : Source.span;
+  proposition : proposition;
+}
 
 type program = {
   compiled_props : Ast.prop list;
@@ -211,22 +218,20 @@ let evidence_of_decision (result : Decide.result) : evidence list =
       (fun decision -> Numerical_decision (numerical_of_internal decision))
       result.decision
 
-let failure_for_program_error source_lines (error : Program.program_error) =
-  let raw =
-    if error.err_line > 0 && error.err_line <= Array.length source_lines then
-      source_lines.(error.err_line - 1)
-    else ""
-  in
+let failure_for_program_error (error : Program.program_error) =
   let where = Printf.sprintf "line %d" error.err_line in
-  match Safe.parse ~where (Program.line_code raw) with
-  | Error failure -> failure
-  | Ok _ ->
-      {
-        Safe.kind = Safe.Internal;
-        message = error.err_message;
-        pos = Some error.err_pos;
-        where = Some where;
-      }
+  {
+    Safe.kind =
+      (match error.err_kind with
+      | Program.Program_lexical -> Safe.Lexical
+      | Program.Program_syntactic -> Safe.Syntactic);
+    message = error.err_message;
+    pos = Some error.err_pos;
+    end_pos = Some error.err_end_pos;
+    where = Some where;
+    span = Some error.err_span;
+    source_line = Some error.err_source_line;
+  }
 
 let validation_failure (entry : Program.program_entry) =
   match
@@ -234,7 +239,15 @@ let validation_failure (entry : Program.program_entry) =
         Infer.validate_prop entry.prop)
   with
   | Ok () -> None
-  | Error failure -> Some (entry.line, failure)
+  | Error ({ kind = Safe.Internal; _ } as failure) -> Some (entry.line, failure)
+  | Error failure ->
+      Some
+        ( entry.line,
+          {
+            failure with
+            span = Some entry.span;
+            source_line = Some entry.source_line;
+          } )
 
 let merge_failures left right =
   let rec merge acc left right =
@@ -252,6 +265,8 @@ let statement_of_entry (entry : Program.program_entry) : statement =
   {
     line = entry.line;
     source = entry.text;
+    source_line = entry.source_line;
+    span = entry.span;
     proposition = proposition_of_ast entry.prop;
   }
 
@@ -267,11 +282,10 @@ let compile_inner source =
   match Safe.parse_program source with
   | Error failure -> Error [ failure ]
   | Ok parsed -> (
-      let source_lines = Array.of_list (String.split_on_char '\n' source) in
       let parse_failures =
         List.map
           (fun (error : Program.program_error) ->
-            (error.err_line, failure_for_program_error source_lines error))
+            (error.err_line, failure_for_program_error error))
           parsed.errors
       in
       let validation_failures =
@@ -293,6 +307,12 @@ let compile source =
   | exception error -> Error [ Safe.unexpected ~where:"program" error ]
 
 let statements program = program.compiled_statements
+
+let guard_input ~where ~source ~range run =
+  match Safe.guard ~where run with
+  | Error ({ kind = Safe.Internal; _ } as failure) -> Error failure
+  | Error failure -> Error (Safe.locate source range failure)
+  | Ok result -> Ok result
 
 let method_of_decision = function
   | Decide.PZ -> PZ
@@ -336,10 +356,11 @@ let query_support_of_decision proposition verdict decision : query_support =
   }
 
 let query program source =
-  match Safe.parse ~where:"query" source with
+  match Safe.parse_located ~where:"query" source with
   | Error failure -> Error failure
-  | Ok proposition ->
-      Safe.guard ~where:"query" (fun () ->
+  | Ok located ->
+      let proposition = located.value in
+      guard_input ~where:"query" ~source ~range:located.range (fun () ->
           let result = Program.query_prop program.compiled_props proposition in
           let method_ =
             query_method program.compiled_props proposition result
@@ -365,10 +386,11 @@ let term_answer_of_internal (answer : Program.term_answer) : term_answer =
   }
 
 let describe program source =
-  match Safe.parse_term ~where:"term" source with
+  match Safe.parse_term_located ~where:"term" source with
   | Error failure -> Error failure
-  | Ok term ->
-      Safe.guard ~where:"term" (fun () ->
+  | Ok located ->
+      let term = located.value in
+      guard_input ~where:"term" ~source ~range:located.range (fun () ->
           let answers =
             Program.query_term_detailed program.compiled_props term
             |> List.map term_answer_of_internal
@@ -428,19 +450,23 @@ let equivalence_profile (result : Program.equivalence_decision) =
       optional_evidence (fun path -> Rewrite_path path) result.e_path )
 
 let equivalent ~left ~right =
-  match Safe.parse ~where:"left" left with
+  match Safe.parse_located ~where:"left" left with
   | Error failure -> Error failure
-  | Ok left_prop -> (
-      match Safe.parse ~where:"right" right with
+  | Ok left_located -> (
+      let left_prop = left_located.value in
+      match Safe.parse_located ~where:"right" right with
       | Error failure -> Error failure
-      | Ok right_prop -> (
+      | Ok right_located -> (
+          let right_prop = right_located.value in
           match
-            Safe.guard ~where:"left" (fun () -> Infer.validate_prop left_prop)
+            guard_input ~where:"left" ~source:left ~range:left_located.range
+              (fun () -> Infer.validate_prop left_prop)
           with
           | Error failure -> Error failure
           | Ok () -> (
               match
-                Safe.guard ~where:"right" (fun () ->
+                guard_input ~where:"right" ~source:right
+                  ~range:right_located.range (fun () ->
                     Infer.validate_prop right_prop)
               with
               | Error failure -> Error failure

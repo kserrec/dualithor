@@ -3,7 +3,14 @@
 type program
 type proposition = { tfl : string; canonical : string; english : string }
 type term = { tfl : string; canonical : string; english : string }
-type statement = { line : int; source : string; proposition : proposition }
+
+type statement = {
+  line : int;
+  source : string;
+  source_line : string;
+  span : Source.span;
+  proposition : proposition;
+}
 
 type operation_method =
   | PZ

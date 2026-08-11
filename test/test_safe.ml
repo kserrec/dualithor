@@ -256,7 +256,28 @@ let unit_checks () =
   test "failures name the input they came from" (fun () ->
       match Tfl.Safe.check ~premises:[ "−S+P"; "!!" ] ~conclusion:"−S+P" with
       | Error { where = Some w; _ } -> check_eq w "premise 2"
-      | _ -> failwith "expected a failure naming premise 2")
+      | _ -> failwith "expected a failure naming premise 2");
+  test "internal failures cannot acquire source locations" (fun () ->
+      let failure : Tfl.Safe.failure =
+        {
+          kind = Tfl.Safe.Internal;
+          message = "synthetic internal failure";
+          pos = None;
+          end_pos = None;
+          where = Some "query";
+          span = None;
+          source_line = None;
+        }
+      in
+      let located =
+        Tfl.Safe.locate "−S+P"
+          (Tfl.Source.range ~start_offset:0 ~end_offset:4)
+          failure
+      in
+      check (located.span = None) "an internal failure gained a span";
+      check
+        (located.source_line = None)
+        "an internal failure gained a source excerpt")
 
 (* ── 1.14(d): the cancellation work cap ─────────────────────────────────────
    The 2026-07-30 audit's probe: an inconsistent set whose clash can never

@@ -39,9 +39,9 @@ Non-ASCII names remain expressible through quoted terms.
 ### Tokenizer details
 
 Token kinds: `plus` `minus` `wild` `lparen` `rparen` `lbracket` `rbracket`
-`name`(text, singular) `level`(value) `eof`. Each token carries `pos`, the 0-based index of
-its first Unicode code point in the source string. The fixed whitespace set listed in
-`core-language.md` is skipped.
+`name`(text, singular) `level`(value) `eof`. Each token carries the half-open range `pos`
+through `end_pos`, both 0-based Unicode code-point offsets in the source string. The fixed
+whitespace set listed in `core-language.md` is skipped.
 
 - `+-` and `+−` lex as one `wild` token (a bare minus after `+` could never start a term —
   negative terms are parenthesized).
@@ -104,10 +104,12 @@ Notable rules:
 - `[...]` contains either a full proposition (first token is a sign) or a single bare name;
   anything else is an error.
 - Error messages are specific and positional; implementations must reproduce their
-  classification and Unicode-code-point position exactly.
+  classification and Unicode-code-point start position exactly. The OCaml compiler also
+  retains the complete offending-token range; this additive host metadata does not alter
+  the frozen parser message.
 
-**ParseError**: carries `pos` (0-based index into source) and a message suffixed
-`" (at position N)"`.
+**ParseError**: carries half-open `pos`/`end_pos` Unicode-code-point offsets into the source
+and a message suffixed `" (at position N)"`, where `N` remains the start offset.
 
 ## 4. Printer
 

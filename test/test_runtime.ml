@@ -24,12 +24,23 @@ let () =
       | [ first; second; third ] ->
           check (first.line = 1) "first source line";
           check_eq first.source "−Man+Animal";
+          check_eq first.source_line "−Man+Animal -- classification";
+          check
+            (first.span.start_pos.codepoint_offset = 0
+            && first.span.start_pos.line = 1
+            && first.span.start_pos.column = 1
+            && first.span.end_pos.codepoint_offset = 11
+            && first.span.end_pos.line = 1
+            && first.span.end_pos.column = 12)
+            "the statement carries its half-open source span";
           check_eq first.proposition.tfl "−Man+Animal";
           check_eq first.proposition.canonical "−Man+Animal";
           check_eq first.proposition.english "every man is animal";
           check
-            (second.line = 3 && third.line = 4)
-            "blank line is retained in locations"
+            (second.line = 3
+            && second.span.start_pos.codepoint_offset = 31
+            && third.line = 4)
+            "blank lines advance the absolute code-point offset"
       | _ -> failwith "expected three compiled statements");
   test "compile reports every malformed source line and produces no program"
     (fun () ->
@@ -39,7 +50,26 @@ let () =
           check (first.where = Some "line 2") "first malformed line";
           check (first.kind = Tfl.Safe.Syntactic) "line 2 is syntactic";
           check (second.where = Some "line 3") "second malformed line";
-          check (second.kind = Tfl.Safe.Lexical) "line 3 is lexical"
+          check (second.kind = Tfl.Safe.Lexical) "line 3 is lexical";
+          check
+            (first.span <> None
+            && Option.map
+                 (fun span -> span.Tfl.Source.start_pos.column)
+                 first.span
+               = Some 6
+            && first.source_line = Some "+oops(")
+            "syntax errors retain the offending token and physical line";
+          check
+            (Option.map
+               (fun span -> span.Tfl.Source.start_pos.column)
+               second.span
+             = Some 2
+            && Option.map
+                 (fun span -> span.Tfl.Source.end_pos.column)
+                 second.span
+               = Some 3
+            && second.source_line = Some "+É+P")
+            "lexical spans count Unicode code points rather than UTF-8 bytes"
       | Error failures ->
           failwith
             (Printf.sprintf "expected two diagnostics, got %d"
@@ -147,8 +177,46 @@ let () =
       match describe program "Man(" with
       | Error failure ->
           check (failure.kind = Tfl.Safe.Syntactic) "term syntax";
-          check (failure.where = Some "term") "term attribution"
+          check (failure.where = Some "term") "term attribution";
+          check
+            (Option.map
+               (fun span -> span.Tfl.Source.start_pos.column)
+               failure.span
+             = Some 4
+            && Option.map
+                 (fun span -> span.Tfl.Source.end_pos.column)
+                 failure.span
+               = Some 5
+            && failure.source_line = Some "Man(")
+            "query-input syntax carries its source excerpt and token range"
       | Ok _ -> failwith "the malformed term should fail");
+  test "outside-fragment query failures retain the parsed proposition span"
+    (fun () ->
+      let program = compile_ok "−Man+Animal" in
+      match query program "  ±General+Thing " with
+      | Error failure ->
+          check
+            (failure.kind = Tfl.Safe.Outside_fragment)
+            "the parsed proposition reaches fragment validation";
+          check
+            (Option.map
+               (fun span -> span.Tfl.Source.start_pos.column)
+               failure.span
+             = Some 3
+            && Option.map
+                 (fun span -> span.Tfl.Source.end_pos.column)
+                 failure.span
+               = Some 17
+            && failure.source_line = Some "  ±General+Thing ")
+            "fragment validation points at the proposition, excluding \
+             whitespace"
+      | Ok _ -> failwith "the unsupported query should fail");
+  test "future compiler and incomplete-operation classes stay distinct"
+    (fun () ->
+      check_eq (Tfl.Safe.kind_name Tfl.Safe.Name_resolution) "name_resolution";
+      check_eq
+        (Tfl.Safe.kind_name Tfl.Safe.Incomplete_search)
+        "incomplete_search");
   test "consistency distinguishes exact and undetermined results" (fun () ->
       let inconsistent =
         compile_ok "±Socrates*+Man\n−Man+Mortal\n±Socrates*−Mortal"

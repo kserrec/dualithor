@@ -49,7 +49,7 @@ let ocaml_parse fn src : ocaml_outcome =
         let s = parse_signed_term src in
         Parsed (Ast_json.st_to_json s, print_signed_term s)
     | _ -> assert false
-  with Parse_error { message; pos } -> Failed (message, pos)
+  with Parse_error { message; pos; _ } -> Failed (message, pos)
 
 let print_fn_of = function
   | "parseProposition" -> "printProposition"

@@ -39,7 +39,7 @@ let contains hay needle =
 let fails_with ?(parser = fun s -> ignore (parse_proposition s)) src msg_part =
   match parser src with
   | () -> failwith (Printf.sprintf "%S should have raised Parse_error" src)
-  | exception Parse_error { message; pos } ->
+  | exception Parse_error { message; pos; _ } ->
       check (pos >= 0) "Parse_error should carry a position";
       check
         (contains message msg_part)
@@ -340,6 +340,39 @@ let run_unit_tests () =
       | _ -> failwith "should have raised"
       | exception Parse_error { pos; _ } ->
           check (pos = 4) (Printf.sprintf "pos should be 4, got %d" pos));
+  test "tokens and parsed propositions retain half-open code-point spans"
+    (fun () ->
+      let source = "　+-\"É\"*+P" in
+      let tokens = tokenize source in
+      (match Array.to_list tokens with
+      | [ wild; quoted; plus; predicate; eof ] ->
+          check
+            (wild.pos = 1 && wild.end_pos = 3)
+            "the two-code-point ASCII wild alias has one token span";
+          check
+            (quoted.pos = 3 && quoted.end_pos = 7)
+            "a quoted singular name span includes quotes and star";
+          check (plus.pos = 7 && plus.end_pos = 8) "the predicate sign span";
+          check
+            (predicate.pos = 8 && predicate.end_pos = 9)
+            "the predicate name span";
+          check
+            (eof.pos = 9 && eof.end_pos = 9)
+            "end of input is a zero-width span"
+      | _ -> failwith "unexpected token sequence");
+      let located = parse_proposition_located source in
+      check
+        (located.range.start_offset = 1 && located.range.end_offset = 9)
+        "the parsed proposition excludes leading whitespace and reaches the \
+         last token");
+  test "parse errors retain the complete offending-token range" (fun () ->
+      match parse_proposition "−S+P+LongName" with
+      | _ -> failwith "should have raised"
+      | exception Parse_error { pos; end_pos; _ } ->
+          check
+            (pos = 4 && end_pos = 5)
+            "the unexpected sign, not the following name, is the offending \
+             token");
 
   (* Printer round-trips *)
   test "corpus round-trip: parse ∘ print ∘ parse is identity" (fun () ->

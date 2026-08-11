@@ -14,7 +14,9 @@
 type error_class =
   | Lexical
   | Syntactic
+  | Name_resolution
   | Outside_fragment
+  | Incomplete_search
   | Resource_limit
   | Internal
 
@@ -22,7 +24,10 @@ type error_info = {
   error_class : error_class;
   message : string;
   pos : int option; (* 0-based index into the offending source *)
+  end_pos : int option; (* exclusive 0-based Unicode code-point index *)
   where : string option; (* which input, e.g. "premise 2" *)
+  span : Tfl.Source.span option;
+  source_line : string option;
 }
 
 type verdict = Valid | Invalid | Contradicted | Unknown | Error of error_info
@@ -55,12 +60,17 @@ let of_failure (f : Tfl.Safe.failure) : error_info =
       (match f.kind with
       | Tfl.Safe.Lexical -> Lexical
       | Tfl.Safe.Syntactic -> Syntactic
+      | Tfl.Safe.Name_resolution -> Name_resolution
       | Tfl.Safe.Outside_fragment -> Outside_fragment
+      | Tfl.Safe.Incomplete_search -> Incomplete_search
       | Tfl.Safe.Resource_limit -> Resource_limit
       | Tfl.Safe.Internal -> Internal);
     message = f.message;
     pos = f.pos;
+    end_pos = f.end_pos;
     where = f.where;
+    span = f.span;
+    source_line = f.source_line;
   }
 
 (* A proposition reads badly in English when its subject is a relational
@@ -180,7 +190,9 @@ let check ~(premises : string list) ~(conclusion : string) : result =
 let class_name = function
   | Lexical -> "lexical"
   | Syntactic -> "syntactic"
+  | Name_resolution -> "name_resolution"
   | Outside_fragment -> "outside_fragment"
+  | Incomplete_search -> "incomplete_search"
   | Resource_limit -> "resource_limit"
   | Internal -> "internal"
 
@@ -191,6 +203,21 @@ let meth_name = function
   | Numerical -> "numerical"
 
 let opt f = function Some v -> f v | None -> `Null
+
+let position_to_json (position : Tfl.Source.position) =
+  `Assoc
+    [
+      ("codepoint_offset", `Int position.codepoint_offset);
+      ("line", `Int position.line);
+      ("column", `Int position.column);
+    ]
+
+let span_to_json (span : Tfl.Source.span) =
+  `Assoc
+    [
+      ("start", position_to_json span.start_pos);
+      ("end", position_to_json span.end_pos);
+    ]
 
 let trace_line_to_json (l : trace_line) : Yojson.Safe.t =
   `Assoc
@@ -218,7 +245,10 @@ let to_json (r : result) : Yojson.Safe.t =
                   ("class", `String (class_name e.error_class));
                   ("message", `String e.message);
                   ("pos", opt (fun i -> `Int i) e.pos);
+                  ("end_pos", opt (fun i -> `Int i) e.end_pos);
                   ("where", opt (fun s -> `String s) e.where);
+                  ("span", opt span_to_json e.span);
+                  ("source_line", opt (fun s -> `String s) e.source_line);
                 ] );
           ]
   in
@@ -234,10 +264,25 @@ let of_json (json : Yojson.Safe.t) : (result, string) Stdlib.result =
   let open Yojson.Safe.Util in
   try
     let opt_of f j = match j with `Null -> None | j -> Some (f j) in
+    let position_of_json j =
+      {
+        Tfl.Source.codepoint_offset = j |> member "codepoint_offset" |> to_int;
+        line = j |> member "line" |> to_int;
+        column = j |> member "column" |> to_int;
+      }
+    in
+    let span_of_json j =
+      {
+        Tfl.Source.start_pos = j |> member "start" |> position_of_json;
+        end_pos = j |> member "end" |> position_of_json;
+      }
+    in
     let error_class_of = function
       | "lexical" -> Lexical
       | "syntactic" -> Syntactic
+      | "name_resolution" -> Name_resolution
       | "outside_fragment" -> Outside_fragment
+      | "incomplete_search" -> Incomplete_search
       | "resource_limit" -> Resource_limit
       | "internal" -> Internal
       | s -> failwith ("unknown error class " ^ s)
@@ -255,7 +300,10 @@ let of_json (json : Yojson.Safe.t) : (result, string) Stdlib.result =
               error_class = error_class_of (e |> member "class" |> to_string);
               message = e |> member "message" |> to_string;
               pos = opt_of to_int (member "pos" e);
+              end_pos = opt_of to_int (member "end_pos" e);
               where = opt_of to_string (member "where" e);
+              span = opt_of span_of_json (member "span" e);
+              source_line = opt_of to_string (member "source_line" e);
             }
       | _ -> failwith "unreadable verdict"
     in

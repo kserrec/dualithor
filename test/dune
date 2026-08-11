@@ -248,8 +248,8 @@
  (libraries yojson unix)
  (deps ../bin/tfl_cli.exe))
 
-; Phase 3 file loading: bounded UTF-8 input and stable one-based code-point
-; source locations before Phase 5 introduces full AST spans.
+; Phase 3 file loading plus Phase 5 half-open source spans, original-line
+; excerpts, Unicode positions, and compiler-diagnostic ranges.
 
 (test
  (name test_source_file)

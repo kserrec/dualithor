@@ -7,8 +7,25 @@ open Ast
 
 (* ── parse_program ──────────────────────────────────────────────────────── *)
 
-type program_entry = { prop : prop; text : string; line : int }
-type program_error = { err_line : int; err_message : string; err_pos : int }
+type program_error_kind = Program_lexical | Program_syntactic
+
+type program_entry = {
+  prop : prop;
+  text : string;
+  source_line : string;
+  line : int;
+  span : Source.span;
+}
+
+type program_error = {
+  err_kind : program_error_kind;
+  err_line : int;
+  err_message : string;
+  err_pos : int;
+  err_end_pos : int;
+  err_span : Source.span;
+  err_source_line : string;
+}
 
 type parsed_program = {
   propositions : program_entry list;
@@ -81,9 +98,8 @@ let line_code_with_start (raw : string) : string * int =
 let line_code raw = fst (line_code_with_start raw)
 
 (* Translate a zero-based parser position in [line_code raw] back to a
-   one-based Unicode code-point column in the original physical line. This is
-   the Phase 3 file-loader location contract; Phase 5 will carry full spans
-   through the AST. *)
+   one-based Unicode code-point column in the original physical line. Kept as
+   a compatibility projection of the Phase 5 span carried by program entries. *)
 let source_column raw pos =
   let _, start = line_code_with_start raw in
   start + max 0 pos + 1
@@ -94,17 +110,48 @@ let source_column raw pos =
 let parse_program (src : string) : parsed_program =
   let propositions = ref [] in
   let errors = ref [] in
+  let line_offset = ref 0 in
   List.iteri
     (fun i raw ->
       let line = i + 1 in
-      let code = line_code raw in
-      if code <> "" then
-        match Notation.parse_proposition code with
-        | prop -> propositions := { prop; text = code; line } :: !propositions
-        | exception Notation.Parse_error { message; pos } ->
-            errors :=
-              { err_line = line; err_message = message; err_pos = pos }
-              :: !errors)
+      let code, code_start = line_code_with_start raw in
+      let source_span range =
+        Source.span_on_line ~line ~line_offset:!line_offset
+          ~column_offset:code_start range
+      in
+      let record_error err_kind message pos end_pos =
+        let range = Source.range ~start_offset:pos ~end_offset:end_pos in
+        errors :=
+          {
+            err_kind;
+            err_line = line;
+            err_message = message;
+            err_pos = pos;
+            err_end_pos = end_pos;
+            err_span = source_span range;
+            err_source_line = raw;
+          }
+          :: !errors
+      in
+      (if code <> "" then
+         match Notation.tokenize code with
+         | exception Notation.Parse_error { message; pos; end_pos } ->
+             record_error Program_lexical message pos end_pos
+         | tokens -> (
+             match Notation.parse_proposition_located_tokens tokens with
+             | located ->
+                 propositions :=
+                   {
+                     prop = located.value;
+                     text = code;
+                     source_line = raw;
+                     line;
+                     span = source_span located.range;
+                   }
+                   :: !propositions
+             | exception Notation.Parse_error { message; pos; end_pos } ->
+                 record_error Program_syntactic message pos end_pos));
+      line_offset := !line_offset + Source.codepoint_length raw + 1)
     (String.split_on_char '\n' src);
   { propositions = List.rev !propositions; errors = List.rev !errors }
 

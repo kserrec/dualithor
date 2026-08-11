@@ -17,7 +17,7 @@
    exit is reserved for the process being unable to run at all. *)
 
 let out (j : Yojson.Safe.t) =
-  print_string (Yojson.Safe.to_string j);
+  print_string (Runtime_json.to_string j);
   print_newline ();
   flush stdout
 

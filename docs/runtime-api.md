@@ -4,6 +4,7 @@
 |---|---|
 | Schema | `horos-runtime-0.1` |
 | Introduced | 2026-08-09 |
+| Source-span fields added | 2026-08-11 |
 | OCaml module | `Tfl.Runtime` |
 | Process | `horos` (`bin/tfl_cli.exe` in the source tree) |
 | Human command | `tfl`, specified separately in [command-line.md](command-line.md) |
@@ -18,12 +19,17 @@ conformance work; callers executing untrusted program text use this runtime inst
 compiled value only when every nonblank, non-comment line parses and passes the standing
 core-fragment validation. It never returns a value containing only the valid subset of a
 malformed source. Independent bad lines are returned together as `Tfl.Safe.failure` records
-and retain their `line N` attribution.
+and retain their `line N` attribution, original physical source line, and half-open source
+span. Parser-local `position`/`end_position` values remain zero-based Unicode code-point
+offsets into the individual input for compatibility. The structured span is authoritative
+across complete programs: its start and end positions contain one-based line and column
+plus an explicitly named zero-based `codepoint_offset` into the complete input.
 
 The compiled value is abstract. `Tfl.Runtime.statements` exposes immutable source records
-containing the line number, comment-stripped source, canonical source spelling, inference
-canonical form, and deterministic English reading. A caller cannot construct a partially
-validated runtime program by filling a public record itself.
+containing the line number, original physical line, comment-stripped source, half-open
+source span, canonical source spelling, inference canonical form, and deterministic English
+reading. A file loader adds the exact path without changing the span. A caller cannot
+construct a partially validated runtime program by filling a public record itself.
 
 Every operation is total: it returns `Ok` or a classified `Tfl.Safe.failure`, and no parser,
 validation, inference, or rendering exception crosses the boundary. Existing byte, line,
@@ -80,6 +86,11 @@ program are JSON escapes. Each request receives exactly one response, including 
 programs and runtime failures; a refusal cannot terminate the process or consume the next
 request. Blank lines are ignored and receive no response.
 
+Responses are always well-formed UTF-8. Yojson can accept a malformed byte inside a JSON
+string, so the process represents each such byte in response display strings as the four
+ASCII characters `\\xNN`, with uppercase hexadecimal digits, rather than replaying invalid
+UTF-8 through a diagnostic's raw `source_line`.
+
 Long-lived bidirectional callers must use request/reply lockstep: write one request, flush
 it, and read its response before sending the next request. Writing an entire batch before
 reading can fill both operating-system pipes when a proof or equivalence response is large,
@@ -103,13 +114,29 @@ Successful Phase 2 responses contain:
 ```
 
 Compile or operation failures contain `ok:false`, the same schema, and an `errors` array.
-Every error has `class`, `message`, `position`, and `where`; null means that field does not
-apply. Malformed protocol JSON and missing or wrongly typed request fields remain protocol
-errors rather than runtime records.
+Every error has `class`, `message`, `position`, `end_position`, `where`, `span`, and
+`source_line`; null means that field does not apply. `position` and `end_position` are the
+legacy half-open, zero-based Unicode code-point range in the individual parser input.
+`span.start` and `span.end` each contain `line`, `column`, and `codepoint_offset`, so a byte
+index cannot be mistaken for a character column. Lexical and syntactic parser failures
+underline the offending token, including a zero-width end-of-input error; an
+`outside_fragment` operation failure spans the complete parsed proposition or term.
+`internal` failures deliberately carry no source excerpt because they classify an
+implementation defect, not bad user input. Malformed protocol JSON and missing or wrongly
+typed request fields remain protocol errors rather than runtime records.
+
+The public diagnostic vocabulary keeps `lexical`, `syntactic`, `name_resolution`,
+`outside_fragment`, `incomplete_search`, `resource_limit`, and `internal` distinct.
+`name_resolution` is currently dormant because this language version has no declarations;
+Phase 17 must use the shared source-span type when it adds them. Ordinary bounded query
+abstention is returned through the result's `completeness` record, not disguised as a
+compile error.
 
 The older `check`, `parse`, and `render` commands remain available with their existing
-response shapes. This preserves callers using the original argument-checking boundary while
-the complete-program commands add the production runtime.
+response shapes. Their error records receive the same additive range metadata: the legacy
+`pos` remains, while `end_pos`, `span`, and `source_line` carry the new boundary. This
+preserves callers using the original argument-checking boundary while the complete-program
+commands add the production runtime.
 
 The one-shot human `tfl` commands are not a second JSON-lines request protocol. They load
 one UTF-8 `.tfl` file, print terminal-oriented text by default, and emit one `tfl-cli-0.1`

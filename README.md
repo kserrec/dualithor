@@ -13,15 +13,17 @@ REPL, answer variables, a defined rule and recursion layer, modules, diagnostics
 provenance, debugging, data interfaces, editor support, packaging, and real application
 comparisons.
 
-**Current status (2026-08-11):** Phases 1 through 4 are complete. The inherited core has a
+**Current status (2026-08-11):** Phases 1 through 5 are complete. The inherited core has a
 [normative language reference](docs/core-language.md), a 26-case executable conformance
 corpus, and a [total public runtime](docs/runtime-api.md) that compiles whole programs and
 exposes every existing operation through OCaml and JSON-lines interfaces. The installable
 [`tfl` command](docs/command-line.md) now checks UTF-8 `.tfl` files, runs ground and term
 queries, renders propositions, and keeps one compiled file available in an interactive
-shell with query, description, consistency, equivalence, and safe reload operations. Its
-one-shot and session interfaces provide explicit JSON modes and distinguish logical and
-operational outcomes. Phase 5, source spans and compiler diagnostics, is next.
+shell with query, description, consistency, equivalence, and safe reload operations. Tokens,
+compiled statements, file-backed entries, and query failures now carry half-open Unicode
+code-point spans; human diagnostics show the offending source and caret range, while JSON
+retains the same structured span and failure class. Phase 6, locking the published extension
+sources, semantics, and profiles, is next.
 [PLAN.md](PLAN.md) is the only active plan; it
 completely supersedes the old regulatory-verification product and proposed human study.
 

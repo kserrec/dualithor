@@ -204,12 +204,17 @@ The Phase 3 filesystem boundary accepts only paths with the case-sensitive `.tfl
 that resolve to regular filesystem files, and only well-formed UTF-8 bytes. Named pipes,
 devices, sockets, and directories are file-input failures; the loader does not wait for or
 read from them. It does not normalize a regular file before compilation.
-Located statements and diagnostics use one-based physical lines and one-based Unicode
-code-point columns in the original line, including leading whitespace; columns are never
-UTF-8 byte offsets or display-dependent tab stops. A malformed UTF-8 sequence is a lexical
-file error. These file and location rules are host/runtime behavior over `core-0.1`, not
-additional logical syntax. The complete command contract is in
-[command-line.md](command-line.md).
+Located statements and diagnostics carry half-open source spans. Their public positions use
+one-based physical lines and one-based Unicode code-point columns in the original line,
+including leading whitespace. Each position also names its zero-based Unicode code-point
+offset in the complete input explicitly as `codepoint_offset`; no byte offset is exposed as
+a character column or generic `offset`. File-backed statement records retain the path, the
+original physical line, and the exact proposition span even though their existing `source`
+field remains the trimmed, comment-stripped proposition. A malformed UTF-8 sequence is a
+lexical file error with a zero-width span at the first malformed byte; the human renderer
+still shows one caret without pretending that byte was a Unicode code point.
+These file and location rules are host/runtime behavior over `core-0.1`, not additional
+logical syntax. The complete command contract is in [command-line.md](command-line.md).
 
 ## 5. Validation and structured failure
 
@@ -218,15 +223,23 @@ Parsing and inference validation are separate:
 - `lexical`: the tokenizer cannot assign a token, including a forbidden unquoted
   non-ASCII name;
 - `syntactic`: valid tokens do not form the required proposition, or nesting exceeds 64;
+- `name_resolution`: parsed source refers to a declaration or name that the compiler cannot
+  resolve;
 - `outside_fragment`: a proposition parses but the requested inference procedure does not
   support its shape;
+- `incomplete_search`: an accepted operation stopped without a complete logical result;
 - `resource_limit`: otherwise valid-shaped input exceeds a public size or work budget;
 - `internal`: an unexpected implementation defect reached the total boundary.
 
-These are failures, not logical verdicts. An `outside_fragment` result does not mean
-`invalid`, `false`, or `unknown`. The total `Tfl.Safe` boundary catches exceptions and
-returns these records. It checks nesting before recursive parsing and attributes a bad
-premise or conclusion to that exact input.
+These classes do not collapse into logical verdicts. An `outside_fragment` result does not
+mean `invalid`, `false`, or `unknown`; an `incomplete_search` outcome says the procedure did
+not finish exhaustively. Current query APIs express incompleteness in their result's
+`completeness` record and the human command's `incomplete-search` status rather than as a
+compiler diagnostic. `name_resolution` is a reserved, separately serializable compiler
+class; no current `core-0.1` source can produce it because declarations and name resolution
+do not exist until Phase 17. The total `Tfl.Safe` boundary catches exceptions and returns
+classified records. It checks nesting before recursive parsing and attributes a bad premise
+or conclusion to that exact input.
 
 Current validation restrictions are exact:
 
@@ -472,7 +485,7 @@ These are implementation or procedure limits, not language truths:
 | Program source | 1,048,576 bytes total, 65,536 bytes per line, 10,000 physical lines, and 1,024 parsed propositions | Larger input is `resource_limit`; ordinary per-line parse errors remain collectable. |
 | JSON-lines protocol | 1,048,576 bytes per request line | The line is drained and refused as `resource_limit`; the next request remains readable. |
 | Proof decoration | Cancellation has a 500,000-node budget | Missing cancellation never changes a P/Z verdict. |
-| Source locations | Program entries retain only line and per-line code-point position | Full file spans and Unicode columns are not exposed. |
+| Span granularity | Tokens, parsed top-level propositions and terms, program entries, and diagnostics retain spans | Kernel inference AST nodes do not retain nested source spans; later declaration nodes must use the same shared span type. |
 | Proterms | Constants, not bound pronouns | Core TFL has no cross-term or cross-sentence anaphora resolution. |
 
 ## 13. Executable conformance corpus

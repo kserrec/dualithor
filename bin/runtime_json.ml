@@ -1,9 +1,76 @@
+let hex = "0123456789ABCDEF"
+
+let add_byte_escape buffer value =
+  Buffer.add_string buffer "\\x";
+  Buffer.add_char buffer hex.[value lsr 4];
+  Buffer.add_char buffer hex.[value land 0x0F]
+
+(* Yojson preserves string bytes without validating UTF-8. Normalize every
+   string at the final machine boundary so a malformed source excerpt cannot
+   make an otherwise valid response cease to be JSON. *)
+let escape_invalid_utf8 text =
+  let escaped = Buffer.create (String.length text) in
+  let rec copy byte =
+    if byte < String.length text then (
+      let decoded = String.get_utf_8_uchar text byte in
+      if Uchar.utf_decode_is_valid decoded then (
+        let width = Uchar.utf_decode_length decoded in
+        Buffer.add_substring escaped text byte width;
+        copy (byte + width))
+      else (
+        add_byte_escape escaped (Char.code text.[byte]);
+        copy (byte + 1)))
+  in
+  copy 0;
+  Buffer.contents escaped
+
+let rec json_with_valid_utf8 (json : Yojson.Safe.t) : Yojson.Safe.t =
+  match json with
+  | `String text -> `String (escape_invalid_utf8 text)
+  | `Assoc fields ->
+      `Assoc
+        (List.map
+           (fun (name, value) ->
+             (escape_invalid_utf8 name, json_with_valid_utf8 value))
+           fields)
+  | `List values -> `List (List.map json_with_valid_utf8 values)
+  | (`Null | `Bool _ | `Int _ | `Intlit _ | `Float _) as scalar -> scalar
+
+let to_string json = Yojson.Safe.to_string (json_with_valid_utf8 json)
+
+let source_position_json (position : Tfl.Source.position) =
+  `Assoc
+    [
+      ("codepoint_offset", `Int position.codepoint_offset);
+      ("line", `Int position.line);
+      ("column", `Int position.column);
+    ]
+
+let source_span_json (span : Tfl.Source.span) =
+  `Assoc
+    [
+      ("start", source_position_json span.start_pos);
+      ("end", source_position_json span.end_pos);
+    ]
+
 let failure_fields (failure : Tfl.Safe.failure) =
+  let pos, end_pos, span, source_line =
+    match failure.kind with
+    | Tfl.Safe.Internal -> (None, None, None, None)
+    | _ -> (failure.pos, failure.end_pos, failure.span, failure.source_line)
+  in
   [
     ("class", `String (Tfl.Safe.kind_name failure.kind));
     ("message", `String failure.message);
-    ("position", match failure.pos with Some p -> `Int p | None -> `Null);
+    ("position", match pos with Some p -> `Int p | None -> `Null);
+    ("end_position", match end_pos with Some p -> `Int p | None -> `Null);
     ("where", match failure.where with Some w -> `String w | None -> `Null);
+    ( "span",
+      match span with Some span -> source_span_json span | None -> `Null );
+    ( "source_line",
+      match source_line with
+      | Some source_line -> `String source_line
+      | None -> `Null );
   ]
 
 let failure_json failure = `Assoc (("ok", `Bool false) :: failure_fields failure)
@@ -38,6 +105,8 @@ let statement_json (statement : Tfl.Runtime.statement) =
     [
       ("line", `Int statement.line);
       ("source", `String statement.source);
+      ("source_line", `String statement.source_line);
+      ("span", source_span_json statement.span);
       ("proposition", proposition_json statement.proposition);
     ]
 

@@ -6,6 +6,7 @@
 | Machine-output schema | `tfl-cli-0.1` |
 | Interactive-stream schema | `tfl-repl-0.1` |
 | Introduced | 2026-08-10 |
+| Source-span fields added | 2026-08-11 |
 | Language contract | `core-0.1` |
 
 The `tfl` executable is the human-facing interface for one complete TFL source file and
@@ -34,10 +35,24 @@ Locations are stable across every `tfl` command:
 - line feed separates physical lines; a carriage return before line feed is accepted as
   ordinary language whitespace.
 
+Every located statement and diagnostic also carries a half-open `span`. Its `start` and
+`end` positions contain the one-based `line` and `column` above plus a zero-based
+`codepoint_offset` into the complete input. The field is deliberately named: no UTF-8 byte
+offset is presented as a character column or an ambiguous generic offset. Statement records
+retain both the original physical `source_line` and the existing trimmed,
+comment-stripped `source`; file-backed statement records also retain `source_path`.
+
 The loader rejects malformed UTF-8 before compilation and reports the first malformed byte
 at the line and code-point column where decoding fails. Compilation remains all-or-nothing:
 every independently malformed line is reported, and no executable program is returned
 from only the valid subset.
+
+Human compile and query-input diagnostics print the path or input label, location, class,
+and message, followed by the offending physical source line and a caret range. The carets
+use the same code-point-column contract as the structured span; a zero-width end-of-input
+error still receives one caret. Multiple independent file errors each receive their own
+source line and caret range. An `internal` failure has no source excerpt or caret because it
+identifies an implementation defect rather than blaming user input.
 
 ## Commands
 
@@ -198,9 +213,10 @@ output; an initialization failure still uses standard error. This separation let
 parse machine output without merging diagnostic streams.
 
 Successful operations add their corresponding stable runtime fields. File-backed
-operations also add `file`; `check` statement records add one-based `line` and `column`.
-Query and description results use the same proposition, completeness, support, proof, and
-evidence encodings as `horos-runtime-0.1`.
+operations also add `file`; `check` statement records add `source_path`, the one-based
+`line` and `column`, `source_line`, and `span`. Query and description results use the same
+proposition, completeness, support, proof, and evidence encodings as
+`horos-runtime-0.1`.
 
 Machine output is always well-formed UTF-8. Valid UTF-8 text is unchanged; if an
 operating-system string contains a malformed byte, that byte is represented visibly as the
@@ -208,10 +224,16 @@ four ASCII characters `\xNN`, with uppercase hexadecimal digits. The raw path by
 still used for filesystem access; this display encoding exists only at the JSON boundary.
 
 Failures set `ok` to `false` and contain an `errors` array. Each error has `class`,
-`message`, `source`, `line`, and `column`; a field is JSON `null` only when no source
-location applies. For one-shot commands, the process exit status and the JSON
-`exit_status` field always agree. REPL stream records instead use `command_exit_status`,
-whose deliberately different session behavior is specified above.
+`message`, `source`, `line`, `column`, `span`, and `source_line`; a field is JSON `null`
+only when it does not apply. `line` and `column` duplicate `span.start` for compatibility.
+The classes `lexical`, `syntactic`, `name_resolution`, `outside_fragment`,
+`incomplete_search`, `resource_limit`, and `internal` remain distinct. No current source
+emits `name_resolution` because declarations do not exist until Phase 17. Current bounded
+queries instead report `incomplete-search` as their command status and retain the precise
+reason in `completeness`; they are never mislabeled as syntax or logical non-entailment.
+For one-shot commands, the process exit status and the JSON `exit_status` field always
+agree. REPL stream records instead use `command_exit_status`, whose deliberately different
+session behavior is specified above.
 
 The command does not require an account, network connection, or model. File reading, UTF-8
 validation, argument parsing, terminal escaping, and exit classification use OCaml's

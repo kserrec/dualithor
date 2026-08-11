@@ -105,7 +105,12 @@ let () =
       (match e.verdict with
       | Tfl_verify.Error i ->
           check (i.where = Some "premise 2") "the failing premise is named";
-          check (i.pos <> None) "a parse failure carries a position"
+          check (i.pos <> None) "a parse failure carries a position";
+          check (i.end_pos <> None) "a parse failure carries an end position";
+          check (i.span <> None) "the verification JSON retains the source span";
+          check
+            (i.source_line = Some "-A+")
+            "the verification JSON retains the offending input"
       | _ -> check false "malformed premise 2 should be an error");
       check (e.meth = None) "errors carry no method")
 
@@ -183,7 +188,10 @@ let () =
                 error_class = Tfl_verify.Internal;
                 message = "boom";
                 pos = None;
+                end_pos = None;
                 where = None;
+                span = None;
+                source_line = None;
               };
           meth = None;
           trace =

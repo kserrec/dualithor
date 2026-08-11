@@ -2,7 +2,9 @@ type failure_kind =
   | File
   | Lexical
   | Syntactic
+  | Name_resolution
   | Outside_fragment
+  | Incomplete_search
   | Resource_limit
   | Internal
 
@@ -12,12 +14,17 @@ type diagnostic = {
   path : string;
   line : int option;
   column : int option;
+  span : Source.span option;
+  source_line : string option;
 }
 
 type statement = {
+  path : string;
   line : int;
   column : int;
   source : string;
+  source_line : string;
+  span : Source.span;
   proposition : Runtime.proposition;
 }
 
@@ -31,7 +38,9 @@ let kind_name = function
   | File -> "file"
   | Lexical -> "lexical"
   | Syntactic -> "syntactic"
+  | Name_resolution -> "name_resolution"
   | Outside_fragment -> "outside_fragment"
+  | Incomplete_search -> "incomplete_search"
   | Resource_limit -> "resource_limit"
   | Internal -> "internal"
 
@@ -39,8 +48,19 @@ let path loaded = loaded.source_path
 let runtime loaded = loaded.compiled
 let statements loaded = loaded.located_statements
 
-let diagnostic ?line ?column kind path message =
-  { kind; message; path; line; column }
+let diagnostic ?line ?column ?span ?source_line kind path message =
+  let line =
+    match (line, span) with
+    | Some line, _ -> Some line
+    | None, Some span -> Some span.Source.start_pos.line
+    | None, None -> None
+  and column =
+    match (column, span) with
+    | Some column, _ -> Some column
+    | None, Some span -> Some span.Source.start_pos.column
+    | None, None -> None
+  in
+  { kind; message; path; line; column; span; source_line }
 
 let file_failure path message = diagnostic File path message
 let regular_file_message = "TFL source path must refer to a regular file"
@@ -128,20 +148,26 @@ let read_bounded ?after_stat ?after_open path =
                    ("Unexpected file-read failure: " ^ Printexc.to_string error)))
 
 let validate_utf8 path source =
-  let rec scan byte line column =
+  let rec scan byte codepoint_offset line column =
     if byte >= String.length source then Ok ()
     else
       let decoded = String.get_utf_8_uchar source byte in
       if not (Uchar.utf_decode_is_valid decoded) then
+        let start_pos = { Source.codepoint_offset; line; column } in
+        let end_pos = start_pos in
         Error
-          (diagnostic ~line ~column Lexical path "File is not well-formed UTF-8")
+          (diagnostic
+             ~span:{ Source.start_pos; end_pos }
+             ?source_line:(Source.line_text source line)
+             Lexical path "File is not well-formed UTF-8")
       else
         let code_point = Uchar.to_int (Uchar.utf_decode_uchar decoded) in
         let next_byte = byte + Uchar.utf_decode_length decoded in
-        if code_point = 0x0A then scan next_byte (line + 1) 1
-        else scan next_byte line (column + 1)
+        if code_point = 0x0A then
+          scan next_byte (codepoint_offset + 1) (line + 1) 1
+        else scan next_byte (codepoint_offset + 1) line (column + 1)
   in
-  scan 0 1 1
+  scan 0 0 1 1
 
 let line_number = function
   | None -> None
@@ -159,7 +185,9 @@ let line_number = function
 let safe_kind = function
   | Safe.Lexical -> Lexical
   | Safe.Syntactic -> Syntactic
+  | Safe.Name_resolution -> Name_resolution
   | Safe.Outside_fragment -> Outside_fragment
+  | Safe.Incomplete_search -> Incomplete_search
   | Safe.Resource_limit -> Resource_limit
   | Safe.Internal -> Internal
 
@@ -170,20 +198,38 @@ let source_column lines number position =
   Program.source_column (source_line lines number) position
 
 let diagnostic_of_safe path lines (failure : Safe.failure) =
-  let line = line_number failure.where in
-  let column =
-    Option.map
-      (fun number ->
-        source_column lines number (Option.value ~default:0 failure.pos))
-      line
-  in
-  diagnostic ?line ?column (safe_kind failure.kind) path failure.message
+  match failure.kind with
+  | Safe.Internal -> diagnostic Internal path failure.message
+  | _ ->
+      let fallback_line = line_number failure.where in
+      let line, column =
+        match failure.span with
+        | Some span ->
+            (Some span.Source.start_pos.line, Some span.Source.start_pos.column)
+        | None ->
+            ( fallback_line,
+              Option.map
+                (fun number ->
+                  source_column lines number
+                    (Option.value ~default:0 failure.pos))
+                fallback_line )
+      in
+      let source_line =
+        match failure.source_line with
+        | Some _ as source_line -> source_line
+        | None -> Option.map (source_line lines) line
+      in
+      diagnostic ?line ?column ?span:failure.span ?source_line
+        (safe_kind failure.kind) path failure.message
 
-let locate_statement lines (statement : Runtime.statement) =
+let locate_statement path (statement : Runtime.statement) =
   {
+    path;
     line = statement.line;
-    column = source_column lines statement.line 0;
+    column = statement.span.start_pos.column;
     source = statement.source;
+    source_line = statement.source_line;
+    span = statement.span;
     proposition = statement.proposition;
   }
 
@@ -193,7 +239,7 @@ let compile path source =
   | Error failures -> Error (List.map (diagnostic_of_safe path lines) failures)
   | Ok compiled ->
       let located_statements =
-        Runtime.statements compiled |> List.map (locate_statement lines)
+        Runtime.statements compiled |> List.map (locate_statement path)
       in
       Ok { source_path = path; compiled; located_statements }
 

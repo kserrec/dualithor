@@ -7,7 +7,9 @@
 type failure_kind =
   | Lexical (* a character or token the notation has no reading for *)
   | Syntactic (* legal tokens that do not form a proposition *)
+  | Name_resolution (* a parsed name cannot be resolved by the compiler *)
   | Outside_fragment (* a well-formed AST the inference layer refuses *)
+  | Incomplete_search (* an operation stopped without a complete result *)
   | Resource_limit (* valid-shaped input exceeds a public work or size bound *)
   | Internal
 (* an exception that should be unreachable. It classifies the engine, not the
@@ -19,13 +21,18 @@ type failure = {
   kind : failure_kind;
   message : string; (* the engine's own text, unmodified *)
   pos : int option; (* 0-based index into the source; parse failures only *)
+  end_pos : int option; (* exclusive 0-based code-point offset *)
   where : string option; (* which input, for the multi-input entry points *)
+  span : Source.span option;
+  source_line : string option;
 }
 
 let kind_name = function
   | Lexical -> "lexical"
   | Syntactic -> "syntactic"
+  | Name_resolution -> "name_resolution"
   | Outside_fragment -> "outside_fragment"
+  | Incomplete_search -> "incomplete_search"
   | Resource_limit -> "resource_limit"
   | Internal -> "internal"
 
@@ -46,7 +53,15 @@ let max_argument_bytes = 1_048_576
 let max_argument_premises = 1_024
 
 let resource_failure ?where message =
-  { kind = Resource_limit; message; pos = None; where }
+  {
+    kind = Resource_limit;
+    message;
+    pos = None;
+    end_pos = None;
+    where;
+    span = None;
+    source_line = None;
+  }
 
 let source_too_large ?where src =
   if String.length src <= max_source_bytes then None
@@ -55,17 +70,20 @@ let source_too_large ?where src =
       (resource_failure ?where
          (Printf.sprintf "Source exceeds the %d-byte limit" max_source_bytes))
 
-let depth_failure pos =
+let depth_failure pos end_pos =
   {
     kind = Syntactic;
     message =
       Printf.sprintf "Nesting deeper than %d levels is not accepted" max_depth;
     pos = Some pos;
+    end_pos = Some end_pos;
     where = None;
+    span = None;
+    source_line = None;
   }
 
 (* Some src = the position at which [src] first exceeds [max_depth]. *)
-let too_deep (tokens : Notation.token array) : int option =
+let too_deep (tokens : Notation.token array) : Source.range option =
   let depth = ref 0 in
   let over = ref None in
   Array.iter
@@ -73,14 +91,35 @@ let too_deep (tokens : Notation.token array) : int option =
       match t.kind with
       | Notation.Tok_lparen | Notation.Tok_lbracket ->
           incr depth;
-          if !depth > max_depth && !over = None then over := Some t.pos
+          if !depth > max_depth && !over = None then
+            over :=
+              Some (Source.range ~start_offset:t.pos ~end_offset:t.end_pos)
       | Notation.Tok_rparen | Notation.Tok_rbracket -> decr depth
       | _ -> ())
     tokens;
   !over
 
 let unexpected ?where e =
-  { kind = Internal; message = Printexc.to_string e; pos = None; where }
+  {
+    kind = Internal;
+    message = Printexc.to_string e;
+    pos = None;
+    end_pos = None;
+    where;
+    span = None;
+    source_line = None;
+  }
+
+let locate source source_range failure =
+  match failure.kind with
+  | Internal -> failure
+  | _ ->
+      let span = Source.span_of_range source source_range in
+      {
+        failure with
+        span = Some span;
+        source_line = Source.line_text source span.Source.start_pos.line;
+      }
 
 (* Run a post-parse engine call, mapping its refusal — and anything it should
    not raise, Stack_overflow included — onto a structured failure. A
@@ -90,7 +129,16 @@ let guard ?where (f : unit -> 'a) : ('a, failure) result =
   match f () with
   | v -> Ok v
   | exception Infer.Engine_error message ->
-      Error { kind = Outside_fragment; message; pos = None; where }
+      Error
+        {
+          kind = Outside_fragment;
+          message;
+          pos = None;
+          end_pos = None;
+          where;
+          span = None;
+          source_line = None;
+        }
   | exception e -> Error (unexpected ?where e)
 
 (* ── Entry points ───────────────────────────────────────────────────────────
@@ -106,35 +154,83 @@ let parse_with ?where parser (src : string) =
   | Some failure -> Error failure
   | None -> (
       match Notation.tokenize src with
-      | exception Notation.Parse_error { message; pos } ->
-          Error { kind = Lexical; message; pos = Some pos; where }
+      | exception Notation.Parse_error { message; pos; end_pos } ->
+          Error
+            (locate src
+               (Source.range ~start_offset:pos ~end_offset:end_pos)
+               {
+                 kind = Lexical;
+                 message;
+                 pos = Some pos;
+                 end_pos = Some end_pos;
+                 where;
+                 span = None;
+                 source_line = None;
+               })
       | exception e -> Error (unexpected ?where e)
       | tokens -> (
           match too_deep tokens with
-          | Some pos -> Error { (depth_failure pos) with where }
+          | Some range ->
+              Error
+                (locate src range
+                   {
+                     (depth_failure range.Source.start_offset
+                        range.Source.end_offset)
+                     with
+                     where;
+                   })
           | None -> (
               match parser tokens with
               | parsed -> Ok parsed
-              | exception Notation.Parse_error { message; pos } ->
-                  Error { kind = Syntactic; message; pos = Some pos; where }
+              | exception Notation.Parse_error { message; pos; end_pos } ->
+                  Error
+                    (locate src
+                       (Source.range ~start_offset:pos ~end_offset:end_pos)
+                       {
+                         kind = Syntactic;
+                         message;
+                         pos = Some pos;
+                         end_pos = Some end_pos;
+                         where;
+                         span = None;
+                         source_line = None;
+                       })
               | exception e -> Error (unexpected ?where e))))
 
+let parse_located ?where (src : string) :
+    (Ast.prop Source.located, failure) result =
+  parse_with ?where Notation.parse_proposition_located_tokens src
+
 let parse ?where (src : string) : (Ast.prop, failure) result =
-  parse_with ?where Notation.parse_proposition_tokens src
+  Result.map
+    (fun (located : Ast.prop Source.located) -> located.value)
+    (parse_located ?where src)
+
+let parse_term_located ?where (src : string) :
+    (Ast.term Source.located, failure) result =
+  parse_with ?where Notation.parse_term_located_tokens src
 
 let parse_term ?where (src : string) : (Ast.term, failure) result =
-  parse_with ?where Notation.parse_term_tokens src
+  Result.map
+    (fun (located : Ast.term Source.located) -> located.value)
+    (parse_term_located ?where src)
 
-let parse_all (label : string) (sources : string list) :
-    (Ast.prop list, failure) result =
+let parse_all_located (label : string) (sources : string list) :
+    (Ast.prop Source.located list, failure) result =
   let rec go i acc = function
     | [] -> Ok (List.rev acc)
     | src :: rest -> (
-        match parse ~where:(Printf.sprintf "%s %d" label i) src with
+        match parse_located ~where:(Printf.sprintf "%s %d" label i) src with
         | Error e -> Error e
         | Ok p -> go (i + 1) (p :: acc) rest)
   in
   go 1 [] sources
+
+let parse_all (label : string) (sources : string list) :
+    (Ast.prop list, failure) result =
+  Result.map
+    (List.map (fun (located : Ast.prop Source.located) -> located.value))
+    (parse_all_located label sources)
 
 (* The guarded program-loading path. Cap the aggregate, physical-line count,
    line size, and parsed proposition count around [Program.parse_program].
@@ -155,29 +251,58 @@ let parse_program (src : string) : (Program.parsed_program, failure) result =
     if line_count > max_program_lines then
       Error
         (resource_failure
-           (Printf.sprintf "Program exceeds the %d-line limit"
-              max_program_lines))
+           (Printf.sprintf "Program exceeds the %d-line limit" max_program_lines))
     else
-      let line_failure (n, raw) =
+      let line_failure (n, line_offset, raw) =
         let where = Printf.sprintf "line %d" n in
         if String.length raw > max_source_bytes then
+          let line_range =
+            Source.range ~start_offset:0
+              ~end_offset:(Source.codepoint_length raw)
+          in
           Some
-            (resource_failure ~where
-               (Printf.sprintf "Program line exceeds the %d-byte limit"
-                  max_source_bytes))
+            {
+              (resource_failure ~where
+                 (Printf.sprintf "Program line exceeds the %d-byte limit"
+                    max_source_bytes))
+              with
+              span =
+                Some
+                  (Source.span_on_line ~line:n ~line_offset ~column_offset:0
+                     line_range);
+              source_line = Some raw;
+            }
         else
-          match Notation.tokenize (Program.line_code raw) with
+          let code, code_start = Program.line_code_with_start raw in
+          match Notation.tokenize code with
           (* a tokenizer refusal is that line's own recorded error — the
              program parser reports it in [errors] *)
           | exception _ -> None
           | tokens ->
               Option.map
-                (fun pos -> { (depth_failure pos) with where = Some where })
+                (fun range ->
+                  {
+                    (depth_failure range.Source.start_offset
+                       range.Source.end_offset)
+                    with
+                    where = Some where;
+                    span =
+                      Some
+                        (Source.span_on_line ~line:n ~line_offset
+                           ~column_offset:code_start range);
+                    source_line = Some raw;
+                  })
                 (too_deep tokens)
       in
-      let numbered =
-        List.mapi (fun i raw -> (i + 1, raw)) (String.split_on_char '\n' src)
+      let rec number line line_offset acc = function
+        | [] -> List.rev acc
+        | raw :: rest ->
+            number (line + 1)
+              (line_offset + Source.codepoint_length raw + 1)
+              ((line, line_offset, raw) :: acc)
+              rest
       in
+      let numbered = number 1 0 [] (String.split_on_char '\n' src) in
       match List.find_map line_failure numbered with
       | Some f -> Error f
       | None -> (
@@ -229,28 +354,41 @@ let check ~(premises : string list) ~(conclusion : string) :
     in
     add_premises 0 max_argument_bytes premises
   in
-  let validate where p = guard ~where (fun () -> Infer.validate_prop p) in
-  let rec validate_premises i = function
-    | [] -> Ok ()
-    | p :: rest -> (
-        match validate (Printf.sprintf "premise %d" i) p with
+  let validate where source (located : Ast.prop Source.located) =
+    match guard ~where (fun () -> Infer.validate_prop located.value) with
+    | Error ({ kind = Internal; _ } as failure) -> Error failure
+    | Error failure -> Error (locate source located.range failure)
+    | Ok () -> Ok ()
+  in
+  let rec validate_premises i sources located =
+    match (sources, located) with
+    | [], [] -> Ok ()
+    | source :: source_rest, proposition :: proposition_rest -> (
+        match validate (Printf.sprintf "premise %d" i) source proposition with
         | Error e -> Error e
-        | Ok () -> validate_premises (i + 1) rest)
+        | Ok () -> validate_premises (i + 1) source_rest proposition_rest)
+    | _ -> Error (unexpected ~where:"argument" (Failure "premise mismatch"))
   in
   match argument_budget () with
   | Error e -> Error e
   | Ok () -> (
-      match parse_all "premise" premises with
+      match parse_all_located "premise" premises with
       | Error e -> Error e
-      | Ok premises -> (
-          match parse ~where:"conclusion" conclusion with
+      | Ok located_premises -> (
+          match parse_located ~where:"conclusion" conclusion with
           | Error e -> Error e
-          | Ok conclusion -> (
-              match validate_premises 1 premises with
+          | Ok located_conclusion -> (
+              match validate_premises 1 premises located_premises with
               | Error e -> Error e
               | Ok () -> (
-                  match validate "conclusion" conclusion with
+                  match validate "conclusion" conclusion located_conclusion with
                   | Error e -> Error e
                   | Ok () ->
+                      let premises =
+                        List.map
+                          (fun (located : Ast.prop Source.located) ->
+                            located.value)
+                          located_premises
+                      and conclusion = located_conclusion.value in
                       guard ~where:"argument" (fun () ->
                           Decide.check_argument premises conclusion)))))

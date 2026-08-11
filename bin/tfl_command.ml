@@ -1,5 +1,6 @@
-(* Human-facing Phase 3 command line. The long-lived [horos] JSON-lines
-   process remains a separate executable and protocol. *)
+(* Human-facing command line introduced in Phase 3 and extended with the
+   Phase 4 REPL and Phase 5 source diagnostics. The long-lived [horos]
+   JSON-lines process remains a separate executable and protocol. *)
 
 type diagnostic = {
   class_name : string;
@@ -7,6 +8,8 @@ type diagnostic = {
   source : string;
   line : int option;
   column : int option;
+  span : Tfl.Source.span option;
+  source_line : string option;
 }
 
 let cli_schema = "tfl-cli-0.1"
@@ -57,27 +60,6 @@ let repl_help =
       End the session.
 |}
 
-(* Yojson deliberately preserves string bytes without validating UTF-8. Unix
-   paths do the same, so normalize every string at the final machine boundary
-   instead of relying on each record builder to remember which values came
-   from the operating system. *)
-let escape_invalid_utf8 text =
-  let escaped = Buffer.create (String.length text) in
-  let rec copy byte =
-    if byte < String.length text then (
-      let decoded = String.get_utf_8_uchar text byte in
-      if Uchar.utf_decode_is_valid decoded then (
-        let width = Uchar.utf_decode_length decoded in
-        Buffer.add_substring escaped text byte width;
-        copy (byte + width))
-      else
-        let value = Char.code text.[byte] in
-        add_byte_escape escaped value;
-        copy (byte + 1))
-  in
-  copy 0;
-  Buffer.contents escaped
-
 (* Human output has trusted layout but interpolates operating-system paths and
    language text. Escape controls at those field boundaries so a hostile path
    cannot clear a terminal, create a hyperlink, or forge another output line.
@@ -116,20 +98,8 @@ let escape_terminal_field text =
   copy 0;
   Buffer.contents escaped
 
-let rec json_with_valid_utf8 (json : Yojson.Safe.t) : Yojson.Safe.t =
-  match json with
-  | `String text -> `String (escape_invalid_utf8 text)
-  | `Assoc fields ->
-      `Assoc
-        (List.map
-           (fun (name, value) ->
-             (escape_invalid_utf8 name, json_with_valid_utf8 value))
-           fields)
-  | `List values -> `List (List.map json_with_valid_utf8 values)
-  | (`Null | `Bool _ | `Int _ | `Intlit _ | `Float _) as scalar -> scalar
-
 let output_json json =
-  print_endline (Yojson.Safe.to_string (json_with_valid_utf8 json));
+  print_endline (Runtime_json.to_string json);
   flush stdout
 
 let output_human text =
@@ -161,6 +131,14 @@ let diagnostic_json diagnostic =
       ("source", `String diagnostic.source);
       ("line", match diagnostic.line with Some n -> `Int n | None -> `Null);
       ("column", match diagnostic.column with Some n -> `Int n | None -> `Null);
+      ( "span",
+        match diagnostic.span with
+        | Some span -> Runtime_json.source_span_json span
+        | None -> `Null );
+      ( "source_line",
+        match diagnostic.source_line with
+        | Some source_line -> `String source_line
+        | None -> `Null );
     ]
 
 let failure_json operation status diagnostics =
@@ -180,6 +158,46 @@ let repl_failure_json operation status diagnostics =
     ~exit_status_field:"command_exit_status" operation status
     [ ("errors", `List (List.map diagnostic_json diagnostics)) ]
 
+let rendered_excerpt source_line (span : Tfl.Source.span) =
+  let start_column = span.start_pos.column in
+  let end_column =
+    if span.end_pos.line = span.start_pos.line then span.end_pos.column
+    else Tfl.Source.codepoint_length source_line + 1
+  in
+  let rendered = Buffer.create (String.length source_line) in
+  let display_width = ref 0 and source_column = ref 1 and byte = ref 0 in
+  let marker_start = ref None and marker_end = ref None in
+  let mark_boundaries () =
+    if !source_column = start_column then marker_start := Some !display_width;
+    if !source_column = end_column then marker_end := Some !display_width
+  in
+  while !byte < String.length source_line do
+    mark_boundaries ();
+    let decoded = String.get_utf_8_uchar source_line !byte in
+    if Uchar.utf_decode_is_valid decoded then (
+      let width = Uchar.utf_decode_length decoded in
+      let code_point = Uchar.to_int (Uchar.utf_decode_uchar decoded) in
+      if is_terminal_format_control code_point then (
+        let before = Buffer.length rendered in
+        add_code_point_escape rendered code_point;
+        display_width := !display_width + Buffer.length rendered - before)
+      else (
+        Buffer.add_substring rendered source_line !byte width;
+        incr display_width);
+      byte := !byte + width)
+    else (
+      add_byte_escape rendered (Char.code source_line.[!byte]);
+      display_width := !display_width + 4;
+      incr byte);
+    incr source_column
+  done;
+  mark_boundaries ();
+  let marker_start = Option.value ~default:!display_width !marker_start in
+  let marker_end = Option.value ~default:marker_start !marker_end in
+  let marker_width = max 1 (marker_end - marker_start) in
+  ( Buffer.contents rendered,
+    String.make marker_start ' ' ^ String.make marker_width '^' )
+
 let human_diagnostic diagnostic =
   let source = escape_terminal_field diagnostic.source
   and class_name = escape_terminal_field diagnostic.class_name
@@ -190,7 +208,12 @@ let human_diagnostic diagnostic =
     | Some line, None -> Printf.sprintf "%s:%d" source line
     | None, _ -> source
   in
-  Printf.sprintf "%s: %s: %s" location class_name message
+  let heading = Printf.sprintf "%s: %s: %s" location class_name message in
+  match (diagnostic.source_line, diagnostic.span) with
+  | Some source_line, Some span ->
+      let source_line, carets = rendered_excerpt source_line span in
+      Printf.sprintf "%s\n  | %s\n  | %s" heading source_line carets
+  | _ -> heading
 
 let emit_result ~json operation status human fields =
   if json then output_json (success_json operation status fields)
@@ -217,33 +240,56 @@ let emit_repl_failure ~json operation status diagnostics =
     |> output_human
 
 let source_diagnostic (diagnostic : Tfl.Source_file.diagnostic) =
+  let line, column, span, source_line =
+    match diagnostic.kind with
+    | Tfl.Source_file.Internal -> (None, None, None, None)
+    | _ ->
+        ( diagnostic.line,
+          diagnostic.column,
+          diagnostic.span,
+          diagnostic.source_line )
+  in
   {
     class_name = Tfl.Source_file.kind_name diagnostic.kind;
     message = diagnostic.message;
     source = diagnostic.path;
-    line = diagnostic.line;
-    column = diagnostic.column;
+    line;
+    column;
+    span;
+    source_line;
   }
 
 let input_diagnostic label (failure : Tfl.Safe.failure) =
+  let span, source_line =
+    match failure.kind with
+    | Tfl.Safe.Internal -> (None, None)
+    | _ -> (failure.span, failure.source_line)
+  in
   {
     class_name = Tfl.Safe.kind_name failure.kind;
     message = failure.message;
     source = Option.value ~default:label failure.where;
-    line = Option.map (fun _ -> 1) failure.pos;
-    column = Option.map (fun position -> position + 1) failure.pos;
+    line = Option.map (fun span -> span.Tfl.Source.start_pos.line) span;
+    column = Option.map (fun span -> span.Tfl.Source.start_pos.column) span;
+    span;
+    source_line;
   }
 
 let status_of_source_failures failures =
   let is_internal (failure : Tfl.Source_file.diagnostic) =
     failure.kind = Tfl.Source_file.Internal
+  and is_incomplete (failure : Tfl.Source_file.diagnostic) =
+    failure.kind = Tfl.Source_file.Incomplete_search
   in
   if List.exists is_internal failures then Command_status.Internal_failure
+  else if List.exists is_incomplete failures then
+    Command_status.Incomplete_search
   else Command_status.Input_failure
 
 let status_of_safe_failure (failure : Tfl.Safe.failure) =
   match failure.kind with
   | Tfl.Safe.Internal -> Command_status.Internal_failure
+  | Tfl.Safe.Incomplete_search -> Command_status.Incomplete_search
   | _ -> Command_status.Input_failure
 
 let safe_or_fail ~json ~operation ~input_label = function
@@ -258,7 +304,10 @@ let located_statement_json (statement : Tfl.Source_file.statement) =
     [
       ("line", `Int statement.line);
       ("column", `Int statement.column);
+      ("source_path", `String statement.path);
       ("source", `String statement.source);
+      ("source_line", `String statement.source_line);
+      ("span", Runtime_json.source_span_json statement.span);
       ("proposition", Runtime_json.proposition_json statement.proposition);
     ]
 
@@ -600,6 +649,8 @@ let repl_usage_diagnostic message =
     source = "interactive command";
     line = None;
     column = None;
+    span = None;
+    source_line = None;
   }
 
 let emit_repl_safe_failure ~json operation input_label failure =
@@ -683,6 +734,8 @@ let run_repl ~json path =
             source = "interactive command";
             line = None;
             column = None;
+            span = None;
+            source_line = None;
           }
         in
         emit_repl_failure ~json "command" Command_status.Input_failure
@@ -700,6 +753,8 @@ let run_repl ~json path =
             source = "interactive command";
             line = None;
             column = None;
+            span = None;
+            source_line = None;
           }
         in
         emit_repl_failure ~json "command" Command_status.Input_failure
@@ -744,6 +799,8 @@ let run_repl ~json path =
           source = "tfl repl";
           line = None;
           column = None;
+          span = None;
+          source_line = None;
         }
       in
       emit_repl_failure ~json "session" unexpected.status [ diagnostic ];
@@ -757,6 +814,8 @@ let usage_failure ~json message =
       source = "command line";
       line = None;
       column = None;
+      span = None;
+      source_line = None;
     }
   in
   if json then
@@ -807,6 +866,8 @@ let () =
           source = "tfl";
           line = None;
           column = None;
+          span = None;
+          source_line = None;
         }
       in
       emit_failure ~json "command" unexpected.status [ diagnostic ]

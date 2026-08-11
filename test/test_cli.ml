@@ -104,6 +104,7 @@ let () =
     | [] -> false);
 
   let requests =
+    let malformed_utf8 = String.make 1 (Char.chr 0xC3) in
     [
       {|{"cmd":"check","premises":["-M+P","-S+M"],"conclusion":"-S+P"}|};
       (* garbage, sandwiched so anything it kills is visible downstream *)
@@ -126,6 +127,7 @@ let () =
       {|{"cmd":"equivalence","left":"-Dog+Mammal","right":"-(−Mammal)+(−Dog)"}|};
       (* the fifth evidence variant: a numerical decision record *)
       {|{"cmd":"query","program":"+C^3-H\n-C+E","query":"-E+H"}|};
+      "{\"cmd\":\"parse\",\"tfl\":\"+S+" ^ malformed_utf8 ^ "(\"}";
     ]
   in
   let replies = run requests in
@@ -159,11 +161,15 @@ let () =
   check "compile returns stable statement records"
     (field "ok" r.(10) = "true"
     && field "schema" r.(10) = "horos-runtime-0.1"
-    && List.length
-         (Yojson.Safe.Util.to_list
-            (Yojson.Safe.Util.member "statements"
-               (Yojson.Safe.from_string r.(10))))
-       = 2);
+    &&
+    let statements =
+      Yojson.Safe.Util.member "statements" (Yojson.Safe.from_string r.(10))
+      |> Yojson.Safe.Util.to_list
+    in
+    List.length statements = 2
+    && Yojson.Safe.Util.member "source_line" (List.hd statements)
+       = `String "-Man+Animal"
+    && Yojson.Safe.Util.member "span" (List.hd statements) <> `Null);
   let compile_errors =
     Yojson.Safe.Util.member "errors" (Yojson.Safe.from_string r.(11))
     |> Yojson.Safe.Util.to_list
@@ -172,7 +178,11 @@ let () =
     (field "ok" r.(11) = "false"
     && List.length compile_errors = 1
     && Yojson.Safe.Util.member "where" (List.hd compile_errors)
-       = `String "line 2");
+       = `String "line 2"
+    && Yojson.Safe.Util.member "end_position" (List.hd compile_errors) = `Int 6
+    && Yojson.Safe.Util.member "source_line" (List.hd compile_errors)
+       = `String "+oops("
+    && Yojson.Safe.Util.member "span" (List.hd compile_errors) <> `Null);
   let query_json = Yojson.Safe.from_string r.(12) in
   check "program query exposes support and explicit completeness"
     (field "verdict" r.(12) = "yes"
@@ -218,6 +228,10 @@ let () =
     (field "verdict" r.(16) = "no"
     && field "method" r.(16) = "numerical"
     && List.mem "numerical-decision" (evidence_kinds numerical_support));
+  check "malformed UTF-8 source cannot corrupt a JSON response"
+    (field "ok" r.(17) = "false"
+    && field "class" r.(17) = "lexical"
+    && field "source_line" r.(17) = "+S+\\xC3(");
 
   (* A truth table near the public atom limit is much larger than an OS pipe.
      Reading it before sending the following request proves the documented

@@ -9,14 +9,20 @@ open Ast
 
 (* ── Errors ─────────────────────────────────────────────────────────────── *)
 
-exception Parse_error of { message : string; pos : int }
-(* [pos] is a 0-based code-point index into the source. [message] carries the
-   " (at position N)" suffix, mirroring the JS ParseError's .message. *)
+exception Parse_error of { message : string; pos : int; end_pos : int }
+(* [pos] and [end_pos] are a half-open range of 0-based Unicode code-point
+   offsets into the source. [message] retains the historical start-position
+   suffix so the frozen parser contract and differential oracle do not drift. *)
 
-let parse_error message pos =
+let parse_error ?end_pos message pos =
+  let end_pos = Option.value ~default:(pos + 1) end_pos |> max pos in
   raise
     (Parse_error
-       { message = Printf.sprintf "%s (at position %d)" message pos; pos })
+       {
+         message = Printf.sprintf "%s (at position %d)" message pos;
+         pos;
+         end_pos;
+       })
 
 (* ── Code points ────────────────────────────────────────────────────────── *)
 
@@ -101,7 +107,7 @@ type token_kind =
   | Tok_level of int
   | Tok_eof
 
-type token = { kind : token_kind; pos : int }
+type token = { kind : token_kind; pos : int; end_pos : int }
 
 (* Validation caps meaningful levels at 3 (spec §5); absurd digit runs are
    out-of-contract (spec §16.3) — saturate rather than overflow. *)
@@ -129,13 +135,14 @@ let unexpected_char c =
     Printf.sprintf "Unexpected unsafe character U+%04X" c
   else
     let base = Printf.sprintf "Unexpected character '%s'" (cp_to_string c) in
-    if c >= 0x80 then base ^ " (quote the term to use non-ASCII names)" else base
+    if c >= 0x80 then base ^ " (quote the term to use non-ASCII names)"
+    else base
 
 let tokenize (src : string) : token array =
   let cps = decode src in
   let n = Array.length cps in
   let tokens = ref [] in
-  let push kind pos = tokens := { kind; pos } :: !tokens in
+  let push kind pos end_pos = tokens := { kind; pos; end_pos } :: !tokens in
   let i = ref 0 in
   while !i < n do
     let c = cps.(!i) in
@@ -145,28 +152,28 @@ let tokenize (src : string) : token array =
         (* ASCII alias: +- is the wild-quantity sign ± (a bare minus after +
            could never start a term — negative terms are parenthesized). *)
         if !i + 1 < n && (cps.(!i + 1) = 0x2D || cps.(!i + 1) = 0x2212) then (
-          push Tok_wild !i;
+          push Tok_wild !i (!i + 2);
           i := !i + 2)
         else (
-          push Tok_plus !i;
+          push Tok_plus !i (!i + 1);
           incr i)
     | 0x2D | 0x2212 (* - − *) ->
-        push Tok_minus !i;
+        push Tok_minus !i (!i + 1);
         incr i
     | 0x00B1 (* ± *) ->
-        push Tok_wild !i;
+        push Tok_wild !i (!i + 1);
         incr i
     | 0x28 ->
-        push Tok_lparen !i;
+        push Tok_lparen !i (!i + 1);
         incr i
     | 0x29 ->
-        push Tok_rparen !i;
+        push Tok_rparen !i (!i + 1);
         incr i
     | 0x5B ->
-        push Tok_lbracket !i;
+        push Tok_lbracket !i (!i + 1);
         incr i
     | 0x5D ->
-        push Tok_rbracket !i;
+        push Tok_rbracket !i (!i + 1);
         incr i
     | 0x22 (* double quote *) ->
         let j = ref (!i + 1) in
@@ -182,8 +189,9 @@ let tokenize (src : string) : token array =
             "Control and bidirectional formatting characters are not allowed \
              in quoted terms"
             !j;
-        if !j >= n || cps.(!j) <> 0x22 then parse_error "Unclosed quote" !i;
-        if !j = !i + 1 then parse_error "Empty quoted term" !i;
+        if !j >= n || cps.(!j) <> 0x22 then
+          parse_error ~end_pos:n "Unclosed quote" !i;
+        if !j = !i + 1 then parse_error ~end_pos:(!j + 1) "Empty quoted term" !i;
         let text =
           let b = Buffer.create (!j - !i) in
           for k = !i + 1 to !j - 1 do
@@ -192,8 +200,9 @@ let tokenize (src : string) : token array =
           Buffer.contents b
         in
         let singular = !j + 1 < n && cps.(!j + 1) = 0x2A in
-        push (Tok_name { text; singular }) !i;
-        i := !j + if singular then 2 else 1
+        let end_pos = !j + if singular then 2 else 1 in
+        push (Tok_name { text; singular }) !i end_pos;
+        i := end_pos
     | 0x5E (* ^ *) ->
         let j = ref (!i + 1) in
         while !j < n && is_ascii_digit cps.(!j) do
@@ -205,7 +214,7 @@ let tokenize (src : string) : token array =
         for k = !i + 1 to !j - 1 do
           v := level_add !v (cps.(k) - 0x30)
         done;
-        push (Tok_level !v) !i;
+        push (Tok_level !v) !i !j;
         i := !j
     | c when superscript_value c <> None ->
         let v = ref 0 in
@@ -218,7 +227,7 @@ let tokenize (src : string) : token array =
               incr j
           | None -> scanning := false
         done;
-        push (Tok_level !v) !i;
+        push (Tok_level !v) !i !j;
         i := !j
     | c when is_name_start c ->
         let b = Buffer.create 8 in
@@ -243,13 +252,14 @@ let tokenize (src : string) : token array =
           else scanning := false
         done;
         let singular = !j < n && cps.(!j) = 0x2A in
-        push (Tok_name { text = Buffer.contents b; singular }) !i;
-        i := !j + if singular then 1 else 0
+        let end_pos = !j + if singular then 1 else 0 in
+        push (Tok_name { text = Buffer.contents b; singular }) !i end_pos;
+        i := end_pos
     | c when is_ascii_digit c ->
         parse_error "Term names must start with a letter" !i
     | c -> parse_error (unexpected_char c) !i
   done;
-  push Tok_eof n;
+  push Tok_eof n n;
   Array.of_list (List.rev !tokens)
 
 (* ── Parser ─────────────────────────────────────────────────────────────── *)
@@ -262,13 +272,14 @@ let tokenize (src : string) : token array =
                 | term                       → the term itself (plain parens)
                 | term (sign term)+          → Rel (unsigned head) *)
 
-type state = { tokens : token array; mutable i : int }
+type state = { tokens : token array; mutable i : int; mutable last_end : int }
 
 let peek st = st.tokens.(st.i)
 
 let advance st =
   let t = st.tokens.(st.i) in
   st.i <- st.i + 1;
+  st.last_end <- t.end_pos;
   t
 
 let token_text t =
@@ -286,7 +297,8 @@ let token_text t =
   | Tok_rbracket -> "']'"
 
 let fail_at st message tok : 'a =
-  parse_error message (match tok with Some t -> t.pos | None -> (peek st).pos)
+  let token = match tok with Some token -> token | None -> peek st in
+  parse_error ~end_pos:token.end_pos message token.pos
 
 let is_sign t =
   match t.kind with Tok_plus | Tok_minus | Tok_wild -> true | _ -> false
@@ -413,26 +425,41 @@ let at_end st what =
            (token_text (peek st)))
         None
 
-let make_state src = { tokens = tokenize src; i = 0 }
-let state_of_tokens tokens = { tokens; i = 0 }
+let make_state src = { tokens = tokenize src; i = 0; last_end = 0 }
+let state_of_tokens tokens = { tokens; i = 0; last_end = 0 }
 
-let parse_proposition_tokens tokens =
+let located st start value =
+  {
+    Source.value;
+    range = Source.range ~start_offset:start ~end_offset:st.last_end;
+  }
+
+let parse_proposition_located_tokens tokens =
   let st = state_of_tokens tokens in
+  let start = (peek st).pos in
   let subject = parse_signed st in
   let predicate = parse_signed st in
   at_end st "proposition";
-  { subject; predicate }
+  located st start { subject; predicate }
 
-let parse_proposition src =
-  parse_proposition_tokens (tokenize src)
+let parse_proposition_tokens tokens =
+  (parse_proposition_located_tokens tokens).value
 
-let parse_term_tokens tokens =
+let parse_proposition src = parse_proposition_tokens (tokenize src)
+
+let parse_proposition_located src =
+  parse_proposition_located_tokens (tokenize src)
+
+let parse_term_located_tokens tokens =
   let st = state_of_tokens tokens in
-  let t = parse_term_inner st in
+  let start = (peek st).pos in
+  let term = parse_term_inner st in
   at_end st "term";
-  t
+  located st start term
 
+let parse_term_tokens tokens = (parse_term_located_tokens tokens).value
 let parse_term src = parse_term_tokens (tokenize src)
+let parse_term_located src = parse_term_located_tokens (tokenize src)
 
 let parse_signed_term src =
   let st = make_state src in
