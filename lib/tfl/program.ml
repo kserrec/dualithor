@@ -169,7 +169,7 @@ type term_answer = {
   answer_proof : Derive.proof;
 }
 
-let query_term_detailed ?max_lines ?(slack = 6) (program : prop list)
+let query_term_detailed ?max_lines ?max_work ?(slack = 6) (program : prop list)
     (term : term) : term_answer list =
   List.iter Infer.validate_prop program;
   if any_level program then
@@ -179,8 +179,17 @@ let query_term_detailed ?max_lines ?(slack = 6) (program : prop list)
   Infer.validate_term term;
   let key = Infer.term_key term in
   let size_cap = Derive.size_cap ~slack ~base:(Infer.node_count term) program in
+  (* One shared work budget spans the main saturation and every pairwise
+     [implies] subsumption search below. The line caps alone do not bound the
+     candidate-comparison work: the dedup loop is quadratic in the number of
+     collected candidates, and that count follows the program's proposition
+     count (setup pushes every fact before the line-bounded loop), not
+     [max_lines]. Without this a legal ~9 KB program of many same-subject facts
+     blocked the request for seconds. Exhaustion raises [Work_limit_exceeded],
+     which the public boundary already reports as [resource_limit]. *)
+  let work_budget = Derive.create_work_budget ?limit:max_work () in
   let lines, (_ : unit option) =
-    Derive.saturate
+    Derive.saturate ~work_budget
       ~max_lines:(Option.value max_lines ~default:300)
       ~rules:[ "IN"; "Contrap"; "Simp"; "DON" ]
       ~size_cap
@@ -226,7 +235,7 @@ let query_term_detailed ?max_lines ?(slack = 6) (program : prop list)
     else
       let cap = max (Infer.prop_nodes a) (Infer.prop_nodes b) + 2 in
       let _, hit =
-        Derive.saturate ~max_lines:60
+        Derive.saturate ~work_budget ~max_lines:60
           ~rules:[ "IN"; "Contrap"; "Simp" ]
           ~size_cap:cap
           (fun push -> ignore (push (Infer.canon_prop a) "a" []))

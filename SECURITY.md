@@ -117,6 +117,25 @@ rerunning the dependency audit and full test gates.
 
 ## Audit history
 
+- **2026-08-11:** audited the `f0da18c` maintenance delta and re-swept the full
+  reachable product. Confirmed the new inference work budget is correctly wired
+  to the public `resource_limit` class on both the `Tfl.Safe` and `Tfl.Runtime`
+  boundaries, with live hostile probes (a 69-byte and a width-20,000 compound
+  refused in well under a second on `query` and `consistency`, the stream
+  recovering afterward). Found and fixed one real resource-exhaustion defect the
+  maintenance budget missed: the `describe` operation's candidate-subsumption
+  step is quadratic in the collected candidate count, and that count follows the
+  program's proposition count rather than the line cap, so a legal ~9 KB program
+  of ~1,000 same-subject facts ran the lockstep stream for ~6 seconds of CPU.
+  The fix threads a single shared work budget through `query_term_detailed`'s
+  main saturation and every pairwise `implies` search, so exhaustion now refuses
+  as `resource_limit` in under a second and the stream stays synchronized;
+  generator-scale inputs (≤5 candidates) stay far under the 8,000,000-node
+  budget, so no differential-compared result changed. Pinned by a
+  `test/test_program.ml` regression that fails if either saturation loses the
+  shared budget. No secret, command-injection, path-traversal, network, or CI
+  exposure was found; the legacy OpenRouter client remains dev-only and
+  TLS-verified.
 - **2026-07-30:** restricted the CI token to `contents: read`; identified and
   then bounded cancellation search.
 - **2026-08-01:** added ignore and CI tracking guards for licensed corpora and

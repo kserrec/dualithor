@@ -51,6 +51,17 @@ iterations each (including 85,731 checked rule steps, 1,805 relational proofs, a
 indirect refutations), and the 884,000-input differential gate passed all 18 comparisons
 with zero unexpected divergence. Phase 6 remains the next feature phase.
 
+**Follow-on security fix (2026-08-11 audit):** the maintenance work budget bounded the
+argument/`query` search but not the `describe` (`query_term_detailed`) path, whose
+candidate-subsumption step is quadratic in the collected candidate count — a count that
+follows the program's proposition count, not the line cap. A legal ~9 KB program of ~1,000
+same-subject facts therefore blocked the lockstep stream for ~6 seconds. The fix threads one
+shared work budget through that path's main saturation and every pairwise `implies` search,
+so exhaustion refuses as the public `resource_limit` in under a second and the stream stays
+synchronized; generator-scale inputs stay far under the budget, so no differential-compared
+result changed. Pinned by a `test/test_program.ml` regression; the 884,000-input differential
+gate passed again with zero divergence. Recorded in SECURITY.md. Phase 6 remains next.
+
 ## What we are building
 
 TFL will be a proof-producing logic programming language in which a program states facts,
