@@ -39,7 +39,7 @@ opam exec -- dune exec test/test_conformance.exe
 opam exec -- dune exec test/test_runtime.exe
 opam exec -- dune exec test/test_source_file.exe
 opam exec -- dune build bin/tfl_command.exe
-opam exec -- dune exec test/test_tfl_command.exe
+opam exec -- dune runtest test/test_tfl_command.exe --force
 
 # Both long gates are required after a change to existing OCaml inference behavior.
 opam exec -- dune exec test/test_oracle.exe -- -n 20000

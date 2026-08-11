@@ -7,6 +7,16 @@
  (modules command_status runtime_json)
  (libraries tfl yojson))
 
+; The REPL's optional terminal editor is private to the human command. It is
+; separate from the shared JSON serializers so the [horos] process boundary
+; does not acquire an interactive-terminal component.
+
+(library
+ (name tfl_repl_support)
+ (wrapped false)
+ (modules repl_input)
+ (libraries unix))
+
 (executable
  (name tfl_cli)
  (public_name horos)
@@ -17,4 +27,4 @@
  (name tfl_command)
  (public_name tfl)
  (modules tfl_command)
- (libraries tfl tfl_cli_support yojson))
+ (libraries tfl tfl_cli_support tfl_repl_support yojson))

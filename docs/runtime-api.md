@@ -111,7 +111,11 @@ The older `check`, `parse`, and `render` commands remain available with their ex
 response shapes. This preserves callers using the original argument-checking boundary while
 the complete-program commands add the production runtime.
 
-The human `tfl` executable is not a second JSON-lines protocol. It loads one UTF-8 `.tfl`
-file, prints terminal-oriented text by default, and emits `tfl-cli-0.1` only when the user
-requests `--json`. Its structured operation fields reuse the serializers above so proof,
-completeness, and evidence records cannot drift from this process boundary.
+The one-shot human `tfl` commands are not a second JSON-lines request protocol. They load
+one UTF-8 `.tfl` file, print terminal-oriented text by default, and emit one `tfl-cli-0.1`
+record when the user requests `--json`. `tfl repl` instead loads the file once and accepts
+plain interactive command lines; its optional `tfl-repl-0.1` JSON-lines output records one
+result per command while keeping the session alive after handled failures. Both structured
+surfaces reuse the serializers above so proof, completeness, and evidence records cannot
+drift from this process boundary. The command grammar and session contract are specified
+in [command-line.md](command-line.md).

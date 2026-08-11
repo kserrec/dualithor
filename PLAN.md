@@ -13,7 +13,7 @@ select work from an old roadmap. Git history preserves the superseded plan.
 The project is now named **Horos**, and its repository and package are named **`horos`**.
 The language is called **TFL** and its eventual human-facing executable is **`tfl`**.
 
-Phases 1 through 3 are complete. Phase 4 is the next implementation phase.
+Phases 1 through 4 are complete. Phase 5 is the next implementation phase.
 
 ## What we are building
 
@@ -299,7 +299,7 @@ output/error capture, multi-diagnostic and usage matrices, full terminal-control
 coverage, explicit unexpected-exception classification, and a clean normal-install CI job
 that invokes the installed public `tfl` name outside the checkout.
 
-### Phase 4 — Interactive shell ⏭ NEXT
+### Phase 4 — Interactive shell ✅ COMPLETE — 2026-08-11
 
 1. Add a REPL that loads a program once and accepts ground queries, term queries,
    consistency checks, equivalence checks, reload, help, and quit.
@@ -310,6 +310,54 @@ that invokes the installed public `tfl` name outside the checkout.
 
 **Acceptance:** a user can explore and reload one program through a complete session; every
 REPL operation has the same semantics and data as the program API.
+
+**Delivered:** `tfl repl FILE.tfl` loads one all-lines-valid `Tfl.Runtime.program` and
+retains it across ground queries, term descriptions, consistency checks, equivalence
+checks, help, reload, and quit. Reload replaces that immutable program only after the
+original path loads and compiles completely; a failed reload and every malformed command
+return to the prompt with the last valid program intact. Human terminals receive a
+dependency-free line editor with the newest 100 commands held only in memory, terminal-safe
+echo, up/down navigation, and `Ctrl-C` recovery; unsupported terminals and pipes use a
+bounded plain-input fallback, and no history file is written. Optional `--json` emits the
+`tfl-repl-0.1` event stream, reusing the public runtime's exact result/evidence serializers
+while separating per-command outcome status from the live process status. Non-interactive
+human and JSON transcript tests cover every session operation, malformed input, oversized
+input draining, successful reload, failed-reload state preservation, and clean quit; the
+focused command, source-loader, and runtime suites, an actual pseudo-terminal history probe,
+and the full repository suite are green.
+
+The post-delivery Phase 4 correctness review found and fixed four interactive-boundary
+defects: plain terminal fallback now keeps the prompt and `Ctrl-C` recovery, wrapped edits
+restore the saved prompt position before redrawing, an over-limit terminal edit can be
+corrected before submission, and equivalence command delimiters are located by one
+quote-aware scan rather than repeated proposition parses. Focused regressions and actual
+pseudo-terminal probes cover the corrected behavior without adding a runtime dependency.
+
+The Phase 4 security review found no presently exploitable boundary in the local command,
+then closed two resource-hardening gaps: piped and JSON input is no longer retained in an
+unusable history, editing history has a 16 MiB aggregate byte ceiling, Backspace truncates
+the input buffer in place, and a 16 MiB per-line terminal-output budget prevents repeated
+wrapped redraws from amplifying one edit into unbounded output. Crossing that display budget
+discards only the current line and returns a structured resource refusal; the loaded program
+and session remain intact.
+
+The follow-on Phase 4 test audit challenged the delivery with fourteen one-at-a-time invalid
+product mutations. Six existing checks failed as intended; eight survived until the suite
+was strengthened. Deterministic pipe-driven editor probes now exercise the terminal scope,
+saved cursor origin, actual Backspace redraw, up/down history wiring, draft restoration,
+editing-only retention, display-output refusal, and physical-line draining. The JSON session
+test now proves the oversized-line `resource_limit`, puts an executable-looking suffix past
+the byte ceiling, and compares every runtime operation field exactly with the production
+serializer. The focused test command also rebuilds the separately spawned `tfl` executable,
+so a source mutation cannot pass against a stale binary. Repeating the original eight
+mutations makes the repaired tests fail for the named reasons.
+
+One unrelated suite-health debt was exposed but is not silently folded into Phase 4: across
+three unchanged forced full-suite runs, the Phase 1 cancellation-cap wall-clock assertion
+passed twice and failed once at 1.200 seconds while other tests were running concurrently;
+five isolated unchanged `test_safe` runs all passed. That load-sensitive timing assertion
+remains deferred to Phase 1 test maintenance rather than being weakened in this interface
+test audit.
 
 ### Phase 5 — Source spans and compiler diagnostics
 

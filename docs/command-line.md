@@ -4,13 +4,14 @@
 |---|---|
 | Human executable | `tfl` |
 | Machine-output schema | `tfl-cli-0.1` |
+| Interactive-stream schema | `tfl-repl-0.1` |
 | Introduced | 2026-08-10 |
 | Language contract | `core-0.1` |
 
-The `tfl` executable is the human-facing interface for one complete TFL source file. It is
-separate from the long-lived `horos` JSON-lines process documented in
-[runtime-api.md](runtime-api.md). The two interfaces call the same total `Tfl.Runtime`
-operations and cannot change a logical result.
+The `tfl` executable is the human-facing interface for one complete TFL source file and
+for an interactive session over that file. It is separate from the long-lived `horos`
+JSON-lines process documented in [runtime-api.md](runtime-api.md). The interfaces call the
+same total `Tfl.Runtime` operations and cannot change a logical result.
 
 ## `.tfl` source files
 
@@ -48,6 +49,7 @@ tfl check [--json] FILE.tfl
 tfl query [--json] FILE.tfl PROPOSITION
 tfl describe [--json] FILE.tfl TERM
 tfl render [--json] PROPOSITION
+tfl repl [--json] FILE.tfl
 tfl [--json] --help
 ```
 
@@ -102,6 +104,62 @@ prints supported answers. Structured output retains every answer and proof.
 canonical source spelling. It does not load a file or make an inference. English remains a
 display aid and never determines the formal parse or a verdict.
 
+### `repl`
+
+`repl` loads and compiles the file once, then keeps that immutable compiled program for a
+complete interactive session. The initial load is all-or-nothing and has the same file,
+UTF-8, compile, and location behavior as `check`. These commands are accepted one per
+physical input line:
+
+```text
+query PROPOSITION
+describe TERM
+consistency
+equivalence LEFT <=> RIGHT
+reload
+help
+quit
+```
+
+`query`, `describe`, `consistency`, and `equivalence` call the corresponding
+`Tfl.Runtime` operation directly. `<=>` is REPL command syntax, not TFL syntax; it separates
+the two complete propositions supplied to `equivalence`. `reload` reads the original path
+again and replaces the session program only after the entire new file loads and compiles.
+A failed reload reports every diagnostic and retains the last valid compiled program.
+
+Malformed operations and unknown commands are recoverable: the shell reports the failure
+and reads the next command without changing the loaded program. `quit` and end-of-input
+finish a normally initialized session successfully. In a human terminal, `Ctrl-C` cancels
+the current input line and leaves the program loaded; `Ctrl-D` on an empty line ends the
+session.
+
+When standard input and standard output are terminals and `TERM` does not declare a `dumb`
+terminal, the shell enables a small built-in line editor. Up and down arrows navigate up to
+the newest 100 nonblank commands, with adjacent duplicates stored once and 16,777,216 total
+command bytes retained. History exists only in editing terminals and only in memory for the
+current process: TFL source and queries are never written to a history file. If the terminal
+does not support this mode, the shell falls back to ordinary bounded line input. No
+line-editing library or optional executable is required. Piped and JSON sessions retain no
+history.
+
+Piped sessions suppress the `tfl> ` prompt, which makes a transcript deterministic; every
+input line is limited to 1,048,576 bytes and an oversized line is drained before the next
+command is read. Interactive rendering also has a 16,777,216-byte output budget per input
+line. If repeated redraw operations cross that ceiling, the shell discards the current line,
+reports a `resource_limit`, and returns to a clean prompt. This keeps correct wrapped-line
+redraws without permitting one edited line to produce quadratic unbounded output.
+
+With `--json`, the session is a JSON-lines stream under `tfl-repl-0.1`. It emits one
+`ready` record after the initial load, one record for every nonblank command, and one
+`quit` record. Successful runtime operations reuse the exact proposition, term, method,
+completeness, support, proof, certificate, truth-table, and rewrite encodings from
+`horos-runtime-0.1`. Every record has `command_status` and `command_exit_status`; these
+describe that command's logical or operational outcome but do not terminate the session.
+For example, a malformed query has command status `input-failure`, then the next input line
+is still processed. The REPL process itself exits `0` on `quit` or end-of-input. A failure
+to initialize the file occurs before the stream exists, uses the ordinary `tfl-cli-0.1`
+failure record, and exits with status `2` or `4`.
+
 ## Exit statuses
 
 | Status | Name | Meaning |
@@ -114,7 +172,9 @@ display aid and never determines the formal parse or a verdict.
 
 An operation can produce useful output with a nonzero status. In particular, `describe`
 can return supported answers with status `3`, and `query` can return an exact open-world
-`unknown` with status `1`.
+`unknown` with status `1`. Inside a successfully initialized REPL these values are recorded
+as per-command outcomes while the process remains available; only initialization and an
+unexpected process-level failure determine the REPL process exit status.
 
 ## Structured output
 
@@ -131,9 +191,11 @@ can return supported answers with status `3`, and `query` can return an exact op
 ```
 
 Every structured record, including a handled failure, is written to standard output and
-leaves standard error empty. Human successes and help use standard output; human input,
-file, usage, and internal failures use standard error. This separation lets scripts parse
-machine output without merging diagnostic streams.
+leaves standard error empty. Outside a REPL, human successes and help use standard output,
+while human input, file, usage, and internal failures use standard error. A human REPL is
+one dialogue, so successful results and recoverable command diagnostics both use standard
+output; an initialization failure still uses standard error. This separation lets scripts
+parse machine output without merging diagnostic streams.
 
 Successful operations add their corresponding stable runtime fields. File-backed
 operations also add `file`; `check` statement records add one-based `line` and `column`.
@@ -147,7 +209,9 @@ still used for filesystem access; this display encoding exists only at the JSON 
 
 Failures set `ok` to `false` and contain an `errors` array. Each error has `class`,
 `message`, `source`, `line`, and `column`; a field is JSON `null` only when no source
-location applies. The process exit status and the JSON `exit_status` field always agree.
+location applies. For one-shot commands, the process exit status and the JSON
+`exit_status` field always agree. REPL stream records instead use `command_exit_status`,
+whose deliberately different session behavior is specified above.
 
 The command does not require an account, network connection, or model. File reading, UTF-8
 validation, argument parsing, terminal escaping, and exit classification use OCaml's

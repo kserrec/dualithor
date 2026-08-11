@@ -264,5 +264,5 @@
 (test
  (name test_tfl_command)
  (modules test_tfl_command)
- (libraries tfl_cli_support test_support yojson unix)
+ (libraries tfl_cli_support tfl_repl_support test_support yojson unix)
  (deps ../bin/tfl_command.exe))
