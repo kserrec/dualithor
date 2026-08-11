@@ -228,9 +228,12 @@ Failures set `ok` to `false` and contain an `errors` array. Each error has `clas
 only when it does not apply. `line` and `column` duplicate `span.start` for compatibility.
 The classes `lexical`, `syntactic`, `name_resolution`, `outside_fragment`,
 `incomplete_search`, `resource_limit`, and `internal` remain distinct. No current source
-emits `name_resolution` because declarations do not exist until Phase 17. Current bounded
-queries instead report `incomplete-search` as their command status and retain the precise
-reason in `completeness`; they are never mislabeled as syntax or logical non-entailment.
+emits `name_resolution` because declarations do not exist until Phase 17. A query that
+finishes inside the 8,000,000-term-node inference work budget but exhausts an incomplete
+logical bound reports `incomplete-search` and retains the precise reason in
+`completeness`. Work-budget exhaustion instead reports `resource_limit`; neither case is
+mislabeled as syntax or logical non-entailment, and an interactive session remains usable
+for the following command.
 For one-shot commands, the process exit status and the JSON `exit_status` field always
 agree. REPL stream records instead use `command_exit_status`, whose deliberately different
 session behavior is specified above.

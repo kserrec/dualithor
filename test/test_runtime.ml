@@ -133,6 +133,26 @@ let () =
             (result.completeness.reason = Some Bounded_search)
             "bounded-search reason"
       | Error failure -> failwith failure.message);
+  test "query work exhaustion is attributed and does not poison the program"
+    (fun () ->
+      let pathological =
+        "+("
+        ^ String.concat "" (List.init 32 (fun _ -> "+A"))
+        ^ ")+P"
+      in
+      let program = compile_ok (pathological ^ "\n−M+P") in
+      (match query program "−X+Y" with
+      | Error failure ->
+          check (failure.kind = Tfl.Safe.Resource_limit) "resource class";
+          check (failure.where = Some "query") "query attribution";
+          check
+            (failure.message =
+             Tfl.Derive.work_limit_message Tfl.Derive.default_max_work)
+            "named inference budget"
+      | Ok _ -> failwith "the pathological query should exhaust its work budget");
+      match query program "−M+P" with
+      | Ok result -> check (result.verdict = Yes) "following query succeeds"
+      | Error failure -> failwith failure.message);
   test "numerical support remains explicitly incomplete" (fun () ->
       let program = compile_ok "+C^3-H\n-C+E" in
       match query program "-E+H" with

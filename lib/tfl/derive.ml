@@ -26,6 +26,56 @@ type line = {
 
 type proof = { found : bool; lines : line list }
 
+(* A deterministic estimate of inference work, measured in term-node visits.
+   The line bound caps retained results, but it does not cap the work needed to
+   construct and reject candidates between those lines. One shared budget can
+   span the direct, indirect, and contradictory searches for one argument. *)
+type work_budget = { limit : int; mutable remaining : int }
+
+exception Work_limit_exceeded of int
+
+let default_max_work = 8_000_000
+
+(* [prop_nodes] is the retained-tree size. Candidate construction costs more
+   for a wide compound: Simp copies the remaining conjuncts once per dropped
+   element, so a width-[n] compound performs quadratic term-node work. Charge
+   that shape here while ordinary atomic and relational terms retain their
+   linear weight. *)
+let rec term_work = function
+  | Atom _ -> 1
+  | Neg term -> 1 + term_work term
+  | Compound elements ->
+      let width = List.length elements in
+      1 + (width * width)
+      + List.fold_left
+          (fun total element -> total + term_work element.term)
+          0 elements
+  | Rel { head; objects } ->
+      1 + term_work head
+      + List.fold_left
+          (fun total object_ -> total + term_work object_.term)
+          0 objects
+  | PropTerm (Inner_prop proposition) -> 2 + prop_work proposition
+  | PropTerm (Inner_term term) -> 2 + term_work term
+
+and prop_work proposition =
+  term_work proposition.subject.term + term_work proposition.predicate.term
+
+let create_work_budget ?(limit = default_max_work) () =
+  if limit < 1 then invalid_arg "inference work limit must be positive";
+  { limit; remaining = limit }
+
+let work_limit_message limit =
+  Printf.sprintf
+    "Inference search exceeded the %d-term-node work limit" limit
+
+let consume_work budget amount =
+  let amount = max 1 amount in
+  if amount > budget.remaining then (
+    budget.remaining <- 0;
+    raise (Work_limit_exceeded budget.limit))
+  else budget.remaining <- budget.remaining - amount
+
 (* ── saturate ───────────────────────────────────────────────────────────── *)
 
 (* Shared forward-chaining core. [setup] seeds the board through the push
@@ -38,17 +88,24 @@ type proof = { found : bool; lines : line list }
    Rules applied: IN, Contrap, Simp, Pass — guarded passives — (unary);
    DON both directions, Add (binary). [rules], when given, restricts to
    those rule names. *)
-let saturate ?(max_lines = 400) ?rules ~size_cap
+let saturate ?(max_lines = 400) ?(max_work = default_max_work) ?work_budget
+    ?rules ~size_cap
     (setup : (prop -> string -> int list -> int option) -> unit)
     (on_new_line : int -> sat_line -> (string -> int option) -> 'hit option) :
     sat_line array * 'hit option =
   let allow r = match rules with None -> true | Some rs -> List.mem r rs in
+  let work =
+    match work_budget with
+    | Some budget -> budget
+    | None -> create_work_budget ~limit:max_work ()
+  in
   let lines = ref (Array.make 64 None) in
   let count = ref 0 in
   let get i = match !lines.(i) with Some l -> l | None -> assert false in
   let seen : (string, int) Hashtbl.t = Hashtbl.create 64 in
   let hit = ref None in
   let push prop rule parents =
+    consume_work work (prop_work prop);
     let key = Notation.print_proposition prop in
     match Hashtbl.find_opt seen key with
     | Some idx -> Some idx
@@ -71,18 +128,25 @@ let saturate ?(max_lines = 400) ?rules ~size_cap
   let i = ref 0 in
   while !hit = None && !i < !count && !count < max_lines do
     let li = get !i in
+    let li_work = prop_work li.s_prop in
     let unary =
-      (if allow "IN" then [ (Infer.obverse li.s_prop, "IN") ] else [])
+      (if allow "IN" then (
+         consume_work work li_work;
+         [ (Infer.obverse li.s_prop, "IN") ])
+       else [])
       @ (if allow "Contrap" then
+           let () = consume_work work li_work in
            match Infer.contrapositive li.s_prop with
            | Some q -> [ (q, "Contrap") ]
            | None -> []
          else [])
       @ (if allow "Simp" then
+           let () = consume_work work li_work in
            List.map (fun p -> (p, "Simp")) (Rules.apply_simp li.s_prop)
          else [])
       @
       if allow "Pass" then
+        let () = consume_work work li_work in
         List.filter_map
           (fun (r : Relational.passive) ->
             if r.equivalent then Some (Infer.canon_prop r.p_prop, "Pass")
@@ -96,17 +160,22 @@ let saturate ?(max_lines = 400) ?rules ~size_cap
     let j = ref 0 in
     while !hit = None && !j < !i && !count < max_lines do
       let lj = get !j in
+      let pair_work = li_work + prop_work lj.s_prop in
       let binary =
         (if allow "DON" then
+           let () = consume_work work pair_work in
            List.map
              (fun p -> (p, "DON", [ !i; !j ]))
              (Rules.apply_don li.s_prop lj.s_prop)
-           @ List.map
+           @
+           let () = consume_work work pair_work in
+           List.map
                (fun p -> (p, "DON", [ !j; !i ]))
                (Rules.apply_don lj.s_prop li.s_prop)
          else [])
         @
         if allow "Add" then
+          let () = consume_work work pair_work in
           List.map
             (fun p -> (p, "Add", [ !i; !j ]))
             (Rules.apply_add li.s_prop lj.s_prop)
@@ -200,14 +269,14 @@ let extract (lines : sat_line array) (roots : int list)
 let size_cap ~slack ~base (props : prop list) =
   List.fold_left (fun acc p -> max acc (Infer.prop_nodes p)) base props + slack
 
-let derive ?max_lines ?(slack = 8) (premises : prop list) (goal : prop) : proof
-    =
+let derive ?max_lines ?max_work ?work_budget ?(slack = 8)
+    (premises : prop list) (goal : prop) : proof =
   List.iter Infer.validate_prop premises;
   Infer.validate_prop goal;
   let size_cap = size_cap ~slack ~base:(Infer.prop_nodes goal) premises in
   let goal_key = Notation.print_proposition (Infer.canon_prop goal) in
   let lines, hit =
-    saturate ?max_lines ~size_cap
+    saturate ?max_lines ?max_work ?work_budget ~size_cap
       (fun push ->
         List.iter
           (fun p -> ignore (push (Infer.canon_prop p) "premise" []))
@@ -229,7 +298,8 @@ type entry = { e_prop : prop; e_rule : string }
    proterms + anchors, parented on their entries) and saturate until some
    line's contradictory is already on the board — a fixed witness asserted
    and denied the same thing. Sound by Skolemization. *)
-let refute_set ?max_lines ?(slack = 8) (entries : entry list) : proof =
+let refute_set ?max_lines ?max_work ?work_budget ?(slack = 8)
+    (entries : entry list) : proof =
   List.iter (fun e -> Infer.validate_prop e.e_prop) entries;
   let size_cap =
     size_cap ~slack ~base:min_int (List.map (fun e -> e.e_prop) entries)
@@ -237,7 +307,7 @@ let refute_set ?max_lines ?(slack = 8) (entries : entry list) : proof =
   let used : (string, unit) Hashtbl.t = Hashtbl.create 16 in
   List.iter (fun e -> Relational.collect_names e.e_prop used) entries;
   let lines, hit =
-    saturate ?max_lines ~size_cap
+    saturate ?max_lines ?max_work ?work_budget ~size_cap
       (fun push ->
         let idxs =
           List.map
@@ -270,10 +340,10 @@ let refute_set ?max_lines ?(slack = 8) (entries : entry list) : proof =
 
 (* Assume the counterclaim — the premises plus the contradictory of the
    conclusion — and refute it; by PV the argument is then valid. *)
-let indirect_proof ?max_lines ?slack (premises : prop list) (conclusion : prop)
-    : proof =
+let indirect_proof ?max_lines ?max_work ?work_budget ?slack
+    (premises : prop list) (conclusion : prop) : proof =
   List.iter Infer.validate_prop premises;
   Infer.validate_prop conclusion;
-  refute_set ?max_lines ?slack
+  refute_set ?max_lines ?max_work ?work_budget ?slack
     (List.map (fun prop -> { e_prop = prop; e_rule = "premise" }) premises
     @ [ { e_prop = Infer.contradictory conclusion; e_rule = "counterclaim" } ])

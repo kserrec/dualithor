@@ -12,6 +12,17 @@ type diagnostic = {
   source_line : string option;
 }
 
+let unlocated_diagnostic ~class_name ~message ~source =
+  {
+    class_name;
+    message;
+    source;
+    line = None;
+    column = None;
+    span = None;
+    source_line = None;
+  }
+
 let cli_schema = "tfl-cli-0.1"
 let repl_schema = "tfl-repl-0.1"
 let hex = "0123456789ABCDEF"
@@ -381,15 +392,19 @@ let query_human (result : Tfl.Runtime.query_result) =
     (completeness_text result.completeness)
     support
 
+let query_presentation loaded result =
+  ( query_status result,
+    query_human result,
+    file_field loaded :: Runtime_json.query_fields result )
+
 let run_query ~json path source =
   let loaded = load_or_fail ~json "query" path in
   let result =
     Tfl.Runtime.query (Tfl.Source_file.runtime loaded) source
     |> safe_or_fail ~json ~operation:"query" ~input_label:"query"
   in
-  let status = query_status result in
-  emit_result ~json "query" status (query_human result)
-    (file_field loaded :: Runtime_json.query_fields result)
+  let status, human, fields = query_presentation loaded result in
+  emit_result ~json "query" status human fields
 
 let describe_human (result : Tfl.Runtime.term_result) =
   let answers =
@@ -414,14 +429,19 @@ let describe_status (result : Tfl.Runtime.term_result) =
   if result.completeness.complete then Command_status.Success
   else Command_status.Incomplete_search
 
+let describe_presentation loaded result =
+  ( describe_status result,
+    describe_human result,
+    file_field loaded :: Runtime_json.describe_fields result )
+
 let run_describe ~json path source =
   let loaded = load_or_fail ~json "describe" path in
   let result =
     Tfl.Runtime.describe (Tfl.Source_file.runtime loaded) source
     |> safe_or_fail ~json ~operation:"describe" ~input_label:"term"
   in
-  emit_result ~json "describe" (describe_status result) (describe_human result)
-    (file_field loaded :: Runtime_json.describe_fields result)
+  let status, human, fields = describe_presentation loaded result in
+  emit_result ~json "describe" status human fields
 
 let proposition_of_ast proposition : Tfl.Runtime.proposition =
   {
@@ -607,6 +627,11 @@ let consistency_human (result : Tfl.Runtime.consistency_result) =
     (Tfl.Runtime.method_name result.method_)
     (completeness_text result.completeness)
 
+let consistency_presentation loaded result =
+  ( consistency_status result,
+    consistency_human result,
+    file_field loaded :: Runtime_json.consistency_fields result )
+
 let equivalence_status (result : Tfl.Runtime.equivalence_result) =
   if result.equivalent then Command_status.Success
   else if result.completeness.complete then Command_status.Non_entailment
@@ -627,6 +652,11 @@ let equivalence_human (result : Tfl.Runtime.equivalence_result) =
     (Tfl.Runtime.method_name result.method_)
     (completeness_text result.completeness)
 
+let equivalence_presentation loaded result =
+  ( equivalence_status result,
+    equivalence_human result,
+    file_field loaded :: Runtime_json.equivalence_fields result )
+
 let loaded_summary action loaded =
   let count = List.length (Tfl.Source_file.statements loaded) in
   Printf.sprintf "%s %s (%d statement%s)." action
@@ -643,55 +673,41 @@ let loaded_fields loaded =
   ]
 
 let repl_usage_diagnostic message =
-  {
-    class_name = "usage";
-    message;
-    source = "interactive command";
-    line = None;
-    column = None;
-    span = None;
-    source_line = None;
-  }
+  unlocated_diagnostic ~class_name:"usage" ~message
+    ~source:"interactive command"
 
 let emit_repl_safe_failure ~json operation input_label failure =
   emit_repl_failure ~json operation
     (status_of_safe_failure failure)
     [ input_diagnostic input_label failure ]
 
-let run_repl_query ~json loaded source =
-  match Tfl.Runtime.query (Tfl.Source_file.runtime loaded) source with
-  | Error failure -> emit_repl_safe_failure ~json "query" "query" failure
+let emit_repl_operation ~json ~operation ~input_label ~presentation = function
+  | Error failure -> emit_repl_safe_failure ~json operation input_label failure
   | Ok result ->
-      emit_repl_result ~json "query" (query_status result) (query_human result)
-        (file_field loaded :: Runtime_json.query_fields result)
+      let status, human, fields = presentation result in
+      emit_repl_result ~json operation status human fields
+
+let run_repl_query ~json loaded source =
+  Tfl.Runtime.query (Tfl.Source_file.runtime loaded) source
+  |> emit_repl_operation ~json ~operation:"query" ~input_label:"query"
+       ~presentation:(query_presentation loaded)
 
 let run_repl_describe ~json loaded source =
-  match Tfl.Runtime.describe (Tfl.Source_file.runtime loaded) source with
-  | Error failure -> emit_repl_safe_failure ~json "describe" "term" failure
-  | Ok result ->
-      emit_repl_result ~json "describe" (describe_status result)
-        (describe_human result)
-        (file_field loaded :: Runtime_json.describe_fields result)
+  Tfl.Runtime.describe (Tfl.Source_file.runtime loaded) source
+  |> emit_repl_operation ~json ~operation:"describe" ~input_label:"term"
+       ~presentation:(describe_presentation loaded)
 
 let run_repl_consistency ~json loaded =
-  match Tfl.Runtime.check_consistency (Tfl.Source_file.runtime loaded) with
-  | Error failure ->
-      emit_repl_safe_failure ~json "consistency" "consistency" failure
-  | Ok result ->
-      emit_repl_result ~json "consistency"
-        (consistency_status result)
-        (consistency_human result)
-        (file_field loaded :: Runtime_json.consistency_fields result)
+  Tfl.Runtime.check_consistency (Tfl.Source_file.runtime loaded)
+  |> emit_repl_operation ~json ~operation:"consistency"
+       ~input_label:"consistency"
+       ~presentation:(consistency_presentation loaded)
 
 let run_repl_equivalence ~json loaded left right =
-  match Tfl.Runtime.equivalent ~left ~right with
-  | Error failure ->
-      emit_repl_safe_failure ~json "equivalence" "equivalence" failure
-  | Ok result ->
-      emit_repl_result ~json "equivalence"
-        (equivalence_status result)
-        (equivalence_human result)
-        (file_field loaded :: Runtime_json.equivalence_fields result)
+  Tfl.Runtime.equivalent ~left ~right
+  |> emit_repl_operation ~json ~operation:"equivalence"
+       ~input_label:"equivalence"
+       ~presentation:(equivalence_presentation loaded)
 
 let reload_repl ~json path loaded =
   match Tfl.Source_file.load path with
@@ -726,36 +742,24 @@ let run_repl ~json path =
         loop loaded
     | Repl_input.Line_too_long ->
         let diagnostic =
-          {
-            class_name = "resource_limit";
-            message =
-              Printf.sprintf "interactive command exceeds the %d-byte limit"
-                Repl_input.max_line_bytes;
-            source = "interactive command";
-            line = None;
-            column = None;
-            span = None;
-            source_line = None;
-          }
+          unlocated_diagnostic ~class_name:"resource_limit"
+            ~message:
+              (Printf.sprintf "interactive command exceeds the %d-byte limit"
+                 Repl_input.max_line_bytes)
+            ~source:"interactive command"
         in
         emit_repl_failure ~json "command" Command_status.Input_failure
           [ diagnostic ];
         loop loaded
     | Repl_input.Display_limit ->
         let diagnostic =
-          {
-            class_name = "resource_limit";
-            message =
-              Printf.sprintf
-                "interactive display exceeded the %d-byte per-line output \
-                 limit; the input line was discarded"
-                Repl_input.max_editor_output_bytes;
-            source = "interactive command";
-            line = None;
-            column = None;
-            span = None;
-            source_line = None;
-          }
+          unlocated_diagnostic ~class_name:"resource_limit"
+            ~message:
+              (Printf.sprintf
+                 "interactive display exceeded the %d-byte per-line output \
+                  limit; the input line was discarded"
+                 Repl_input.max_editor_output_bytes)
+            ~source:"interactive command"
         in
         emit_repl_failure ~json "command" Command_status.Input_failure
           [ diagnostic ];
@@ -793,30 +797,15 @@ let run_repl ~json path =
   | exception error ->
       let unexpected = Command_status.unexpected_failure error in
       let diagnostic =
-        {
-          class_name = "internal";
-          message = unexpected.message;
-          source = "tfl repl";
-          line = None;
-          column = None;
-          span = None;
-          source_line = None;
-        }
+        unlocated_diagnostic ~class_name:"internal" ~message:unexpected.message
+          ~source:"tfl repl"
       in
       emit_repl_failure ~json "session" unexpected.status [ diagnostic ];
       exit (Command_status.exit_code unexpected.status)
 
 let usage_failure ~json message =
   let diagnostic =
-    {
-      class_name = "usage";
-      message;
-      source = "command line";
-      line = None;
-      column = None;
-      span = None;
-      source_line = None;
-    }
+    unlocated_diagnostic ~class_name:"usage" ~message ~source:"command line"
   in
   if json then
     emit_failure ~json "command" Command_status.Input_failure [ diagnostic ]
@@ -860,14 +849,7 @@ let () =
   | Error unexpected ->
       let json = Array.to_list Sys.argv |> List.exists (( = ) "--json") in
       let diagnostic =
-        {
-          class_name = "internal";
-          message = unexpected.message;
-          source = "tfl";
-          line = None;
-          column = None;
-          span = None;
-          source_line = None;
-        }
+        unlocated_diagnostic ~class_name:"internal" ~message:unexpected.message
+          ~source:"tfl"
       in
       emit_failure ~json "command" unexpected.status [ diagnostic ]

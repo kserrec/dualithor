@@ -1,6 +1,13 @@
 # Coverage of real regulatory text (PLAN 4.6)
 
-Measured 2026-08-02. **This is the project's central empirical result.**
+> **Invalidated measurement — 2026-08-11.** The sampler reversed sentences
+> within each paragraph before deterministic selection, changing 58 of the 110
+> sampled texts. This report is preserved as a historical result of that flawed
+> sample; none of its percentages is a corrected coverage estimate. See
+> `data/fidelity/real/ERRATUM-2026-08-11.md`.
+
+Measured 2026-08-02. This was the project's central empirical result before the
+sampling defect was discovered.
 
 Three samples drawn mechanically from the eCFR under protocols pre-registered
 before any sentence was fetched or read. All raw material, labels and criteria

@@ -218,7 +218,7 @@ move coverage and leave accuracy flat.
 
 | # | Prediction | Outcome |
 |---|---|---|
-| 1B.1 | Real-text coverage 25–45% | **WRONG — measured 5% strict / 12% ambient-deontic on 60 mechanically sampled sentences (2026-08-02). Multi-clause did dominate as predicted; deontic modality (48%) was not predicted at all and is second. See `docs/coverage-report-2026-08-02.md`.** |
+| 1B.1 | Real-text coverage 25–45% | **UNSCORED — the 2026-08-02 5%/12% result was invalidated on 2026-08-11 because the sampler violated document order. Corrected samples exist but are unlabeled. See `data/fidelity/real/ERRATUM-2026-08-11.md`.** |
 | 1B.2 | Real-text fidelity 80–92% | *not yet measured* |
 | 1B.3 | Back-check catches c02/c06; FP rate 5–20% | *not yet measured* |
 | 1B.4 | TFL and FOL within 5 pts; TFL wins only on auditability | *not yet measured* |

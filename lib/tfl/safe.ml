@@ -139,6 +139,8 @@ let guard ?where (f : unit -> 'a) : ('a, failure) result =
           span = None;
           source_line = None;
         }
+  | exception Derive.Work_limit_exceeded limit ->
+      Error (resource_failure ?where (Derive.work_limit_message limit))
   | exception e -> Error (unexpected ?where e)
 
 (* ── Entry points ───────────────────────────────────────────────────────────

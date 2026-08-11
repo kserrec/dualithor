@@ -130,6 +130,7 @@ compound predicate. Both engines raise it identically.
 | one argument | 1,024 premises and 1,048,576 combined source bytes |
 | one program | 1,048,576 bytes total, 65,536 bytes per line, 10,000 physical lines, and 1,024 parsed propositions |
 | one JSON-lines request | 1,048,576 bytes |
+| one saturation search | 8,000,000 term-node work units; one non-atomic argument shares this budget across its direct, indirect, and contradictory-side searches |
 
 Truth-table equivalence also falls back to bounded rewrite search before an estimated DNF
 or AST-evaluation cost can exceed 8,388,608 units. Because fallback is a supported
@@ -168,6 +169,16 @@ deliberate behavioural deviation of the OCaml engine from the frozen JS referenc
 is uncapped (dev-only there, never exposed). The differential gates never reach the budget —
 their generated sets are far too small — so the divergence is real but unobserved by them;
 `test/test_safe.ml` pins it directly.
+
+Logical saturation has a separate deterministic 8,000,000-unit budget. It
+charges term-node work while candidates and rule outputs are constructed, with
+wide compounds charged quadratically because `Simp` copies the remaining
+elements once per removal. The 400-line board bounds retained propositions but
+cannot bound rejected candidate construction by itself. A non-atomic argument
+shares one budget across the direct proof, indirect proof, contradictory proof,
+and contradictory indirect proof attempts. Exhaustion raises no verdict: the
+total boundary returns `Resource_limit`, attributed to the argument or runtime
+operation, and the next request can use the same process or compiled program.
 
 ## The total API (`Tfl.Safe`)
 
@@ -247,7 +258,7 @@ count, is labelled `argument`.
 
 ## Evidence
 
-`test/test_safe.ml`, rerun 2026-08-09: **102,000 adversarial inputs** — 30,000 random byte
+`test/test_safe.ml`, rerun 2026-08-11: **102,000 adversarial inputs** — 30,000 random byte
 strings (invalid UTF-8 and control characters included), 20,000 random notation-token
 strings, 30,000 truncations of printed formulas (cut on byte indices, so UTF-8 sequences
 are sliced in half), 10,000 inputs nested 1–3,000 levels deep in both bracket flavours
@@ -255,11 +266,12 @@ balanced and unbalanced, 2,000 pathological lengths (names and token runs up to 
 characters), and 10,000 `check` calls over garbage premises and conclusions.
 
 No escaping exception, no `Internal` failure, and no case approached the one-second
-bound. Twelve contract checks cover the
+bound. Fourteen contract checks cover the
 classification and resource boundaries directly, including the depth cap, source,
-program and argument budgets, and the capped cancellation search. `test/test_cli.ml`
-separately proves an oversized protocol line is drained and a following request succeeds;
-the equivalence unit and conformance cases pin the DNF fallback.
+program and argument budgets, the capped cancellation search, and pathological valid
+inference refused inside one second. `test/test_cli.ml` separately proves both an oversized
+protocol line and inference-work exhaustion leave a following request readable; the
+equivalence unit and conformance cases pin the DNF fallback.
 
 ---
 
@@ -333,7 +345,8 @@ other gaps.
 
 `test/test_anaphora.ml`: 18 checks. Positives are carried by the engine's own verdicts where
 the case is inside the categorical fragment and decisive; **every negative is carried by an
-exhibited countermodel** from the 1.10 semantics, because outside the categorical fragment
-the engine answers `Unknown` where the truth is "invalid" — an `Unknown` can never establish
-a negative. The test pins that `Unknown`, too, so the incompleteness cannot quietly become a
-verdict.
+exhibited countermodel** from the 1.10 semantics. Outside the categorical fragment, a
+completed bounded search may answer `Unknown`, while the discriminating general-term case
+now exhausts the deterministic work budget and returns `Resource_limit`. Neither can
+establish a negative. The test pins that exact refusal so resource exhaustion cannot quietly
+become a logical verdict.

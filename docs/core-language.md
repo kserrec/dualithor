@@ -310,7 +310,9 @@ is 400 lines. A derived proposition is also refused when its term-node size exce
 largest input by the search slack, normally 8. Direct search tries the requested goal.
 Indirect search adds its contradictory as a `counterclaim`, introduces explicit witnesses,
 and refutes the set. Search order and proof ancestry are part of the reproducible proof
-shape.
+shape. Candidate generation also carries a deterministic 8,000,000-term-node work budget,
+shared across all four direct/indirect attempts for one non-atomic argument. Exceeding it is
+a classified `resource_limit`, not an `unknown` or a logical verdict.
 
 ## 8. Exact decision procedures
 
@@ -469,7 +471,7 @@ These are implementation or procedure limits, not language truths:
 
 | Area | Current limit | Required interpretation |
 |---|---|---|
-| Non-atomic inference | 400-line board and node-size slack | A miss is `unknown`, never `invalid`. |
+| Non-atomic inference | 400-line board, node-size slack, and 8,000,000 term-node work units shared across one argument | A completed miss is `unknown`, never `invalid`; work exhaustion is `resource_limit` with no verdict. |
 | Numerical inference | Three sufficient conditions only | A failed condition is `unknown`; invalidity is undecided. |
 | Numerical consistency | Not implemented | `consistent=true, complete=false, numerical=true` is an abstention. |
 | Contradictory support | Argument checker returns the first supported side | No `both` result exists yet; check consistency separately and do not claim four-state behavior. |

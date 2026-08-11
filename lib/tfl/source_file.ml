@@ -191,11 +191,11 @@ let safe_kind = function
   | Safe.Resource_limit -> Resource_limit
   | Safe.Internal -> Internal
 
-let source_line lines number =
+let line_at lines number =
   if number > 0 && number <= Array.length lines then lines.(number - 1) else ""
 
-let source_column lines number position =
-  Program.source_column (source_line lines number) position
+let column_at lines number position =
+  Program.source_column (line_at lines number) position
 
 let diagnostic_of_safe path lines (failure : Safe.failure) =
   match failure.kind with
@@ -210,16 +210,15 @@ let diagnostic_of_safe path lines (failure : Safe.failure) =
             ( fallback_line,
               Option.map
                 (fun number ->
-                  source_column lines number
-                    (Option.value ~default:0 failure.pos))
+                  column_at lines number (Option.value ~default:0 failure.pos))
                 fallback_line )
       in
-      let source_line =
+      let excerpt =
         match failure.source_line with
-        | Some _ as source_line -> source_line
-        | None -> Option.map (source_line lines) line
+        | Some _ as excerpt -> excerpt
+        | None -> Option.map (line_at lines) line
       in
-      diagnostic ?line ?column ?span:failure.span ?source_line
+      diagnostic ?line ?column ?span:failure.span ?source_line:excerpt
         (safe_kind failure.kind) path failure.message
 
 let locate_statement path (statement : Runtime.statement) =

@@ -2,10 +2,17 @@
 
 **Pre-registered 2026-08-02, before any sentence was read, labelled or scored.**
 
+> **Erratum, 2026-08-11:** the historical implementation violated the document-
+> order rule by reversing sentences within each paragraph. The original sample
+> and labels are frozen; the default sampler now writes a separate corrected,
+> unlabeled sample. See `ERRATUM-2026-08-11.md` and
+> `CORRECTION-PROTOCOL-2026-08-11.md`.
+
 The coverage number this run produces is the project's largest open question, and
 it is trivially manipulable: pick sentences that look translatable and coverage
-goes up without anything being true. So the procedure is fixed here first, it is
-mechanical end to end, and `bench/sample_real.ml` implements exactly it. **No
+goes up without anything being true. So the procedure is fixed here first and it
+is mechanical end to end. The corrected default of `bench/sample_real.ml`
+implements it; `--legacy` reproduces the flawed historical run. **No
 sentence is dropped, swapped or re-sampled after labelling begins.** If the
 procedure turns out to have a flaw, the fix is a new dated protocol and a fresh
 sample, never an edit to this one.
@@ -105,6 +112,11 @@ not allowed to drift from it silently.
   character references generically, and the sampler re-run. No sentence had been
   labelled at that point, so this is an implementation fix rather than a
   re-sample.
+- **2026-08-11, after reporting.** The sentence splitter reversed sentences
+  within each paragraph. This changed deterministic selection and invalidated
+  the reported measurement; it cannot be repaired in place. The original run
+  remains frozen and a separate corrected sample is defined by
+  `CORRECTION-PROTOCOL-2026-08-11.md`.
 
 ## Known artifacts of the splitter, to be handled in labelling, not in code
 

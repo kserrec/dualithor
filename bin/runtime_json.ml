@@ -37,6 +37,7 @@ let rec json_with_valid_utf8 (json : Yojson.Safe.t) : Yojson.Safe.t =
   | (`Null | `Bool _ | `Int _ | `Intlit _ | `Float _) as scalar -> scalar
 
 let to_string json = Yojson.Safe.to_string (json_with_valid_utf8 json)
+let option_json convert = function Some value -> convert value | None -> `Null
 
 let source_position_json (position : Tfl.Source.position) =
   `Assoc
@@ -62,15 +63,11 @@ let failure_fields (failure : Tfl.Safe.failure) =
   [
     ("class", `String (Tfl.Safe.kind_name failure.kind));
     ("message", `String failure.message);
-    ("position", match pos with Some p -> `Int p | None -> `Null);
-    ("end_position", match end_pos with Some p -> `Int p | None -> `Null);
-    ("where", match failure.where with Some w -> `String w | None -> `Null);
-    ( "span",
-      match span with Some span -> source_span_json span | None -> `Null );
-    ( "source_line",
-      match source_line with
-      | Some source_line -> `String source_line
-      | None -> `Null );
+    ("position", option_json (fun position -> `Int position) pos);
+    ("end_position", option_json (fun position -> `Int position) end_pos);
+    ("where", option_json (fun where -> `String where) failure.where);
+    ("span", option_json source_span_json span);
+    ("source_line", option_json (fun line -> `String line) source_line);
   ]
 
 let failure_json failure = `Assoc (("ok", `Bool false) :: failure_fields failure)
@@ -115,9 +112,9 @@ let completeness_json (completeness : Tfl.Runtime.completeness) =
     [
       ("complete", `Bool completeness.complete);
       ( "reason",
-        match completeness.reason with
-        | Some reason -> `String (Tfl.Runtime.incompleteness_name reason)
-        | None -> `Null );
+        option_json
+          (fun reason -> `String (Tfl.Runtime.incompleteness_name reason))
+          completeness.reason );
     ]
 
 let proof_json (proof : Tfl.Runtime.proof) =
@@ -137,9 +134,8 @@ let proof_json (proof : Tfl.Runtime.proof) =
                  ])
              proof.lines) );
       ( "explanation",
-        match proof.explanation with
-        | Some explanation -> `String explanation
-        | None -> `Null );
+        option_json (fun explanation -> `String explanation) proof.explanation
+      );
     ]
 
 let cancellation_json (cancellation : Tfl.Runtime.cancellation) =
@@ -163,13 +159,10 @@ let certificate_json (certificate : Tfl.Runtime.certificate) =
     [
       ("point", `List (List.map (fun point -> `String point) certificate.point));
       ( "clash",
-        match certificate.clash with
-        | Some (left, right) -> `List [ `String left; `String right ]
-        | None -> `Null );
-      ( "cancellation",
-        match certificate.cancellation with
-        | Some cancellation -> cancellation_json cancellation
-        | None -> `Null );
+        option_json
+          (fun (left, right) -> `List [ `String left; `String right ])
+          certificate.clash );
+      ("cancellation", option_json cancellation_json certificate.cancellation);
     ]
 
 let numerical_json (decision : Tfl.Runtime.numerical_decision) =
@@ -220,15 +213,13 @@ let evidence_json = function
 
 let evidence_list_json evidence = `List (List.map evidence_json evidence)
 
-let query_support_json (support : Tfl.Runtime.query_support option) =
-  match support with
-  | None -> `Null
-  | Some support ->
+let query_support_json =
+  option_json (fun (support : Tfl.Runtime.query_support) ->
       `Assoc
         [
           ("proposition", proposition_json support.proposition);
           ("evidence", evidence_list_json support.evidence);
-        ]
+        ])
 
 let term_answer_json (answer : Tfl.Runtime.term_answer) =
   `Assoc

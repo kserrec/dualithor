@@ -40,6 +40,8 @@ let () =
   (* The trap this scorer exists to survive. *)
   expect "an A-form converse is NOT a match" "-Trustee+Fiduciary" "-Fiduciary+Trustee"
     "wrong";
+  expect "a subsequence collision cannot license an A-form converse"
+    "-Cat+Educated" "-Educated+Cat" "wrong";
   expect "a swapped relational is NOT a match" "+Auditor+(Review+Report)"
     "+Report+(Review+Auditor)" "wrong";
   expect "unrelated terms do not match" "-Trustee+Fiduciary" "-Penguin+Aircraft" "wrong";

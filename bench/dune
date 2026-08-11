@@ -12,17 +12,16 @@
  (modules run_fidelity)
  (libraries bench tfl tfl_verify translate yojson lwt lwt.unix))
 
-; The 4.6 real-text sample. Implements data/fidelity/real/PROTOCOL.md exactly;
-; deterministic, no network — reads the gitignored raw XML in data/raw/ and
-; writes the committed sample. Run by hand from the repo root.
+; The 4.6 real-text sample. Default output follows the 2026-08-11 correction;
+; --legacy reproduces the frozen 2026-08-02 sample. Deterministic, no network.
 
 (executable
  (name sample_real)
  (modules sample_real)
  (libraries bench))
 
-; The 4.6 definitional sample (PROTOCOL-2): same pipeline, genre selected at the
-; section level. Deterministic, no network.
+; The 4.6 definitional sample (PROTOCOL-2): same corrected/legacy modes, with
+; genre selected at the section level. Deterministic, no network.
 
 (executable
  (name sample_defs)

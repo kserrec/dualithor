@@ -270,11 +270,11 @@ let query_term ?max_lines ?slack (program : prop list) (term : term) :
 type query_verdict = Q_yes | Q_no | Q_unknown
 type prop_query = { q_verdict : query_verdict; support : Decide.result option }
 
-let query_prop ?max_lines ?slack (program : prop list) (query : prop) :
+let query_prop ?max_lines ?max_work ?slack (program : prop list) (query : prop) :
     prop_query =
   List.iter Infer.validate_prop program;
   Infer.validate_prop query;
-  let yes = Decide.check_argument ?max_lines ?slack program query in
+  let yes = Decide.check_argument ?max_lines ?max_work ?slack program query in
   match yes.verdict with
   | Valid -> { q_verdict = Q_yes; support = Some yes }
   | Contradicted -> { q_verdict = Q_no; support = Some yes }
@@ -284,7 +284,7 @@ let query_prop ?max_lines ?slack (program : prop list) (query : prop) :
          [check_argument], returning [Contradicted] when it succeeds. *)
       if yes.meth = PZ || yes.meth = Numerical then
         let no =
-          Decide.check_argument ?max_lines ?slack program
+          Decide.check_argument ?max_lines ?max_work ?slack program
             (Infer.contradictory query)
         in
         if no.verdict = Valid then { q_verdict = Q_no; support = Some no }

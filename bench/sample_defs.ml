@@ -1,9 +1,9 @@
 (* PLAN 4.6, second sample — definitional regulatory text.
 
-   Implements `data/fidelity/real/PROTOCOL-2.md`. Same extraction, splitter,
-   filter and sampling as the first sample (all of it in `Cfr`, shared, so the
-   two cannot drift apart); the *only* difference is which paragraphs enter the
-   pool, which is the independent variable.
+   The default mode implements the dated correction protocol after the original
+   2026-08-02 run was found to reverse sentences within every paragraph. The
+   explicit [--legacy] mode reproduces that frozen historical sample. Extraction,
+   filtering, and sampling remain shared with the normative sampler.
 
    D1 — sections headed "Definitions" in the same three parts the normative
         sample came from. Holds the corpus constant, varies only genre.
@@ -11,12 +11,30 @@
         a different agency and subject, to check D1 is not an artifact of three
         particular parts.
 
-   Output: data/fidelity/real/sample-defs.jsonl (committed) *)
+   Output: data/fidelity/real/sample-defs-corrected-2026-08-11.jsonl
+   Legacy: data/fidelity/real/sample-defs.jsonl *)
 
 open Bench.Cfr
 
 let per_source = 10
-let out_path = "data/fidelity/real/sample-defs.jsonl"
+
+type mode = Corrected | Legacy
+
+let mode =
+  match Array.to_list Sys.argv with
+  | [ _ ] -> Corrected
+  | [ _; "--legacy" ] -> Legacy
+  | _ -> failwith "usage: sample_defs.exe [--legacy]"
+
+let out_path =
+  match mode with
+  | Corrected -> "data/fidelity/real/sample-defs-corrected-2026-08-11.jsonl"
+  | Legacy -> "data/fidelity/real/sample-defs.jsonl"
+
+let candidates =
+  match mode with
+  | Corrected -> candidates_of
+  | Legacy -> candidates_of_legacy_reversed
 
 let d1 =
   [ ("7", "273", "SNAP"); ("20", "416", "SSI"); ("24", "5", "HUD") ]
@@ -56,7 +74,7 @@ let () =
         sections (load title part)
         |> List.filter (fun (head, _) -> contains ~needle:"Definition" head)
       in
-      let cands = List.concat_map (fun (_, b) -> candidates_of b) secs in
+      let cands = List.concat_map (fun (_, b) -> candidates b) secs in
       let picked = take_every_kth cands per_source in
       Printf.printf "D1 %-12s %2d definition sections, %4d candidates, sampled %d\n%!"
         (Printf.sprintf "%s CFR %s" title part)
@@ -67,7 +85,7 @@ let () =
      so every section counts. *)
   List.iter
     (fun (title, part, subject) ->
-      let cands = candidates_of (load title part) in
+      let cands = candidates (load title part) in
       let picked = take_every_kth cands per_source in
       Printf.printf "D2 %-12s %4d candidates, sampled %d\n%!"
         (Printf.sprintf "%s CFR %s" title part)

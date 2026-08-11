@@ -1,5 +1,5 @@
-(* PLAN 4.6 — regenerate every number in docs/coverage-report-2026-08-02.md
-   from the committed labels.
+(* PLAN 4.6 — regenerate every historical number in
+   docs/coverage-report-2026-08-02.md from the committed labels.
 
    This exists because the report's tables were first computed by throwaway
    scripts. Committed labels with no committed derivation is a quiet trap: edit
@@ -8,7 +8,8 @@
 
    Reads   data/fidelity/real/labels.jsonl        (normative, PROTOCOL.md)
            data/fidelity/real/labels-defs.jsonl   (D1/D2, PROTOCOL-2.md)
-   Writes  nothing. Prints. *)
+   These labels belong to the flawed frozen samples; see the 2026-08-11 erratum.
+   Writes nothing. Prints. *)
 
 let normative = "data/fidelity/real/labels.jsonl"
 let defs = "data/fidelity/real/labels-defs.jsonl"
@@ -83,6 +84,7 @@ let () =
   in
   let d1 = List.filter (fun r -> r.group = "D1-definitions") d in
   let d2 = List.filter (fun r -> r.group = "D2-standards-of-identity") d in
+  print_endline "HISTORICAL INVALIDATED MEASUREMENT — see data/fidelity/real/ERRATUM-2026-08-11.md";
   print_endline "coverage of real regulatory text (PLAN 4.6)";
   print_endline "regenerated from the committed labels; diff against docs/coverage-report-2026-08-02.md";
   report "normative regulation (7 CFR 273, 20 CFR 416, 24 CFR 5)" norm;

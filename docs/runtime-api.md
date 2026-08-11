@@ -34,6 +34,10 @@ construct a partially validated runtime program by filling a public record itsel
 Every operation is total: it returns `Ok` or a classified `Tfl.Safe.failure`, and no parser,
 validation, inference, or rendering exception crosses the boundary. Existing byte, line,
 nesting, proposition-count, proof-search, and equivalence-work limits still apply.
+Non-atomic saturation has an 8,000,000-term-node work budget; one argument shares it across
+direct, indirect, and contradictory-side proof attempts. Exhaustion returns
+`resource_limit` attributed to the operation, with no logical result, and does not invalidate
+or mutate the compiled program.
 
 ## Operations and records
 
@@ -128,9 +132,10 @@ typed request fields remain protocol errors rather than runtime records.
 The public diagnostic vocabulary keeps `lexical`, `syntactic`, `name_resolution`,
 `outside_fragment`, `incomplete_search`, `resource_limit`, and `internal` distinct.
 `name_resolution` is currently dormant because this language version has no declarations;
-Phase 17 must use the shared source-span type when it adds them. Ordinary bounded query
-abstention is returned through the result's `completeness` record, not disguised as a
-compile error.
+Phase 17 must use the shared source-span type when it adds them. A query that completes its
+work budget but reaches an incomplete logical bound reports that abstention through the
+result's `completeness` record. Exceeding the inference work budget is instead a
+`resource_limit` operation failure, never disguised as `unknown` or non-entailment.
 
 The older `check`, `parse`, and `render` commands remain available with their existing
 response shapes. Their error records receive the same additive range metadata: the legacy

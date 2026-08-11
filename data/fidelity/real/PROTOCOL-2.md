@@ -1,5 +1,10 @@
 # Definitional-text protocol (PLAN 4.6, second sample)
 
+> **Erratum, 2026-08-11:** the shared historical splitter reversed sentences
+> within each paragraph. The results below describe the frozen flawed sample,
+> not a valid current estimate under this protocol. See
+> `ERRATUM-2026-08-11.md` and `CORRECTION-PROTOCOL-2026-08-11.md`.
+
 **Pre-registered 2026-08-02, before any sentence of the new sample was fetched,
 read or labelled.** `PROTOCOL.md` and its 5%/12% result are frozen and are not
 revised by anything here.

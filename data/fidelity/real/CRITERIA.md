@@ -1,5 +1,9 @@
 # Labelling criteria for the real-text sample (PLAN 4.6)
 
+> **Historical scope:** these criteria and the committed labels apply to the
+> frozen flawed 2026-08-02 samples. The corrected 2026-08-11 samples are
+> unlabeled; see `ERRATUM-2026-08-11.md`.
+
 Written before labelling, applied to all 60 sentences, and fixed thereafter.
 
 A sentence is **in-fragment** if its propositional content can be written as

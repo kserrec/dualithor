@@ -314,6 +314,13 @@ let guard_input ~where ~source ~range run =
   | Error failure -> Error (Safe.locate source range failure)
   | Ok result -> Ok result
 
+let with_located_input ~where ~source parser run =
+  match parser ?where:(Some where) source with
+  | Error failure -> Error failure
+  | Ok located ->
+      guard_input ~where ~source ~range:located.Source.range (fun () ->
+          run located.value)
+
 let method_of_decision = function
   | Decide.PZ -> PZ
   | Decide.Derivation -> Derivation
@@ -356,28 +363,23 @@ let query_support_of_decision proposition verdict decision : query_support =
   }
 
 let query program source =
-  match Safe.parse_located ~where:"query" source with
-  | Error failure -> Error failure
-  | Ok located ->
-      let proposition = located.value in
-      guard_input ~where:"query" ~source ~range:located.range (fun () ->
-          let result = Program.query_prop program.compiled_props proposition in
-          let method_ =
-            query_method program.compiled_props proposition result
-          in
-          let verdict = query_verdict_of_internal result.q_verdict in
-          let support =
-            Option.map
-              (query_support_of_decision proposition verdict)
-              result.support
-          in
-          {
-            query = proposition_of_ast proposition;
-            verdict;
-            method_;
-            completeness = query_completeness method_;
-            support;
-          })
+  with_located_input ~where:"query" ~source Safe.parse_located
+    (fun proposition ->
+      let result = Program.query_prop program.compiled_props proposition in
+      let method_ = query_method program.compiled_props proposition result in
+      let verdict = query_verdict_of_internal result.q_verdict in
+      let support =
+        Option.map
+          (query_support_of_decision proposition verdict)
+          result.support
+      in
+      {
+        query = proposition_of_ast proposition;
+        verdict;
+        method_;
+        completeness = query_completeness method_;
+        support;
+      })
 
 let term_answer_of_internal (answer : Program.term_answer) : term_answer =
   {
@@ -386,21 +388,17 @@ let term_answer_of_internal (answer : Program.term_answer) : term_answer =
   }
 
 let describe program source =
-  match Safe.parse_term_located ~where:"term" source with
-  | Error failure -> Error failure
-  | Ok located ->
-      let term = located.value in
-      guard_input ~where:"term" ~source ~range:located.range (fun () ->
-          let answers =
-            Program.query_term_detailed program.compiled_props term
-            |> List.map term_answer_of_internal
-          in
-          {
-            term = term_of_ast term;
-            answers;
-            method_ = Bounded_saturation;
-            completeness = incomplete Bounded_term_saturation;
-          })
+  with_located_input ~where:"term" ~source Safe.parse_term_located (fun term ->
+      let answers =
+        Program.query_term_detailed program.compiled_props term
+        |> List.map term_answer_of_internal
+      in
+      {
+        term = term_of_ast term;
+        answers;
+        method_ = Bounded_saturation;
+        completeness = incomplete Bounded_term_saturation;
+      })
 
 let consistency_status_of_internal (result : Program.consistency) =
   if not result.consistent then Inconsistent

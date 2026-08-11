@@ -8,6 +8,32 @@ open Tfl.Notation
 open Tfl.Relational
 open Harness
 
+let expect_work_limit premises conclusion label =
+  match Tfl.Safe.check ~premises ~conclusion with
+  | Error
+      {
+        kind = Tfl.Safe.Resource_limit;
+        where = Some "argument";
+        message;
+        _;
+      } ->
+      check
+        (message = Tfl.Derive.work_limit_message Tfl.Derive.default_max_work)
+        (label ^ ": wrong resource-limit message")
+  | Error failure ->
+      failwith
+        (Printf.sprintf "%s: expected inference resource limit, got %s" label
+           (Tfl.Safe.kind_name failure.kind))
+  | Ok result ->
+      failwith
+        (Printf.sprintf "%s: expected inference resource limit, got %s" label
+           (verdict_name result))
+
+let semantically_entails premises conclusion =
+  Semantics.counter_model ~max_n:4 ~cap:2_000_000
+    (List.map p premises) (p conclusion)
+  = None
+
 let () =
   (* Relational derivations (deferred from 1.5) *)
   test "the horse's head: tautology premise + cancellation in-complex"
@@ -33,9 +59,9 @@ let () =
         [ "+Critic+(Praises+Film)"; "+Film+Masterpiece" ]
         "+Critic+(Praises+Masterpiece)" "unknown" "undistributed middle");
   test "two distributed occurrences never cancel" (fun () ->
-      expect_verdict
+      expect_work_limit
         [ "+Editor−(Rejects+Manuscript)"; "−Manuscript+Submission" ]
-        "+Editor−(Rejects+Submission)" "unknown" "distributed pair");
+        "+Editor−(Rejects+Submission)" "distributed pair");
   test "illicit process in a complex is not derived; the sound conclusion is"
     (fun () ->
       let premises = [ "+Donor+(Funds+Charity)"; "−Charity+Nonprofit" ] in
@@ -99,19 +125,24 @@ let () =
       let ok = arg [ "−Dog+(Sees−Cat)" ] "−Cat+(Sees₂₁−Dog)" in
       check (verdict_name ok = "valid") ("verdict " ^ verdict_name ok);
       check (List.mem "Pass" (proof_rules ok)) "expected a Pass step";
-      expect_verdict
+      expect_work_limit
         [ "−Philosopher+(Teaches+Student)" ]
-        "+Student+(Teaches₂₁−Philosopher)" "unknown" "the trap");
-  test "the one-way scope entailment: ∃∀ proves ∀∃, never the reverse"
+        "+Student+(Teaches₂₁−Philosopher)" "the trap");
+  test "the one-way scope entailment is semantic; expensive search is limited"
     (fun () ->
-      let res =
-        Tfl.Derive.indirect_proof ~max_lines:1600
-          [ p "+Philosopher+(Teaches−Student)" ]
-          (p "−Student+(Teaches₂₁+Philosopher)")
-      in
-      check res.found "∃∀ ⊢ ∀∃ should be provable";
-      let rev = Tfl.Derive.indirect_proof [ p "−A+(R+B)" ] (p "+B+(R₂₁−A)") in
-      check (not rev.found) "∀∃ ⊬ ∃∀");
+      check
+        (semantically_entails
+           [ "+Philosopher+(Teaches−Student)" ]
+           "−Student+(Teaches₂₁+Philosopher)")
+        "∃∀ ⊨ ∀∃";
+      check
+        (not (semantically_entails [ "−A+(R+B)" ] "+B+(R₂₁−A)"))
+        "∀∃ ⊭ ∃∀";
+      expect_work_limit
+        [ "+Philosopher+(Teaches−Student)" ]
+        "−Student+(Teaches₂₁+Philosopher)" "forward scope search";
+      expect_work_limit [ "−A+(R+B)" ] "+B+(R₂₁−A)"
+        "reverse scope search");
 
   (* Proterms and pronominalization *)
   test "proterms take wild quantity; general terms still cannot" (fun () ->

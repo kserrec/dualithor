@@ -226,6 +226,32 @@ let unit_checks () =
       | Error
           { kind = Tfl.Safe.Resource_limit; where = Some "argument"; _ } -> ()
       | _ -> failwith "an oversized premise list was not refused");
+  test "valid compound inference is work-bounded (<1s)" (fun () ->
+      let premise =
+        "+("
+        ^ String.concat "" (List.init 32 (fun _ -> "+A"))
+        ^ ")+P"
+      in
+      let started = Unix.gettimeofday () in
+      let outcome =
+        Tfl.Safe.check ~premises:[ premise ] ~conclusion:"−X+Y"
+      in
+      let elapsed = Unix.gettimeofday () -. started in
+      check (elapsed < 1.0)
+        (Printf.sprintf "the inference work refusal took %.3fs" elapsed);
+      match outcome with
+      | Error
+          {
+            kind = Tfl.Safe.Resource_limit;
+            where = Some "argument";
+            message;
+            _;
+          } ->
+          check
+            (message =
+             Tfl.Derive.work_limit_message Tfl.Derive.default_max_work)
+            "the refusal must name the inference work limit"
+      | _ -> failwith "the pathological valid argument was not work-bounded");
   test "program bytes and individual line bytes are bounded" (fun () ->
       let over_program = String.make (Tfl.Safe.max_program_bytes + 1) 'x' in
       (match Tfl.Safe.parse_program over_program with

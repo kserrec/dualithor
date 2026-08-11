@@ -6,8 +6,9 @@
    use, which is the bar for pulling something out into a module.
 
    Implements `data/fidelity/real/PROTOCOL.md` "Extraction" and "Candidate
-   filter" exactly. Read that before changing anything here — the numbers
-   downstream are pre-registered against this behaviour. *)
+   filter". The original 2026-08-02 run accidentally reversed the sentences
+   within every paragraph. The corrected behavior is the default; the explicit
+   legacy helpers below exist only to reproduce that frozen historical run. *)
 
 let read_file path =
   let ic = open_in_bin path in
@@ -188,7 +189,13 @@ let split_sentences (s : string) : string list =
     else incr i
   done;
   if !start < n then out := String.sub s !start (n - !start) :: !out;
-  List.rev_map String.trim !out |> List.rev
+  List.rev_map String.trim !out
+
+(* Historical compatibility only. The original splitter reversed the result of
+   [List.rev_map] a second time, so sentences within each paragraph appeared in
+   reverse source order. Keep the bug reproducible without making it the live
+   extraction behavior. *)
+let split_sentences_legacy_reversed s = List.rev (split_sentences s)
 
 (* ── Candidate filter (PROTOCOL "Candidate filter") ──────────────────────── *)
 
@@ -256,12 +263,17 @@ let sections (xml : string) : (string * string) list =
   done;
   List.rev !out
 
-let candidates_of (body : string) : string list =
+let candidates_of_with split (body : string) : string list =
   paragraphs body
   |> List.map (fun p -> squeeze (decode (strip_tags p)))
-  |> List.concat_map split_sentences
+  |> List.concat_map split
   |> List.map (fun s -> squeeze (strip_markers s))
   |> List.filter is_candidate
+
+let candidates_of body = candidates_of_with split_sentences body
+
+let candidates_of_legacy_reversed body =
+  candidates_of_with split_sentences_legacy_reversed body
 
 let contains ~needle s =
   let nl = String.length needle and sl = String.length s in

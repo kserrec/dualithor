@@ -276,6 +276,40 @@ let () =
   check "the request after an oversized line is still processed"
     (field "ok" replies.(1) = "true");
 
+  (* A line-count bound alone did not constrain candidate construction between
+     accepted lines: this 69-byte valid program used to block the lockstep
+     stream for more than five seconds. The refusal and following success pin
+     both the work budget and stream recovery. *)
+  let compound =
+    "+("
+    ^ String.concat "" (List.init 32 (fun _ -> "+A"))
+    ^ ")+P"
+  in
+  let started = Unix.gettimeofday () in
+  let replies =
+    run
+      [
+        Printf.sprintf
+          {|{"cmd":"query","program":"%s","query":"-X+Y"}|}
+          compound;
+        {|{"cmd":"parse","tfl":"-Man+Mortal"}|};
+      ]
+    |> Array.of_list
+  in
+  let elapsed = Unix.gettimeofday () -. started in
+  let resource_errors =
+    Yojson.Safe.Util.member "errors" (Yojson.Safe.from_string replies.(0))
+    |> Yojson.Safe.Util.to_list
+  in
+  check "a pathological valid query is refused within the process latency gate"
+    (elapsed < 2.0 && Array.length replies = 2
+   &&
+   match resource_errors with
+   | [ failure ] -> Yojson.Safe.Util.member "class" failure = `String "resource_limit"
+   | _ -> false);
+  check "the request after inference work exhaustion is still processed"
+    (field "ok" replies.(1) = "true");
+
   (* Valid JSON is not necessarily a request object. Yojson's member helper
      raises on these shapes, so the object check must happen before lookup. *)
   let replies =

@@ -26,12 +26,18 @@
 open Harness
 
 let expect_not_valid premises conclusion msg =
-  let r = arg premises conclusion in
-  check
-    (verdict_name r <> "valid")
-    (Printf.sprintf
-       "%s: engine certified an argument the books call invalid (%s)" msg
-       (verdict_name r))
+  match Tfl.Safe.check ~premises ~conclusion with
+  | Ok r ->
+      check
+        (verdict_name r <> "valid")
+        (Printf.sprintf
+           "%s: engine certified an argument the books call invalid (%s)" msg
+           (verdict_name r))
+  | Error { kind = Tfl.Safe.Resource_limit; where = Some "argument"; _ } -> ()
+  | Error failure ->
+      failwith
+        (Printf.sprintf "%s: unexpected %s refusal" msg
+           (Tfl.Safe.kind_name failure.kind))
 
 let valid premises conclusion name =
   test name (fun () -> expect_verdict premises conclusion "valid" name)

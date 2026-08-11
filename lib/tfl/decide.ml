@@ -450,8 +450,8 @@ type result = {
   decision : numerical_decision option;
 }
 
-let check_argument ?max_lines ?slack (premises : prop list) (conclusion : prop)
-    : result =
+let check_argument ?max_lines ?(max_work = Derive.default_max_work) ?slack
+    (premises : prop list) (conclusion : prop) : result =
   List.iter Infer.validate_prop premises;
   Infer.validate_prop conclusion;
   if List.exists has_level (premises @ [ conclusion ]) then
@@ -507,7 +507,10 @@ let check_argument ?max_lines ?slack (premises : prop list) (conclusion : prop)
             decision = None;
           }
     else
-      let proof = Derive.derive ?max_lines ?slack premises conclusion in
+      let work_budget = Derive.create_work_budget ~limit:max_work () in
+      let proof =
+        Derive.derive ?max_lines ~work_budget ?slack premises conclusion
+      in
       if proof.found then
         {
           verdict = Valid;
@@ -518,7 +521,8 @@ let check_argument ?max_lines ?slack (premises : prop list) (conclusion : prop)
         }
       else
         let indirect =
-          Derive.indirect_proof ?max_lines ?slack premises conclusion
+          Derive.indirect_proof ?max_lines ~work_budget ?slack premises
+            conclusion
         in
         if indirect.found then
           {
@@ -530,7 +534,7 @@ let check_argument ?max_lines ?slack (premises : prop list) (conclusion : prop)
           }
         else
           let refutation =
-            Derive.derive ?max_lines ?slack premises
+            Derive.derive ?max_lines ~work_budget ?slack premises
               (Infer.contradictory conclusion)
           in
           if refutation.found then
@@ -543,7 +547,7 @@ let check_argument ?max_lines ?slack (premises : prop list) (conclusion : prop)
             }
           else
             let indirect_ref =
-              Derive.indirect_proof ?max_lines ?slack premises
+              Derive.indirect_proof ?max_lines ~work_budget ?slack premises
                 (Infer.contradictory conclusion)
             in
             if indirect_ref.found then

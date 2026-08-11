@@ -28,9 +28,10 @@
 
    Semantic claims below are decided by model enumeration (the 1.10 semantics,
    differential-verified against the frozen JS oracle), not by the engine's own
-   verdicts: outside the categorical fragment the engine answers `Unknown`
-   where the truth is "invalid", so an engine verdict cannot establish a
-   negative. Each negative is therefore carried by an exhibited countermodel. *)
+   verdicts: outside the categorical fragment the engine may answer `Unknown`
+   or refuse an expensive search as `Resource_limit`, while the semantic truth
+   is "invalid". Neither outcome can establish a negative. Each negative is
+   therefore carried by an exhibited countermodel. *)
 
 let p = Tfl.Notation.parse_proposition
 let checks = ref 0
@@ -117,13 +118,16 @@ let () =
        (entails
           [ "-Artist+(Admire+Beekeeper)"; "+Beekeeper+Nice" ]
           "-Artist+(Admire+Nice)"));
-  (* And the engine does not claim otherwise on the negative: it answers
-     `Unknown`, which is the documented incompleteness of derivation search
-     outside the categorical fragment, never `Invalid` and never `Valid`. *)
-  check "the engine answers Unknown there, not a verdict"
-    (verdict
-       [ "-Artist+(Admire+Beekeeper)"; "+Beekeeper+Nice" ]
-       "-Artist+(Admire+Nice)"
-    = Unknown)
+  (* And the engine does not claim otherwise on the negative. This exact
+     candidate expansion exceeds the public inference budget, so the result is
+     a classified refusal, never `Invalid` and never `Valid`. *)
+  check "the expensive negative is a resource refusal, not a verdict"
+    (match
+       verdict
+         [ "-Artist+(Admire+Beekeeper)"; "+Beekeeper+Nice" ]
+         "-Artist+(Admire+Nice)"
+     with
+    | Error { error_class = Tfl_verify.Resource_limit; _ } -> true
+    | _ -> false)
 
 let () = Printf.printf "test_anaphora: %d checks passed\n" !checks

@@ -18,11 +18,12 @@ open Tfl.Ast
 
 (* ── Name anchoring ────────────────────────────────────────────────────────
    Compare on letters and digits only, case-folded, so Work_for / workFor /
-   "work for" all reduce alike. Abbreviation is the case that must survive:
-   models shorten verbs (Wrk for Work, Adm for Admire), so a subsequence match
-   is allowed — every letter of the shorter appearing in order in the longer.
-   Below three characters a subsequence is nearly vacuous, so short names must
-   match outright. *)
+   "work for" all reduce alike. Abbreviation is the case that must survive,
+   but an arbitrary subsequence is not a root: Cat occurs inside Educated and
+   previously licensed a meaning-reversing A-form swap. Accept a prefix, one
+   dropped character with the same endpoints (Wrk / Work), or four shared
+   leading characters (Notifi / Notify). Below three characters these tests are
+   nearly vacuous, so short names must match outright. *)
 
 let normalise (s : string) : string =
   String.to_seq s
@@ -42,21 +43,28 @@ let common_prefix (a : string) (b : string) : int =
   let rec go i = if i < n && a.[i] = b.[i] then go (i + 1) else i in
   go 0
 
+let is_prefix (short : string) (long : string) : bool =
+  let n = String.length short in
+  n <= String.length long && String.sub long 0 n = short
+
+let drops_one_character (short : string) (long : string) : bool =
+  let n = String.length short and m = String.length long in
+  m = n + 1
+  && short.[0] = long.[0]
+  && short.[n - 1] = long.[m - 1]
+  && is_subsequence short long
+
 let names_compatible (a : string) (b : string) : bool =
   let a = normalise a and b = normalise b in
   if a = b then true
   else if String.length a < 3 || String.length b < 3 then false
-  else if (if String.length a <= String.length b then is_subsequence a b
-           else is_subsequence b a)
-  then true
   else
-    (* Subsequence handles dropped letters (Wrk / Work) but not a *substituted*
-       one, which is how truncated stems actually come back: a model wrote
-       "Notifi" for "Notify", differing only in the final character. Four
-       shared leading characters is enough to call it the same root, and far
-       more than any pair the anchor must keep apart — Trustee and Fiduciary
-       share none. *)
-    common_prefix a b >= 4
+    let short, long =
+      if String.length a <= String.length b then (a, b) else (b, a)
+    in
+    is_prefix short long
+    || drops_one_character short long
+    || common_prefix a b >= 4
 
 (* ── Structural isomorphism ────────────────────────────────────────────────
    The binding is threaded functionally rather than mutated, because compound

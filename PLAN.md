@@ -15,6 +15,42 @@ The language is called **TFL** and its eventual human-facing executable is **`tf
 
 Phases 1 through 5 are complete. Phase 6 is the next implementation phase.
 
+### Maintenance phase — 2026-08-11 correctness repairs ✅ COMPLETE
+
+This named maintenance phase is an explicit exception to roadmap order, approved after the
+2026-08-11 whole-codebase bug hunt. It repairs three verified defects without selecting a
+phase from either discontinued roadmap:
+
+1. Bound inference candidate-generation work deterministically and return the existing
+   public `resource_limit` failure when that budget is exhausted. Preserve every ordinary
+   verdict and proof that completes inside the budget, and prove the request/reply process
+   remains usable after a refusal.
+2. Correct the reversed regulatory sentence splitter, pin document order with focused
+   tests, preserve the original flawed samples and reports as historical evidence, and add
+   a dated correction protocol with freshly generated samples and an explicit erratum.
+3. Prevent the fidelity scorer's abbreviation matcher from treating unrelated words as
+   the same root, including the verified `Cat`/`Educated` converse trap.
+4. Run the focused suites, forced full suite, 20,000-case OCaml oracle gate, and
+   884,000-input differential gate; keep Phase 6 as the next feature phase.
+
+**Acceptance:** pathological valid queries return a classified limit refusal within the
+public latency gate and a following request succeeds; corrected samples follow source
+document order without replacing the old evidence; the adversarial converse scores wrong;
+all required verification is green.
+
+**Delivered:** non-atomic inference now shares a deterministic 8,000,000-term-node work
+budget across the four searches for one argument and maps exhaustion to the existing public
+`resource_limit` failure; focused API, runtime, and long-lived JSON-lines regressions prove
+the refusal is prompt and non-poisoning. The live eCFR splitter now preserves source order,
+the explicit `--legacy` path reproduces both frozen flawed samples byte for byte, and dated
+unlabeled corrected samples, a post-discovery correction protocol, and an erratum preserve
+the historical record without reporting replacement percentages. The fidelity scorer no
+longer accepts arbitrary subsequences as roots, and the `Cat`/`Educated` converse is pinned
+as wrong. The forced full repository suite passed; all six oracle suites passed at 20,000
+iterations each (including 85,731 checked rule steps, 1,805 relational proofs, and 3,912
+indirect refutations), and the 884,000-input differential gate passed all 18 comparisons
+with zero unexpected divergence. Phase 6 remains the next feature phase.
+
 ## What we are building
 
 TFL will be a proof-producing logic programming language in which a program states facts,
