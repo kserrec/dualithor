@@ -14,6 +14,12 @@ for an interactive session over that file. It is separate from the long-lived `d
 JSON-lines process documented in [runtime-api.md](runtime-api.md). The interfaces call the
 same total `Tfl.Runtime` operations and cannot change a logical result.
 
+The public command name is exactly `tfl`. During source development, `opam exec --` selects
+an opam environment and `dune exec` launches a build-tree target; neither prefix is part of
+the installed command. The current prerelease source-install and environment-activation
+steps are in the repository README. Phase 38 separately requires a precompiled end-user
+distribution that needs none of OCaml, opam, or Dune.
+
 ## `.tfl` source files
 
 A source path must have the case-sensitive `.tfl` suffix and resolve to a regular

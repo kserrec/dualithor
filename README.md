@@ -12,7 +12,7 @@ REPL, answer variables, a defined rule and recursion layer, modules, diagnostics
 provenance, debugging, data interfaces, editor support, packaging, and real application
 comparisons.
 
-**Current status (2026-08-11):** Phases 1 through 5 are complete. The inherited core has a
+**Current status (2026-08-15):** Phases 1 through 5 are complete. The inherited core has a
 [normative language reference](docs/core-language.md), a 26-case executable conformance
 corpus, and a [total public runtime](docs/runtime-api.md) that compiles whole programs and
 exposes every existing operation through OCaml and JSON-lines interfaces. The installable
@@ -53,7 +53,15 @@ search is incomplete and may return `Unknown`, and the numerical layer can certi
 valid arguments but cannot decide invalidity in general. These limits remain explicit in
 the new language contract.
 
-## Build and test
+## Current installation status
+
+Dualithor has not published a versioned end-user release yet. The current package is a
+source/development package installed through an opam switch, so working on this checkout
+requires opam, OCaml, and Dune. That is not the version-1 distribution contract: the release
+roadmap requires precompiled `tfl` and `dualithor` commands that do not require an end user to
+install OCaml, opam, Dune, or another language toolchain first.
+
+## Build and test from source
 
 The project requires [opam](https://opam.ocaml.org/) with OCaml 4.14.4. The supported
 compiler range is the security-fixed 4.14 line (`>=4.14.4` and `<5.0`). Node 18 or newer
@@ -69,6 +77,21 @@ opam exec -- dune test
 `--with-test` deliberately installs the larger offline test and retained legacy-translation
 development graph. A normal Dualithor package installation selects no Lwt, Cohttp, TLS, or
 Mirage Crypto dependency; the shipped `tfl` and `dualithor` commands have no network client.
+
+To install this checkout into the selected opam switch, then place that switch's command
+directory on the current shell's `PATH`:
+
+```bash
+opam pin add dualithor . --kind=path --no-action --yes
+opam install dualithor --locked --yes
+eval "$(opam env)"
+tfl --help
+```
+
+The first two commands are the current prerelease source-install mechanism. After the
+environment activation, `tfl` and `dualithor` are the actual installed command names;
+`opam exec --` and `dune exec` are development-environment launchers, not parts of either
+public command name.
 
 Save a program such as this as `knowledge.tfl`:
 
@@ -92,7 +115,7 @@ Add `--json` to a one-shot command to request a stable `tfl-cli-0.1` machine rec
 separate `dualithor` executable remains the long-lived JSON-lines engine boundary. For example:
 
 ```bash
-printf '%s\n' '{"cmd":"query","program":"+-Socrates*+Man\n-Man+Mortal","query":"+-Socrates*+Mortal"}' | opam exec -- dune exec bin/tfl_cli.exe
+printf '%s\n' '{"cmd":"query","program":"+-Socrates*+Man\n-Man+Mortal","query":"+-Socrates*+Mortal"}' | dualithor
 ```
 
 ## Repository layout
@@ -113,6 +136,8 @@ printf '%s\n' '{"cmd":"query","program":"+-Socrates*+Man\n-Man+Mortal","query":"
 - `test/` — unit, core conformance, literature, oracle, differential, and robustness
   suites.
 - `engine/` — the frozen JavaScript reference inherited from the original implementation.
+- `HOROS-PHASE-5-HANDS-ON.html` — a compatibility symlink to the renamed Dualithor guide,
+  retained so an existing local bookmark can still open the guide and migrate saved progress.
 - `translate/`, `router/`, `bench/`, `analysis/`, and much of `data/` and `docs/` — legacy
   research artifacts. They remain for provenance but are not active product tracks.
 

@@ -14,6 +14,11 @@ This is the production boundary for executing a complete `core-0.1` TFL program.
 lower-level `Tfl.Program` module deliberately retains partial parses for tooling and
 conformance work; callers executing untrusted program text use this runtime instead.
 
+After installation and environment activation, the process command is exactly `dualithor`.
+`opam exec --` and `dune exec` are source-development launch mechanisms, not parts of that
+public command name. The current prerelease source installation uses opam; Phase 38 requires
+precompiled end-user artifacts that do not require OCaml, opam, or Dune.
+
 ## Complete-program compilation
 
 `Tfl.Runtime.compile` accepts one UTF-8, line-oriented program and returns an abstract

@@ -44,15 +44,18 @@ Two installed executables sit on top of one library:
   caret-marked source diagnostics. Add `--json` for a stable machine record.
 - **`dualithor`** (`bin/tfl_cli.ml`) — a long-lived JSON-lines process: one request
   object per line of stdin, one reply object per line of stdout. This is the
-  boundary a future pip-installable client wraps.
+  stable local process boundary for future embedding clients; Phase 34 defines those
+  clients instead of assuming a packaging language in advance.
 
 Both link the **`tfl` library** (`lib/tfl/`), the language kernel, plus small
 support libraries in `bin/` for JSON encoding and terminal editing. A separate
 **`tfl_verify`** library (`lib/verify/`) is a thin pipeline-facing wrapper used
 by the `check` JSON command.
 
-Nothing in the shipped executables makes a network call or spawns a process. A
-normal install selects only Dune and `yojson`.
+Nothing in the shipped executables makes a network call or spawns a process. The current
+opam source package selects only Dune and `yojson` beyond the compiler and OCaml base
+libraries. Phase 38 separately requires precompiled end-user release artifacts whose users
+do not need to install OCaml, opam, or Dune.
 
 ## The kernel: `lib/tfl/` module by module
 
@@ -256,6 +259,10 @@ semantic bar).
 are artifacts of the former regulatory-verification research system. They are
 retained for provenance — `LOG.md` records why — and are **not** selectable
 work. `$next` and the active roadmap live entirely in `PLAN.md`.
+
+The root `HOROS-PHASE-5-HANDS-ON.html` entry is a compatibility symlink to
+`DUALITHOR-PHASE-5-HANDS-ON.html`. It preserves existing local bookmarks and lets the
+renamed guide migrate browser-stored progress; it is not a second product name or guide.
 
 ## Where things stand
 

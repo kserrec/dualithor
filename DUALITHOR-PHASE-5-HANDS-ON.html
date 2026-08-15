@@ -755,7 +755,7 @@
         <div class="hero-meta">
           <span><strong>Core route:</strong> about 2 hours after setup</span>
           <span><strong>Deep gates:</strong> optional, 15 minutes or longer</span>
-          <span><strong>Writes:</strong> one disposable directory under <code>/tmp</code></span>
+          <span><strong>Writes:</strong> one dedicated tour directory in your home folder</span>
           <span><strong>Network:</strong> setup only</span>
         </div>
       </header>
@@ -776,8 +776,8 @@
           <strong>The verified starting state</strong>
           <code>PLAN.md</code> says Phases 1 through 5 are complete and Phase 6 is next.
           The completed wording is preserved in <code>PLAN-ARCHIVE.md</code>. This guide was
-          checked against the <code>audit/describe-work-budget</code> working tree on
-          2026-08-15, where the main program surfaces named below all exist.
+          checked against <code>main</code> on 2026-08-15 after the Dualithor identity cutover,
+          where the main program surfaces named below all exist.
         </div>
 
         <div class="phase-grid" aria-label="Completed phase map">
@@ -822,7 +822,8 @@
           <div class="card accent">
             <h3>What this guide changes</h3>
             <ul>
-              <li>It creates disposable examples only in <code>/tmp/dualithor-phase5-tour</code>.</li>
+              <li>It creates examples only in the dedicated
+                <code>/home/serrecchia/dualithor-phase5-tour</code> directory.</li>
               <li>If needed, you create or reuse an isolated opam environment with OCaml 4.14.4.</li>
               <li>The optional installation chapter installs Dualithor only into that opam environment.</li>
               <li>Your review notes stay in this browser profile and can be downloaded by you.</li>
@@ -1003,6 +1004,21 @@ v18 or newer</code></pre>
           <a href="https://ocaml.org/docs/installing-ocaml" target="_blank" rel="noopener">installing OCaml</a>.
           These links open only when clicked.
         </p>
+
+        <h3>Resume safely in every new terminal</h3>
+        <p>
+          Browser checkpoints remember where you stopped; they cannot restore a terminal's
+          environment variables or files. The tour therefore uses a durable directory in your
+          home folder instead of <code>/tmp</code>. Run this block whenever you open a new terminal
+          before continuing. It activates the already selected opam switch and ensures the tour
+          directory exists; it does not rebuild the project or repeat completed exercises.
+        </p>
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · start or resume</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>cd /home/serrecchia/Projects/dualithor
+eval "$(opam env)"
+mkdir -p /home/serrecchia/dualithor-phase5-tour</code></pre>
+        </div>
 
         <div class="checkpoint">
           <input class="progress-check" id="check-preflight" type="checkbox">
@@ -1213,12 +1229,13 @@ some dog is not friendly</code></pre>
         </div>
 
         <p>
-          The next command creates exactly one disposable directory and overwrites exactly one
-          file inside it. It does not touch the repository.
+          The next command creates the dedicated tour directory when needed and overwrites exactly
+          one example file inside it. It does not touch the repository. The directory survives a
+          reboot or a multi-day pause until you choose the cleanup command at the end.
         </p>
         <div class="code-card">
           <div class="code-head"><span>Terminal · create the foundations program</span><button class="copy-button" type="button">Copy</button></div>
-          <pre><code>mkdir -p /tmp/dualithor-phase5-tour
+          <pre><code>mkdir -p /home/serrecchia/dualithor-phase5-tour
 printf '%s\n' \
   '-- Named individuals' \
   '±Socrates*+Man' \
@@ -1230,16 +1247,16 @@ printf '%s\n' \
   '−Dog+Animal' \
   '−Animal+Mortal' \
   '−Man−Dog' \
-  &gt; /tmp/dualithor-phase5-tour/foundations.tfl</code></pre>
+  &gt; /home/serrecchia/dualithor-phase5-tour/foundations.tfl</code></pre>
         </div>
 
         <div class="code-card">
           <div class="code-head"><span>Terminal · compile the complete file</span><button class="copy-button" type="button">Copy</button></div>
-          <pre><code>opam exec -- dune exec tfl -- check /tmp/dualithor-phase5-tour/foundations.tfl</code></pre>
+          <pre><code>opam exec -- dune exec tfl -- check /home/serrecchia/dualithor-phase5-tour/foundations.tfl</code></pre>
         </div>
         <div class="output-card">
           <div class="label">Expected</div>
-          <pre><code>/tmp/dualithor-phase5-tour/foundations.tfl: OK (7 statements)</code></pre>
+          <pre><code>/home/serrecchia/dualithor-phase5-tour/foundations.tfl: OK (7 statements)</code></pre>
         </div>
 
         <details>
@@ -1303,7 +1320,7 @@ printf '%s\n' \
             </p>
             <div class="code-card">
               <div class="code-head"><span>Terminal · expect yes and status 0</span><button class="copy-button" type="button">Copy</button></div>
-              <pre><code>opam exec -- dune exec tfl -- query /tmp/dualithor-phase5-tour/foundations.tfl '±Socrates*+Mortal'
+              <pre><code>opam exec -- dune exec tfl -- query /home/serrecchia/dualithor-phase5-tour/foundations.tfl '±Socrates*+Mortal'
 printf 'exit status: %s\n' "$?"</code></pre>
             </div>
             <div class="output-card">
@@ -1323,7 +1340,7 @@ exit status: 0</code></pre>
             </p>
             <div class="code-card">
               <div class="code-head"><span>Terminal · expect no and status 1</span><button class="copy-button" type="button">Copy</button></div>
-              <pre><code>opam exec -- dune exec tfl -- query /tmp/dualithor-phase5-tour/foundations.tfl '±Socrates*−Human'
+              <pre><code>opam exec -- dune exec tfl -- query /home/serrecchia/dualithor-phase5-tour/foundations.tfl '±Socrates*−Human'
 printf 'exit status: %s\n' "$?"</code></pre>
             </div>
             <div class="output-card">
@@ -1344,7 +1361,7 @@ exit status: 1</code></pre>
             </p>
             <div class="code-card">
               <div class="code-head"><span>Terminal · expect unknown and status 1</span><button class="copy-button" type="button">Copy</button></div>
-              <pre><code>opam exec -- dune exec tfl -- query /tmp/dualithor-phase5-tour/foundations.tfl '±Fido*+Human'
+              <pre><code>opam exec -- dune exec tfl -- query /home/serrecchia/dualithor-phase5-tour/foundations.tfl '±Fido*+Human'
 printf 'exit status: %s\n' "$?"</code></pre>
             </div>
             <div class="output-card">
@@ -1410,7 +1427,7 @@ exit status: 1</code></pre>
         </p>
         <div class="code-card">
           <div class="code-head"><span>Terminal · supported descriptions</span><button class="copy-button" type="button">Copy</button></div>
-          <pre><code>opam exec -- dune exec tfl -- describe /tmp/dualithor-phase5-tour/foundations.tfl 'Socrates*'
+          <pre><code>opam exec -- dune exec tfl -- describe /home/serrecchia/dualithor-phase5-tour/foundations.tfl 'Socrates*'
 printf 'exit status: %s\n' "$?"</code></pre>
         </div>
         <div class="output-card">
@@ -1440,7 +1457,7 @@ exit status: 3</code></pre>
             </p>
             <div class="code-card">
               <div class="code-head"><span>Terminal · proof behind one answer</span><button class="copy-button" type="button">Copy</button></div>
-              <pre><code>opam exec -- dune exec tfl -- describe --json /tmp/dualithor-phase5-tour/foundations.tfl 'Socrates*' |
+              <pre><code>opam exec -- dune exec tfl -- describe --json /home/serrecchia/dualithor-phase5-tour/foundations.tfl 'Socrates*' |
   jq '.answers[] | select(.proposition.tfl == "±Socrates*+(−Fido*)") | {proposition, support}'</code></pre>
             </div>
             <p>
@@ -1478,7 +1495,7 @@ exit status: 3</code></pre>
         </p>
         <div class="code-card">
           <div class="code-head"><span>Terminal · interactive command</span><button class="copy-button" type="button">Copy</button></div>
-          <pre><code>opam exec -- dune exec tfl -- repl /tmp/dualithor-phase5-tour/foundations.tfl</code></pre>
+          <pre><code>opam exec -- dune exec tfl -- repl /home/serrecchia/dualithor-phase5-tour/foundations.tfl</code></pre>
         </div>
 
         <p>At the <code>tfl&gt;</code> prompt, open these turns one at a time and type only that line.</p>
@@ -1570,7 +1587,7 @@ quit</code></pre></div>
   'query ±Fido*+Mortal' \
   'reload' \
   'quit' |
-  opam exec -- dune exec tfl -- repl /tmp/dualithor-phase5-tour/foundations.tfl</code></pre>
+  opam exec -- dune exec tfl -- repl /home/serrecchia/dualithor-phase5-tour/foundations.tfl</code></pre>
             </div>
           </div>
         </details>
@@ -1599,11 +1616,12 @@ quit</code></pre></div>
 
         <div class="code-card">
           <div class="code-head"><span>Terminal · create an inconsistent program</span><button class="copy-button" type="button">Copy</button></div>
-          <pre><code>printf '%s\n' \
+          <pre><code>mkdir -p /home/serrecchia/dualithor-phase5-tour
+printf '%s\n' \
   '±Socrates*+Man' \
   '−Man+Mortal' \
   '±Socrates*−Mortal' \
-  &gt; /tmp/dualithor-phase5-tour/inconsistent.tfl</code></pre>
+  &gt; /home/serrecchia/dualithor-phase5-tour/inconsistent.tfl</code></pre>
         </div>
 
         <p>
@@ -1612,14 +1630,14 @@ quit</code></pre></div>
         </p>
         <div class="code-card">
           <div class="code-head"><span>Terminal · syntax and fragment check</span><button class="copy-button" type="button">Copy</button></div>
-          <pre><code>opam exec -- dune exec tfl -- check /tmp/dualithor-phase5-tour/inconsistent.tfl</code></pre>
+          <pre><code>opam exec -- dune exec tfl -- check /home/serrecchia/dualithor-phase5-tour/inconsistent.tfl</code></pre>
         </div>
 
         <p>Now request the consistency record and retain its proof lines through JSON mode.</p>
         <div class="code-card">
           <div class="code-head"><span>Terminal · inconsistency evidence</span><button class="copy-button" type="button">Copy</button></div>
           <pre><code>printf '%s\n' 'consistency' 'quit' |
-  opam exec -- dune exec tfl -- repl --json /tmp/dualithor-phase5-tour/inconsistent.tfl |
+  opam exec -- dune exec tfl -- repl --json /home/serrecchia/dualithor-phase5-tour/inconsistent.tfl |
   jq -c 'select(.operation == "consistency") | {status, method, completeness, evidence}'</code></pre>
         </div>
         <div class="output-card">
@@ -1692,7 +1710,8 @@ quit</code></pre></div>
 
         <div class="code-card">
           <div class="code-head"><span>Terminal · create compound and relational facts</span><button class="copy-button" type="button">Copy</button></div>
-          <pre><code>printf '%s\n' \
+          <pre><code>mkdir -p /home/serrecchia/dualithor-phase5-tour
+printf '%s\n' \
   '-- A compound term is one combined classification' \
   '+Knight+(+White+Horse)' \
   '−(+White+Horse)+Gentle' \
@@ -1700,13 +1719,13 @@ quit</code></pre></div>
   '-- A relation can contain a quantified object' \
   '±Ada*+(Loves+Logician)' \
   '−Logician+Human' \
-  &gt; /tmp/dualithor-phase5-tour/relations.tfl</code></pre>
+  &gt; /home/serrecchia/dualithor-phase5-tour/relations.tfl</code></pre>
         </div>
 
         <div class="code-card">
           <div class="code-head"><span>Terminal · two sound derivations</span><button class="copy-button" type="button">Copy</button></div>
-          <pre><code>opam exec -- dune exec tfl -- query /tmp/dualithor-phase5-tour/relations.tfl '+Knight+Gentle'
-opam exec -- dune exec tfl -- query /tmp/dualithor-phase5-tour/relations.tfl '±Ada*+(Loves+Human)'</code></pre>
+          <pre><code>opam exec -- dune exec tfl -- query /home/serrecchia/dualithor-phase5-tour/relations.tfl '+Knight+Gentle'
+opam exec -- dune exec tfl -- query /home/serrecchia/dualithor-phase5-tour/relations.tfl '±Ada*+(Loves+Human)'</code></pre>
         </div>
         <div class="output-card">
           <div class="label">Key shape of both results</div>
@@ -1725,7 +1744,7 @@ Method: derivation (incomplete: bounded-search)</code></pre>
           <div class="details-body">
             <div class="code-card">
               <div class="code-head"><span>Terminal · proof lines only</span><button class="copy-button" type="button">Copy</button></div>
-              <pre><code>opam exec -- dune exec tfl -- query --json /tmp/dualithor-phase5-tour/relations.tfl '+Knight+Gentle' |
+              <pre><code>opam exec -- dune exec tfl -- query --json /home/serrecchia/dualithor-phase5-tour/relations.tfl '+Knight+Gentle' |
   jq '{verdict, method, completeness, evidence: [.support.evidence[] | {kind, lines: .proof.lines}]}'</code></pre>
             </div>
             <p>
@@ -1738,7 +1757,7 @@ Method: derivation (incomplete: bounded-search)</code></pre>
         <h3>Now force an incomplete miss</h3>
         <div class="code-card">
           <div class="code-head"><span>Terminal · bounded unknown</span><button class="copy-button" type="button">Copy</button></div>
-          <pre><code>opam exec -- dune exec tfl -- query /tmp/dualithor-phase5-tour/relations.tfl '+Logician+Gentle'
+          <pre><code>opam exec -- dune exec tfl -- query /home/serrecchia/dualithor-phase5-tour/relations.tfl '+Logician+Gentle'
 printf 'exit status: %s\n' "$?"</code></pre>
         </div>
         <div class="output-card">
@@ -1851,16 +1870,17 @@ exit status: 3</code></pre>
 
         <div class="code-card">
           <div class="code-head"><span>Terminal · create the numerical example</span><button class="copy-button" type="button">Copy</button></div>
-          <pre><code>printf '%s\n' \
+          <pre><code>mkdir -p /home/serrecchia/dualithor-phase5-tour
+printf '%s\n' \
   '-- Core 0.1 inherited numerical fragment' \
   '+C^3−H' \
   '−C+E' \
-  &gt; /tmp/dualithor-phase5-tour/numbers.tfl</code></pre>
+  &gt; /home/serrecchia/dualithor-phase5-tour/numbers.tfl</code></pre>
         </div>
 
         <div class="code-card">
           <div class="code-head"><span>Terminal · supported numerical conclusion</span><button class="copy-button" type="button">Copy</button></div>
-          <pre><code>opam exec -- dune exec tfl -- query --json /tmp/dualithor-phase5-tour/numbers.tfl '+E−H' |
+          <pre><code>opam exec -- dune exec tfl -- query --json /home/serrecchia/dualithor-phase5-tour/numbers.tfl '+E−H' |
   jq '{verdict, method, completeness, support}'</code></pre>
         </div>
         <div class="output-card">
@@ -1877,7 +1897,7 @@ exit status: 3</code></pre>
         <h3>The opposite query is useful but still incomplete</h3>
         <div class="code-card">
           <div class="code-head"><span>Terminal · contradictory support</span><button class="copy-button" type="button">Copy</button></div>
-          <pre><code>opam exec -- dune exec tfl -- query /tmp/dualithor-phase5-tour/numbers.tfl '−E+H'
+          <pre><code>opam exec -- dune exec tfl -- query /home/serrecchia/dualithor-phase5-tour/numbers.tfl '−E+H'
 printf 'exit status: %s\n' "$?"</code></pre>
         </div>
         <div class="output-card">
@@ -1927,16 +1947,17 @@ exit status: 3</code></pre>
 
         <div class="code-card">
           <div class="code-head"><span>Terminal · create two independent errors</span><button class="copy-button" type="button">Copy</button></div>
-          <pre><code>printf '%s\n' \
+          <pre><code>mkdir -p /home/serrecchia/dualithor-phase5-tour
+printf '%s\n' \
   '  +"Élan"+Mammal' \
   '  +Élan+Mammal' \
   '  −Man+' \
-  &gt; /tmp/dualithor-phase5-tour/broken.tfl</code></pre>
+  &gt; /home/serrecchia/dualithor-phase5-tour/broken.tfl</code></pre>
         </div>
 
         <div class="code-card">
           <div class="code-head"><span>Terminal · human diagnostics</span><button class="copy-button" type="button">Copy</button></div>
-          <pre><code>opam exec -- dune exec tfl -- check /tmp/dualithor-phase5-tour/broken.tfl
+          <pre><code>opam exec -- dune exec tfl -- check /home/serrecchia/dualithor-phase5-tour/broken.tfl
 printf 'exit status: %s\n' "$?"</code></pre>
         </div>
         <div class="output-card">
@@ -1962,7 +1983,7 @@ exit status: 2</code></pre>
           <div class="details-body">
             <div class="code-card">
               <div class="code-head"><span>Terminal · structured diagnostics</span><button class="copy-button" type="button">Copy</button></div>
-              <pre><code>opam exec -- dune exec tfl -- check --json /tmp/dualithor-phase5-tour/broken.tfl |
+              <pre><code>opam exec -- dune exec tfl -- check --json /home/serrecchia/dualithor-phase5-tour/broken.tfl |
   jq '{schema, status, exit_status, error_count: (.errors | length), errors: [.errors[] | {class, line, column, span, source_line}]}'</code></pre>
             </div>
             <p>
@@ -1982,7 +2003,7 @@ exit status: 2</code></pre>
             </p>
             <div class="code-card">
               <div class="code-head"><span>Terminal · outside_fragment</span><button class="copy-button" type="button">Copy</button></div>
-              <pre><code>opam exec -- dune exec tfl -- query /tmp/dualithor-phase5-tour/foundations.tfl '+[+p^2+q]+r'</code></pre>
+              <pre><code>opam exec -- dune exec tfl -- query /home/serrecchia/dualithor-phase5-tour/foundations.tfl '+[+p^2+q]+r'</code></pre>
             </div>
             <div class="output-card">
               <div class="label">Expected class</div>
@@ -2016,7 +2037,7 @@ exit status: 2</code></pre>
         <h3>Window 1: one-shot <code>tfl --json</code></h3>
         <div class="code-card">
           <div class="code-head"><span>Terminal · summarize one tfl-cli-0.1 record</span><button class="copy-button" type="button">Copy</button></div>
-          <pre><code>opam exec -- dune exec tfl -- query --json /tmp/dualithor-phase5-tour/foundations.tfl '±Socrates*+Mortal' |
+          <pre><code>opam exec -- dune exec tfl -- query --json /home/serrecchia/dualithor-phase5-tour/foundations.tfl '±Socrates*+Mortal' |
   jq '{schema, operation, status, exit_status, verdict, method, completeness, query, support_kinds: [.support.evidence[].kind]}'</code></pre>
         </div>
         <div class="output-card">
@@ -2276,49 +2297,61 @@ cli boundary: 39 checks passed</code></pre>
           The next command installs the local Dualithor package into the active
           supported OCaml 4.14.4 opam switch. It creates the public <code>tfl</code> and
           <code>dualithor</code> commands there. It uses no system-wide path and no <code>sudo</code>.
+          This is the current prerelease source-package workflow, not the Phase 38 end-user
+          distribution; that release must not require OCaml, opam, or Dune.
         </div>
 
         <div class="code-card">
           <div class="code-head"><span>Terminal · install the local package</span><button class="copy-button" type="button">Copy</button></div>
           <pre><code>cd /home/serrecchia/Projects/dualithor
 opam pin add dualithor . --kind=path --no-action --yes
-opam install dualithor --locked --yes</code></pre>
+opam install dualithor --locked --yes
+eval "$(opam env)"
+command -v tfl
+command -v dualithor</code></pre>
         </div>
 
         <p class="mini">
           The explicit <code>path</code> pin makes opam package the checked-out files you are
           testing, including deliberate uncommitted changes. Without it, opam recognizes this
-          as a Git repository and may silently rebuild the branch’s last committed revision.
+          as a Git repository and may silently rebuild the checkout’s last committed revision.
           <code>--no-action</code> separates that source choice from the locked installation on
           the next line.
         </p>
 
         <p>
-          Now leave the repository, invoke the public command by name, and return. This is a real
-          Phase 3 acceptance check rather than a shortcut through <code>_build</code>.
+          Now leave the repository and invoke both installed public commands by their bare names.
+          The example creates its own small source file, so this chapter remains runnable even if
+          you skipped or removed an earlier exercise. This is a real Phase 3 package-boundary
+          check rather than a shortcut through <code>_build</code>.
         </p>
         <div class="code-card">
           <div class="code-head"><span>Terminal · installed command smoke test</span><button class="copy-button" type="button">Copy</button></div>
-          <pre><code>cd /tmp/dualithor-phase5-tour
-opam exec -- tfl check foundations.tfl
-opam exec -- tfl query foundations.tfl '±Socrates*+Mortal'
+          <pre><code>mkdir -p /home/serrecchia/dualithor-phase5-tour
+cd /home/serrecchia/dualithor-phase5-tour
+printf '%s\n' '±Socrates*+Man' '−Man+Mortal' &gt; installed-smoke.tfl
+tfl check installed-smoke.tfl
+tfl query installed-smoke.tfl '±Socrates*+Mortal'
+printf '%s\n' '{"cmd":"render","tfl":"-Man+Mortal"}' | dualithor
 cd /home/serrecchia/Projects/dualithor</code></pre>
         </div>
         <div class="output-card">
           <div class="label">Expected substance</div>
-          <pre><code>foundations.tfl: OK (7 statements)
+          <pre><code>installed-smoke.tfl: OK (2 statements)
 yes — the query follows
-Method: PZ (complete)</code></pre>
+Method: PZ (complete)
+{"ok":true,"english":"every man is mortal"}</code></pre>
         </div>
 
         <details>
           <summary>Why the normal shipped dependency surface is smaller</summary>
           <div class="details-body">
             <p>
-              A normal Dualithor installation requires Dune, <code>yojson</code>, and OCaml’s base Unix
-              support. The larger Lwt, Cohttp, TLS, and Mirage Crypto graph is selected only by
-              tests and the retained historical translation client. Neither shipped command has
-              a network client.
+              The current opam source installation requires the OCaml toolchain, Dune,
+              <code>yojson</code>, and OCaml’s base Unix support. The larger Lwt, Cohttp, TLS, and
+              Mirage Crypto graph is selected only by tests and the retained historical
+              translation client. Neither shipped command has a network client. Phase 38 must
+              separately produce and audit precompiled end-user artifacts.
             </p>
           </div>
         </details>
@@ -2512,6 +2545,13 @@ Method: PZ (complete)</code></pre>
           </div>
         </div>
 
+        <div class="callout warning">
+          <strong>The installed commands are real; the end-user distribution does not exist yet.</strong>
+          This tour installs the current source package into an opam switch. Version 1 must ship
+          precompiled <code>tfl</code> and <code>dualithor</code> artifacts that a normal user can
+          install without first installing OCaml, opam, or Dune. Phase 38 owns that release work.
+        </div>
+
         <h3>Current behavior that must retain its label</h3>
         <ul>
           <li>Relational and compound search is bounded and incomplete; a miss is not invalidity.</li>
@@ -2537,7 +2577,7 @@ Method: PZ (complete)</code></pre>
         </p>
         <div class="code-card">
           <div class="code-head"><span>Terminal · optional exact cleanup</span><button class="copy-button" type="button">Copy</button></div>
-          <pre><code>rm -r /tmp/dualithor-phase5-tour</code></pre>
+          <pre><code>rm -r /home/serrecchia/dualithor-phase5-tour</code></pre>
         </div>
 
         <div class="source-list">
@@ -2738,7 +2778,7 @@ Method: PZ (complete)</code></pre>
         var lines = [
           "Dualithor Phase 5 hands-on review",
           "Generated: " + new Date().toLocaleString(),
-          "Repository snapshot guide: audit/describe-work-budget working tree (2026-08-15)",
+          "Repository snapshot guide: main after the Dualithor identity cutover (2026-08-15)",
           ""
         ];
         reviewFields.forEach(function (field) {

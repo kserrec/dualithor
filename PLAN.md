@@ -11,7 +11,8 @@ the repository as historical evidence, but no old phase is active and `$next` mu
 select work from an old roadmap. Git history preserves the superseded plan.
 
 The project is now named **Dualithor**, and its repository and package are named **`dualithor`**.
-The language is called **TFL** and its eventual human-facing executable is **`tfl`**.
+The language is called **TFL**, its human-facing executable is **`tfl`**, and the lower-level
+JSON-lines engine executable is **`dualithor`**.
 
 Phases 1 through 5 are complete. Phase 6 is the next implementation phase.
 
@@ -42,7 +43,8 @@ syntax before the runtime can use it.
 
 “Full language” means that a user can eventually:
 
-- install one package and run one `tfl` command;
+- install one Dualithor release for a supported platform and run the `tfl` command without
+  first installing OCaml, opam, Dune, or another language toolchain;
 - write and import `.tfl` source files;
 - use an interactive read-evaluate-print loop;
 - ask ground questions and questions containing answer variables;
@@ -738,17 +740,21 @@ advantage or conclude that no unique practical advantage was demonstrated.
    version 1.
 2. Finish the language reference, tutorial, command reference, embedding guide, error
    reference, semantics/extension boundary, and migration/versioning policy.
-3. Package `tfl` for a clean supported environment and verify install, uninstall, and a
-   first program from outside the source tree.
+3. Keep the opam source package for OCaml development, and publish precompiled `tfl` and
+   `dualithor` release artifacts for each supported platform. A normal end user must not
+   need to install OCaml, opam, Dune, or another language toolchain. Verify installation,
+   command discovery by bare name, uninstallation, and a first program from outside the
+   source tree on a machine without those development tools.
 4. Run the full unit, conformance, property, oracle, differential, fuzz, integration,
    example, and application suites; publish exact known limitations.
 5. Tag version 1 only after the repository, package metadata, changelog, license, and
    release artifacts all name Dualithor consistently.
 
-**Acceptance:** a clean machine can install TFL, complete the tutorial, run and test a
-multi-file variable-and-recursion program, use every stable profile, inspect its proof, and
-reproduce the published application comparisons. The source manifest has a release cutoff
-date; all tests pass; all incomplete procedures and deferred candidates are plainly labeled.
+**Acceptance:** a clean machine without OCaml, opam, or Dune can install Dualithor, invoke
+`tfl` by name, complete the tutorial, run and test a multi-file variable-and-recursion
+program, use every stable profile, inspect its proof, and reproduce the published application
+comparisons. The source manifest has a release cutoff date; all tests pass; all incomplete
+procedures and deferred candidates are plainly labeled.
 
 ---
 
@@ -773,6 +779,7 @@ Version 1 is complete only when all 38 phases are complete and the following are
   ordinary false answers;
 - a dated pre-release literature refresh has either incorporated every newly mature,
   in-scope TFL extension or documented why it falls outside the reasonable stable boundary;
-- installation and embedding work outside the repository;
+- the supported end-user installation works outside the repository without requiring OCaml,
+  opam, or Dune, while the separately documented source-development path remains reproducible;
 - executable real-world comparisons establish exactly what practical value was and was not
   demonstrated.

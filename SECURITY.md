@@ -74,10 +74,12 @@ or symlink to one cannot wait for a writer before refusal.
   installs it with `opam install --locked --with-test`. Every package reachable
   only through the retained translation client or test suite keeps its
   `with-test` filter in the transitive lock.
-- A normal Dualithor install selects OCaml, Dune, `yojson`, and OCaml's base Unix
+- The current opam source install selects OCaml, Dune, `yojson`, and OCaml's base Unix
   support; it does not select Lwt, Cohttp, TLS, or Mirage Crypto. Those roughly
   70 packages remain available only for offline tests and manual development of
-  the historical translation client.
+  the historical translation client. Phase 38's future precompiled end-user artifacts
+  require a separate release-artifact dependency and provenance audit; this source-package
+  claim must not be presented as that unreleased audit.
 - Mirage Crypto 2.3.0 fixes OSEC-2026-14 and OSEC-2026-15. Until that release
   reaches the official opam index, the four interdependent Mirage Crypto
   packages used by the development-only network graph are source-pinned to the

@@ -25,8 +25,9 @@ language change. `docs/runtime-api.md` specifies the total `Tfl.Runtime` product
 the `dualithor-runtime-0.1` JSON-lines boundary. `docs/command-line.md` specifies UTF-8 `.tfl`
 files, the human `tfl` executable, `tfl-cli-0.1`, diagnostic locations, and exit statuses.
 
-**Naming convention:** the project is Dualithor, the repository and package are `dualithor`; the
-language is TFL; the eventual human executable is `tfl`. In ordinary code and documentation, call the logic
+**Naming convention:** the project is Dualithor, the repository and package are `dualithor`;
+the language is TFL; the human executable is `tfl`; and the lower-level JSON-lines engine
+executable is `dualithor`. In ordinary code and documentation, call the logic
 “term logic” or “TFL.” Spell out the literature name only where it adds needed context,
 because “functor” otherwise means an unrelated OCaml module construct.
 
@@ -53,6 +54,10 @@ The local `default` opam switch uses system OCaml 4.14.1 and is a development co
 not a supported release environment. Package and CI verification use the security-fixed
 OCaml 4.14.4 contract. `opam exec --` supplies the selected environment. `dune test`
 caches results; use `--force` when a real rerun is required.
+
+That is the source-development workflow, not the version-1 user-installation contract.
+Phase 38 requires precompiled `tfl` and `dualithor` release artifacts that do not require an
+end user to install OCaml, opam, Dune, or another language toolchain.
 
 ## Semantic and correctness bar
 
