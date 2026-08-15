@@ -89,6 +89,26 @@ let () =
         (not
            (List.exists (fun t -> t = "−Man+Man" || t = "−Man−(−Man)") answers))
         "no tautologies");
+  (* A legal, small (~7 KB) program of many same-subject facts drives the
+     candidate-subsumption loop, which is quadratic in the collected candidate
+     count. That count follows the program's proposition count, not the line
+     cap, so the line bounds alone left `describe` running for seconds on this
+     input (audit 2026-08-11). The shared work budget now bounds the whole
+     `query_term_detailed` search — main saturation and every pairwise `implies`
+     — so exhaustion surfaces as the public resource limit instead of a stall.
+     Dropping `~work_budget` from either saturation call regresses to the
+     unbounded loop and fails this assertion. *)
+  test "? term bounds the quadratic candidate loop with the work budget"
+    (fun () ->
+      let program = List.init 800 (fun i -> p (Printf.sprintf "-A+B%d" i)) in
+      let raised =
+        try
+          ignore (query_term program (parse_term "A"));
+          false
+        with Tfl.Derive.Work_limit_exceeded _ -> true
+      in
+      check raised
+        "a many-candidate describe must hit the work budget, not run unbounded");
 
   (* ? proposition *)
   test "? proposition: yes / no / unknown" (fun () ->
