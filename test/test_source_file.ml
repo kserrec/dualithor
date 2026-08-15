@@ -35,13 +35,13 @@ let () =
     Unix._exit (if descriptor_target_is_open Sys.argv.(2) then 1 else 0)
 
 let with_temp suffix contents run =
-  let path, channel = Filename.open_temp_file "horos-source-" suffix in
+  let path, channel = Filename.open_temp_file "dualithor-source-" suffix in
   output_string channel contents;
   close_out channel;
   Fun.protect ~finally:(fun () -> Sys.remove path) (fun () -> run path)
 
 let with_fifo run =
-  let path, channel = Filename.open_temp_file "horos-source-" ".tfl" in
+  let path, channel = Filename.open_temp_file "dualithor-source-" ".tfl" in
   close_out channel;
   Sys.remove path;
   Unix.mkfifo path 0o600;

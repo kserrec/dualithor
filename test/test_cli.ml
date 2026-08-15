@@ -84,7 +84,7 @@ let field name line =
   | v -> Yojson.Safe.to_string v
 
 (* The "kind" discriminators of an evidence array, in order. These strings are
-   the horos-runtime-0.1 variant tags a caller switches on; a renamed tag or a
+   the dualithor-runtime-0.1 variant tags a caller switches on; a renamed tag or a
    renamed "kind" field is silent interface drift (proven survivable by the
    2026-08-10 test audit until pinned here). *)
 let evidence_kinds json =
@@ -96,11 +96,11 @@ let evidence_kinds json =
          | _ -> "<missing>")
 
 let () =
-  let help = run_help "horos" in
+  let help = run_help "dualithor" in
   check "help names the installed executable"
     (match help with
     | first_line :: _ ->
-        first_line = "horos — JSON over stdio, one request per line."
+        first_line = "dualithor — JSON over stdio, one request per line."
     | [] -> false);
 
   let requests =
@@ -160,7 +160,7 @@ let () =
     (field "english" r.(9) = "many officer sign some contract");
   check "compile returns stable statement records"
     (field "ok" r.(10) = "true"
-    && field "schema" r.(10) = "horos-runtime-0.1"
+    && field "schema" r.(10) = "dualithor-runtime-0.1"
     &&
     let statements =
       Yojson.Safe.Util.member "statements" (Yojson.Safe.from_string r.(10))

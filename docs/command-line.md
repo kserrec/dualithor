@@ -10,7 +10,7 @@
 | Language contract | `core-0.1` |
 
 The `tfl` executable is the human-facing interface for one complete TFL source file and
-for an interactive session over that file. It is separate from the long-lived `horos`
+for an interactive session over that file. It is separate from the long-lived `dualithor`
 JSON-lines process documented in [runtime-api.md](runtime-api.md). The interfaces call the
 same total `Tfl.Runtime` operations and cannot change a logical result.
 
@@ -168,7 +168,7 @@ With `--json`, the session is a JSON-lines stream under `tfl-repl-0.1`. It emits
 `ready` record after the initial load, one record for every nonblank command, and one
 `quit` record. Successful runtime operations reuse the exact proposition, term, method,
 completeness, support, proof, certificate, truth-table, and rewrite encodings from
-`horos-runtime-0.1`. Every record has `command_status` and `command_exit_status`; these
+`dualithor-runtime-0.1`. Every record has `command_status` and `command_exit_status`; these
 describe that command's logical or operational outcome but do not terminate the session.
 For example, a malformed query has command status `input-failure`, then the next input line
 is still processed. The REPL process itself exits `0` on `quit` or end-of-input. A failure
@@ -216,7 +216,7 @@ Successful operations add their corresponding stable runtime fields. File-backed
 operations also add `file`; `check` statement records add `source_path`, the one-based
 `line` and `column`, `source_line`, and `span`. Query and description results use the same
 proposition, completeness, support, proof, and evidence encodings as
-`horos-runtime-0.1`.
+`dualithor-runtime-0.1`.
 
 Machine output is always well-formed UTF-8. Valid UTF-8 text is unchanged; if an
 operating-system string contains a malformed byte, that byte is represented visibly as the
@@ -243,4 +243,4 @@ validation, argument parsing, terminal escaping, and exit classification use OCa
 standard distribution; `yojson`, already required by the existing process boundary,
 serializes explicit machine mode. The retained legacy translation client and its
 Lwt/Cohttp/TLS dependency graph are test/development-only package dependencies and are not
-selected by a normal Horos installation.
+selected by a normal Dualithor installation.

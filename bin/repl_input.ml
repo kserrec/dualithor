@@ -1,7 +1,7 @@
 (* Optional terminal input for the human REPL.  A pipe or a terminal without
    cursor-control support stays on the bounded line reader below; capable
    terminals get a deliberately small, in-memory history editor without
-   making a line-editing package part of the Horos runtime. *)
+   making a line-editing package part of the Dualithor runtime. *)
 
 type read_result =
   | Line of string

@@ -1,25 +1,25 @@
 # Architecture
 
-This document maps the Horos codebase for a developer taking ownership: the
+This document maps the Dualithor codebase for a developer taking ownership: the
 components, how they layer, and the paths a request travels from input to
 verdict. It complements — does not repeat — the normative contracts:
 
-- [`README.md`](README.md) — what Horos is, how to build and run it.
+- [`README.md`](README.md) — what Dualithor is, how to build and run it.
 - [`PLAN.md`](PLAN.md) — the authoritative roadmap and current phase.
 - [`docs/core-language.md`](docs/core-language.md) — the normative `core-0.1`
   language reference; [`docs/port-spec.md`](docs/port-spec.md) is its mechanics
   appendix.
 - [`docs/runtime-api.md`](docs/runtime-api.md) — the `Tfl.Runtime` API and
-  `horos-runtime-0.1` JSON-lines contract.
+  `dualithor-runtime-0.1` JSON-lines contract.
 - [`docs/command-line.md`](docs/command-line.md) — the `.tfl` file, human `tfl`
   command, REPL, and exit-status contract.
 - [`docs/engine-surface.md`](docs/engine-surface.md) — the failure taxonomy and
   the total `Tfl.Safe` API.
 - [`SECURITY.md`](SECURITY.md) — trust boundaries and hostile-input limits.
 
-## What Horos is, in one paragraph
+## What Dualithor is, in one paragraph
 
-Horos is a proof-producing logic programming language based on **Term Functor
+Dualithor is a proof-producing logic programming language based on **Term Functor
 Logic (TFL)** — a term logic written in a plus/minus notation where, for
 example, `−Man+Mortal` reads "every man is mortal". A TFL *program* states
 facts, classifications, exclusions, and relations; a *query* asks what those
@@ -42,7 +42,7 @@ Two installed executables sit on top of one library:
 - **`tfl`** (`bin/tfl_command.ml`) — the human command line: `check`, `query`,
   `describe`, `render`, and an interactive `repl`, over UTF-8 `.tfl` files, with
   caret-marked source diagnostics. Add `--json` for a stable machine record.
-- **`horos`** (`bin/tfl_cli.ml`) — a long-lived JSON-lines process: one request
+- **`dualithor`** (`bin/tfl_cli.ml`) — a long-lived JSON-lines process: one request
   object per line of stdin, one reply object per line of stdout. This is the
   boundary a future pip-installable client wraps.
 
@@ -147,7 +147,7 @@ was ported from.
 
 ## The executables: `bin/`
 
-- **`tfl_cli.ml`** (`horos`) — reads one request line at a time with a byte cap
+- **`tfl_cli.ml`** (`dualithor`) — reads one request line at a time with a byte cap
   applied *before* JSON parsing (so an oversized line is refused without
   allocating it), dispatches the `cmd` field to a command table, and **never
   crashes or exits non-zero on bad input** — every failure is a JSON reply. An
@@ -163,7 +163,7 @@ was ported from.
   executables.
 - **`repl_input.ml`** (library `tfl_repl_support`) — the REPL's optional
   in-memory line editor with history, kept private to the human command so the
-  `horos` process boundary never acquires an interactive-terminal component. It
+  `dualithor` process boundary never acquires an interactive-terminal component. It
   falls back to a bounded plain reader on pipes and dumb terminals.
 
 ## `lib/verify/`
@@ -193,7 +193,7 @@ was ported from.
    or a `tfl-cli-0.1` JSON record, and exits with the status code for the
    verdict.
 
-### 2. `{"cmd":"query","program":"…","query":"…"}` through `horos`
+### 2. `{"cmd":"query","program":"…","query":"…"}` through `dualithor`
 
 `tfl_cli` reads the bounded request line, parses JSON, looks up `query` in its
 command table, and calls the same `Runtime.query`. The difference from flow 1 is
@@ -227,7 +227,7 @@ so the OCaml port can be checked against it:
 - **Robustness** (`test/test_safe.ml`) — the total `Safe` API under adversarial
   input and the work/size caps.
 - **Process boundaries** (`test/test_cli.ml`, `test/test_tfl_command.ml`) — the
-  `horos` and `tfl` executables driven as real processes.
+  `dualithor` and `tfl` executables driven as real processes.
 
 A changed verdict is never silent: it requires an explicit language decision,
 documentation, focused regressions, and both long gates (see CLAUDE.md's

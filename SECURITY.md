@@ -1,6 +1,6 @@
 # Security
 
-Horos is currently a local OCaml library, a JSON-lines command process, and the
+Dualithor is currently a local OCaml library, a JSON-lines command process, and the
 human-facing `tfl` command. It has no network server, authentication layer,
 browser surface, or multi-user state. Its primary hostile-input boundary is
 nevertheless real: formulas, JSON, paths, and source files may come from language
@@ -70,11 +70,11 @@ or symlink to one cannot wait for a writer before refusal.
 - The supported compiler line is OCaml `>= 4.14.4` and `< 5.0`. This
   excludes the audited OCaml 4.14.1 vulnerabilities OSEC-2026-01,
   OSEC-2026-04, and OSEC-2026-05.
-- `horos.opam.locked` fixes the complete tested dependency graph, and CI
+- `dualithor.opam.locked` fixes the complete tested dependency graph, and CI
   installs it with `opam install --locked --with-test`. Every package reachable
   only through the retained translation client or test suite keeps its
   `with-test` filter in the transitive lock.
-- A normal Horos install selects OCaml, Dune, `yojson`, and OCaml's base Unix
+- A normal Dualithor install selects OCaml, Dune, `yojson`, and OCaml's base Unix
   support; it does not select Lwt, Cohttp, TLS, or Mirage Crypto. Those roughly
   70 packages remain available only for offline tests and manual development of
   the historical translation client.
@@ -117,6 +117,12 @@ rerunning the dependency audit and full test gates.
 
 ## Audit history
 
+- **2026-08-15:** completed the Dualithor identity cutover. The executable changes rename
+  package, library, process, and runtime-schema identifiers; they do not change a parser,
+  inference rule, resource limit, trust boundary, or network behavior. Both opam manifests
+  pass `opam lint`; the locked path-pinned package installs successfully; installed `tfl`
+  and `dualithor` probes work outside the repository; and the forced clean-cache full Dune
+  suite passes.
 - **2026-08-11:** audited the `f0da18c` maintenance delta and re-swept the full
   reachable product. Confirmed the new inference work budget is correctly wired
   to the public `resource_limit` class on both the `Tfl.Safe` and `Tfl.Runtime`
@@ -146,7 +152,7 @@ rerunning the dependency audit and full test gates.
 - **2026-08-01:** added ignore and CI tracking guards for licensed corpora and
   cached model data; recorded parser and equivalence amplification risks.
 - **2026-08-10:** audited the Phase 2 delta (the `Tfl.Runtime` production API,
-  the `horos-runtime-0.1` JSON-lines commands, and the Horos rename) with live
+  the JSON-lines commands, and their process boundary) with live
   hostile-input probes: million-level JSON nesting, oversized requests,
   premise floods under the request cap, terminal-control and invalid UTF-8
   bytes in program text, saturation-heavy term descriptions, and over-deep

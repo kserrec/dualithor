@@ -72,8 +72,8 @@ jobs:
       # package whose filter is accidentally dropped from the lock.
       - name: normal installation excludes the test and network graph
         run: |
-          before="$RUNNER_TEMP/horos-packages-before.txt"
-          after="$RUNNER_TEMP/horos-packages-after.txt"
+          before="$RUNNER_TEMP/dualithor-packages-before.txt"
+          after="$RUNNER_TEMP/dualithor-packages-after.txt"
           opam list --installed --short --color=never | sort > "$before"
           opam install . --deps-only --locked --yes
           opam list --installed --short --color=never | sort > "$after"
@@ -82,7 +82,7 @@ jobs:
             case "$package" in
               dune|yojson) ;;
               *)
-                echo "::error::normal Horos dependency leaked into the runtime: $package"
+                echo "::error::normal Dualithor dependency leaked into the runtime: $package"
                 exit 1
                 ;;
             esac
@@ -95,7 +95,7 @@ jobs:
         run: |
           opam install . --locked --yes
           installed_tfl="$(opam var bin)/tfl"
-          smoke_dir="$RUNNER_TEMP/horos-installed-smoke"
+          smoke_dir="$RUNNER_TEMP/dualithor-installed-smoke"
           mkdir -p "$smoke_dir"
           printf '%s\n' '-Man+Animal' > "$smoke_dir/knowledge.tfl"
           cd "$smoke_dir"

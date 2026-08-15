@@ -1,4 +1,4 @@
 (library
  (name tfl)
- (public_name horos.tfl)
+ (public_name dualithor.tfl)
  (libraries unix))

@@ -71,7 +71,7 @@ let failure_fields (failure : Tfl.Safe.failure) =
   ]
 
 let failure_json failure = `Assoc (("ok", `Bool false) :: failure_fields failure)
-let runtime_schema = "horos-runtime-0.1"
+let runtime_schema = "dualithor-runtime-0.1"
 
 let runtime_failure_json failures =
   `Assoc

@@ -1,6 +1,6 @@
-# Horos: Project Plan
+# Dualithor: Project Plan
 
-## Active decision — 2026-08-08
+## Active decision — 2026-08-08; product identity updated 2026-08-15
 
 Build a complete, usable logic programming language based on term logic (TFL), using the
 existing OCaml engine as the verified starting kernel.
@@ -10,10 +10,15 @@ Those projects are discontinued. Their code, datasets, reports, and negative res
 the repository as historical evidence, but no old phase is active and `$next` must never
 select work from an old roadmap. Git history preserves the superseded plan.
 
-The project is now named **Horos**, and its repository and package are named **`horos`**.
+The project is now named **Dualithor**, and its repository and package are named **`dualithor`**.
 The language is called **TFL** and its eventual human-facing executable is **`tfl`**.
 
 Phases 1 through 5 are complete. Phase 6 is the next implementation phase.
+
+### Maintenance phase — 2026-08-15 Dualithor identity cutover ✅ COMPLETE → archived in PLAN-ARCHIVE.md
+
+Renamed the public product, engine, package, process, repository, and protocol identity
+while preserving the TFL language name, `tfl` command, and logical behavior.
 
 ### Maintenance phase — 2026-08-11 correctness repairs ✅ COMPLETE → archived in PLAN-ARCHIVE.md
 
@@ -21,6 +26,7 @@ Bounded inference candidate-generation work (public `resource_limit` on exhausti
 corrected the reversed eCFR splitter order, and stopped the fidelity scorer treating
 unrelated words as one root; a follow-on 2026-08-11 audit extended the same work budget to
 the `describe` path. Recorded in SECURITY.md.
+
 ## What we are building
 
 TFL will be a proof-producing logic programming language in which a program states facts,
@@ -232,7 +238,7 @@ and the exact meaning of every public result.
 
 ### Phase 2 — Public program runtime ✅ COMPLETE — 2026-08-09 → archived in PLAN-ARCHIVE.md
 
-The total `Tfl.Runtime` API and the `horos-runtime-0.1` JSON-lines commands.
+The total `Tfl.Runtime` API and the `dualithor-runtime-0.1` JSON-lines commands.
 
 ### Phase 3 — `.tfl` files and the human command line ✅ COMPLETE — 2026-08-10 → archived in PLAN-ARCHIVE.md
 
@@ -737,7 +743,7 @@ advantage or conclude that no unique practical advantage was demonstrated.
 4. Run the full unit, conformance, property, oracle, differential, fuzz, integration,
    example, and application suites; publish exact known limitations.
 5. Tag version 1 only after the repository, package metadata, changelog, license, and
-   release artifacts all name Horos consistently.
+   release artifacts all name Dualithor consistently.
 
 **Acceptance:** a clean machine can install TFL, complete the tutorial, run and test a
 multi-file variable-and-recursion program, use every stable profile, inspect its proof, and

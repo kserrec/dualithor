@@ -1,0 +1,2817 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' data: blob:; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'">
+  <title>Dualithor, hands on — the Phase 5 field guide</title>
+  <style>
+    :root {
+      --paper: #f6f0e5;
+      --paper-2: #fffaf0;
+      --ink: #202521;
+      --muted: #626a63;
+      --line: #d8cfbe;
+      --accent: #176b61;
+      --accent-2: #b65336;
+      --accent-soft: #dcebe5;
+      --warn: #925116;
+      --warn-soft: #f6e7ca;
+      --danger: #9b3737;
+      --danger-soft: #f5dddd;
+      --code: #19211f;
+      --code-ink: #edf6f2;
+      --shadow: 0 18px 50px rgba(39, 47, 42, .10);
+      --radius: 18px;
+      --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+
+    html[data-theme="dark"] {
+      --paper: #121815;
+      --paper-2: #1a211d;
+      --ink: #e7eee9;
+      --muted: #aab5ad;
+      --line: #344039;
+      --accent: #69c9b6;
+      --accent-2: #ef906f;
+      --accent-soft: #213a34;
+      --warn: #f0b566;
+      --warn-soft: #3a2e1d;
+      --danger: #ee8c8c;
+      --danger-soft: #3c2527;
+      --code: #0b0f0d;
+      --code-ink: #e7f3ed;
+      --shadow: 0 18px 50px rgba(0, 0, 0, .28);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 30rem),
+        radial-gradient(circle at 88% 16%, color-mix(in srgb, var(--accent-2) 9%, transparent), transparent 28rem),
+        var(--paper);
+      font: 16px/1.65 var(--sans);
+      text-rendering: optimizeLegibility;
+    }
+
+    a { color: var(--accent); text-underline-offset: .18em; }
+    a:hover { text-decoration-thickness: 2px; }
+    code, pre { font-family: var(--mono); }
+    :focus-visible { outline: 3px solid var(--accent-2); outline-offset: 3px; }
+    .skip-link {
+      position: fixed;
+      left: 1rem;
+      top: -5rem;
+      z-index: 100;
+      padding: .75rem 1rem;
+      background: var(--ink);
+      color: var(--paper);
+      border-radius: 10px;
+    }
+    .skip-link:focus { top: 1rem; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      border-right: 1px solid var(--line);
+      background: color-mix(in srgb, var(--paper-2) 88%, transparent);
+      backdrop-filter: blur(18px);
+      padding: 1.25rem 1rem 2rem;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      gap: .75rem;
+      align-items: center;
+      padding: .25rem .35rem 1rem;
+    }
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border: 1px solid var(--accent);
+      border-radius: 50%;
+      color: var(--accent);
+      font: 700 1.25rem var(--serif);
+    }
+    .brand strong { display: block; font-family: var(--serif); font-size: 1.08rem; }
+    .brand small { color: var(--muted); }
+
+    .progress-card {
+      padding: 1rem;
+      margin: .5rem 0 1rem;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--paper-2);
+    }
+    .progress-row {
+      display: flex;
+      justify-content: space-between;
+      gap: .75rem;
+      color: var(--muted);
+      font-size: .84rem;
+    }
+    .progress-track {
+      height: 8px;
+      margin: .55rem 0 .75rem;
+      overflow: hidden;
+      background: color-mix(in srgb, var(--line) 75%, transparent);
+      border-radius: 999px;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 55%, var(--accent-2)));
+      border-radius: inherit;
+      transition: width .25s ease;
+    }
+    .button-row { display: flex; flex-wrap: wrap; gap: .5rem; }
+    button {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--paper-2);
+      color: var(--ink);
+      padding: .55rem .75rem;
+      font: 650 .83rem var(--sans);
+      cursor: pointer;
+    }
+    button:hover { border-color: var(--accent); color: var(--accent); }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    html[data-theme="dark"] button.primary { color: #08241f; }
+
+    .toc-title {
+      padding: .5rem .55rem .3rem;
+      color: var(--muted);
+      font-size: .74rem;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .toc { display: grid; gap: .12rem; }
+    .toc a {
+      display: grid;
+      grid-template-columns: 1.5rem 1fr;
+      gap: .35rem;
+      align-items: start;
+      padding: .48rem .55rem;
+      border-radius: 9px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: .84rem;
+      line-height: 1.35;
+    }
+    .toc a span:first-child { color: color-mix(in srgb, var(--muted) 70%, transparent); }
+    .toc a:hover, .toc a.active {
+      color: var(--ink);
+      background: var(--accent-soft);
+    }
+    .toc a.active span:first-child { color: var(--accent); }
+
+    .sidebar-tools {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .45rem;
+      margin-top: 1.1rem;
+    }
+
+    main {
+      width: min(1050px, calc(100% - 3rem));
+      margin: 0 auto;
+      padding: 2rem 0 7rem;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      min-height: 490px;
+      display: grid;
+      align-content: end;
+      padding: clamp(2rem, 6vw, 5rem);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background:
+        linear-gradient(130deg, color-mix(in srgb, var(--accent) 17%, transparent), transparent 55%),
+        var(--paper-2);
+      box-shadow: var(--shadow);
+    }
+    .hero::before {
+      content: "±";
+      position: absolute;
+      top: -3rem;
+      right: 1rem;
+      color: color-mix(in srgb, var(--accent) 12%, transparent);
+      font: 700 clamp(14rem, 34vw, 28rem)/1 var(--serif);
+      transform: rotate(-8deg);
+      pointer-events: none;
+    }
+    .eyebrow {
+      position: relative;
+      display: inline-flex;
+      width: fit-content;
+      gap: .45rem;
+      align-items: center;
+      padding: .35rem .65rem;
+      border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--line));
+      border-radius: 999px;
+      color: var(--accent);
+      background: color-mix(in srgb, var(--paper-2) 85%, transparent);
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .hero h1 {
+      position: relative;
+      max-width: 800px;
+      margin: 1.1rem 0 .8rem;
+      font: 700 clamp(2.8rem, 7vw, 5.6rem)/.98 var(--serif);
+      letter-spacing: -.045em;
+    }
+    .hero .lede {
+      position: relative;
+      max-width: 760px;
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(1.05rem, 2vw, 1.28rem);
+    }
+    .hero-meta {
+      position: relative;
+      display: flex;
+      flex-wrap: wrap;
+      gap: .6rem 1.5rem;
+      margin-top: 1.8rem;
+      color: var(--muted);
+      font-size: .88rem;
+    }
+    .hero-meta strong { color: var(--ink); }
+
+    section { scroll-margin-top: 1.5rem; margin-top: 4.5rem; }
+    .section-head {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 1.1rem;
+      align-items: start;
+      margin-bottom: 1.5rem;
+    }
+    .section-number {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      color: var(--accent);
+      background: var(--paper-2);
+      font-weight: 800;
+    }
+    h2, h3, h4 { text-wrap: balance; }
+    h2 {
+      margin: 0;
+      font: 700 clamp(2rem, 4vw, 3.2rem)/1.08 var(--serif);
+      letter-spacing: -.025em;
+    }
+    h3 { margin: 2rem 0 .6rem; font: 700 1.42rem/1.2 var(--serif); }
+    h4 { margin: 1.4rem 0 .45rem; font-size: 1rem; }
+    .section-kicker {
+      margin: .4rem 0 0;
+      color: var(--muted);
+      max-width: 780px;
+    }
+
+    .grid-2, .grid-3 {
+      display: grid;
+      gap: 1rem;
+      margin: 1.1rem 0;
+    }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .card {
+      padding: 1.25rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: color-mix(in srgb, var(--paper-2) 93%, transparent);
+      box-shadow: 0 8px 30px rgba(30, 38, 33, .04);
+    }
+    .card > :first-child { margin-top: 0; }
+    .card > :last-child { margin-bottom: 0; }
+    .card h3 { margin-top: 0; }
+    .card h4 { margin-top: 0; }
+    .card.accent { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+    .card.warning { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); }
+    .card.danger { background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
+    .card .mini { color: var(--muted); font-size: .88rem; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      padding: .2rem .55rem;
+      border-radius: 999px;
+      color: var(--accent);
+      background: var(--accent-soft);
+      font-size: .75rem;
+      font-weight: 800;
+      letter-spacing: .035em;
+      text-transform: uppercase;
+    }
+    .badge.warn { color: var(--warn); background: var(--warn-soft); }
+    .badge.danger { color: var(--danger); background: var(--danger-soft); }
+    .badge.neutral { color: var(--muted); background: color-mix(in srgb, var(--line) 55%, transparent); }
+
+    .callout {
+      position: relative;
+      margin: 1.25rem 0;
+      padding: 1rem 1.15rem 1rem 3rem;
+      border-left: 3px solid var(--accent);
+      border-radius: 0 12px 12px 0;
+      background: var(--accent-soft);
+    }
+    .callout::before {
+      content: "→";
+      position: absolute;
+      left: 1rem;
+      top: 1rem;
+      color: var(--accent);
+      font-weight: 900;
+    }
+    .callout.warning { border-color: var(--warn); background: var(--warn-soft); }
+    .callout.warning::before { content: "!"; color: var(--warn); }
+    .callout.danger { border-color: var(--danger); background: var(--danger-soft); }
+    .callout.danger::before { content: "×"; color: var(--danger); }
+    .callout strong { display: block; margin-bottom: .2rem; }
+
+    .phase-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(130px, 1fr));
+      gap: .7rem;
+      margin: 1.4rem 0;
+    }
+    .phase {
+      min-height: 170px;
+      padding: 1rem;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--paper-2);
+    }
+    .phase strong { display: block; margin: .5rem 0 .35rem; }
+    .phase p { margin: 0; color: var(--muted); font-size: .84rem; line-height: 1.45; }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(105px, 1fr));
+      gap: 1.4rem;
+      align-items: stretch;
+      margin: 1.5rem 0;
+    }
+    .flow-box {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 110px;
+      padding: .9rem;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--paper-2);
+      text-align: center;
+      font-size: .86rem;
+    }
+    .flow-box:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      right: -1.15rem;
+      top: 50%;
+      color: var(--accent);
+      font-weight: 900;
+      transform: translateY(-50%);
+    }
+    .flow-box code { display: block; color: var(--accent); font-weight: 750; }
+
+    .code-card {
+      margin: 1rem 0;
+      overflow: hidden;
+      border: 1px solid color-mix(in srgb, var(--code) 65%, var(--line));
+      border-radius: 14px;
+      background: var(--code);
+      box-shadow: 0 10px 24px rgba(0,0,0,.10);
+    }
+    .code-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: .75rem;
+      min-height: 42px;
+      padding: .45rem .55rem .45rem .85rem;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      color: #aebdb6;
+      font-size: .76rem;
+      font-weight: 700;
+      letter-spacing: .035em;
+      text-transform: uppercase;
+    }
+    .copy-button {
+      border-color: rgba(255,255,255,.18);
+      background: rgba(255,255,255,.08);
+      color: #edf6f2;
+      padding: .38rem .65rem;
+    }
+    .copy-button:hover { border-color: #8dd5c7; color: #8dd5c7; }
+    pre {
+      margin: 0;
+      padding: 1rem;
+      overflow-x: auto;
+      color: var(--code-ink);
+      background: var(--code);
+      font-size: .86rem;
+      line-height: 1.65;
+      tab-size: 2;
+    }
+    .output-card {
+      margin: .8rem 0 1.2rem;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--paper-2) 80%, var(--line));
+    }
+    .output-card .label {
+      padding: .45rem .8rem;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: .75rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .output-card pre {
+      color: var(--ink);
+      background: transparent;
+      font-size: .82rem;
+    }
+
+    details {
+      margin: .8rem 0;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--paper-2) 92%, transparent);
+    }
+    summary {
+      padding: .85rem 1rem;
+      cursor: pointer;
+      font-weight: 750;
+    }
+    summary::marker { color: var(--accent); }
+    details[open] summary { border-bottom: 1px solid var(--line); }
+    .details-body { padding: .15rem 1rem 1rem; }
+
+    .table-wrap {
+      margin: 1rem 0;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+    table { width: 100%; border-collapse: collapse; background: var(--paper-2); }
+    th, td {
+      padding: .78rem .85rem;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      background: color-mix(in srgb, var(--line) 22%, var(--paper-2));
+      font-size: .76rem;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    tr:last-child td { border-bottom: 0; }
+
+    .checkpoint {
+      display: flex;
+      gap: .8rem;
+      align-items: flex-start;
+      margin: 1.5rem 0 0;
+      padding: 1rem 1.1rem;
+      border: 1px dashed color-mix(in srgb, var(--accent) 58%, var(--line));
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+    }
+    .checkpoint input {
+      width: 1.25rem;
+      height: 1.25rem;
+      margin-top: .15rem;
+      accent-color: var(--accent);
+    }
+    .checkpoint label { cursor: pointer; }
+    .checkpoint strong { display: block; }
+    .checkpoint span { color: var(--muted); font-size: .88rem; }
+
+    .quiz {
+      margin: 1rem 0;
+      padding: 1.1rem;
+      border: 1px solid color-mix(in srgb, var(--accent-2) 45%, var(--line));
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--accent-2) 7%, var(--paper-2));
+    }
+    .quiz strong { display: block; margin-bottom: .6rem; }
+    .quiz-answer {
+      display: none;
+      margin-top: .8rem;
+      padding-top: .8rem;
+      border-top: 1px solid var(--line);
+    }
+    .quiz-answer.visible { display: block; }
+
+    .verdict {
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      gap: .85rem;
+      align-items: start;
+      margin: .75rem 0;
+      padding: .85rem;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper-2);
+    }
+    .verdict b {
+      display: inline-grid;
+      place-items: center;
+      min-height: 34px;
+      border-radius: 999px;
+      color: var(--accent);
+      background: var(--accent-soft);
+      text-transform: uppercase;
+      font-size: .76rem;
+      letter-spacing: .04em;
+    }
+
+    .review-item {
+      display: grid;
+      gap: .55rem;
+      padding: 1rem;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--paper-2);
+    }
+    .review-item label { font-weight: 750; }
+    select, textarea, input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--paper);
+      color: var(--ink);
+      padding: .7rem .8rem;
+      font: inherit;
+    }
+    textarea { min-height: 112px; resize: vertical; line-height: 1.5; }
+    .privacy-note { color: var(--muted); font-size: .86rem; }
+
+    .source-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .65rem;
+      margin: 1rem 0;
+    }
+    .source-link {
+      display: block;
+      padding: .8rem .9rem;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: var(--paper-2);
+      text-decoration: none;
+    }
+    .source-link strong { display: block; color: var(--ink); }
+    .source-link span { color: var(--muted); font-size: .82rem; }
+
+    .toast {
+      position: fixed;
+      right: 1.25rem;
+      bottom: 1.25rem;
+      z-index: 100;
+      max-width: min(360px, calc(100vw - 2.5rem));
+      padding: .75rem 1rem;
+      border: 1px solid color-mix(in srgb, var(--accent) 60%, var(--line));
+      border-radius: 11px;
+      color: var(--ink);
+      background: var(--paper-2);
+      box-shadow: var(--shadow);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(12px);
+      transition: .2s ease;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    .footer {
+      margin-top: 5rem;
+      padding: 2rem 0;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    @media (max-width: 1100px) {
+      .layout { grid-template-columns: 240px minmax(0, 1fr); }
+      .phase-grid { grid-template-columns: repeat(3, minmax(150px, 1fr)); }
+      .flow { grid-template-columns: repeat(3, minmax(120px, 1fr)); }
+      .flow-box:nth-child(3)::after { display: none; }
+    }
+    @media (max-width: 800px) {
+      .layout { display: block; }
+      .sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+        max-height: none;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+        padding: .8rem;
+      }
+      .brand { padding-bottom: .45rem; }
+      .progress-card { margin: .25rem 0 .7rem; }
+      .toc-title { display: none; }
+      .toc {
+        display: flex;
+        gap: .25rem;
+        overflow-x: auto;
+        padding: .15rem 0 .45rem;
+        scroll-snap-type: x proximity;
+      }
+      .toc a {
+        flex: 0 0 180px;
+        scroll-snap-align: start;
+      }
+      .sidebar-tools { grid-template-columns: repeat(4, 1fr); }
+      main { width: min(100% - 1.5rem, 1050px); padding-top: 1rem; }
+      .hero { min-height: 430px; padding: 2rem 1.4rem; }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .phase-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .source-list { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 540px) {
+      body { font-size: 15px; }
+      .sidebar-tools { grid-template-columns: repeat(2, 1fr); }
+      .section-head { grid-template-columns: 1fr; gap: .65rem; }
+      .phase-grid, .flow { grid-template-columns: 1fr; }
+      .flow-box::after { display: none !important; }
+      .verdict { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 2.65rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }
+    @media print {
+      body { background: white; color: black; font-size: 11pt; }
+      .layout { display: block; }
+      .sidebar, button, .checkpoint, .toast { display: none !important; }
+      main { width: 100%; padding: 0; }
+      .hero, .card, details, .code-card, .output-card { box-shadow: none; break-inside: avoid; }
+      .hero { min-height: auto; }
+      details > .details-body { display: block; }
+      a { color: black; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to the guide</a>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Guide navigation">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">±</div>
+        <div>
+          <strong>Dualithor, hands on</strong>
+          <small>Phase 5 field guide</small>
+        </div>
+      </div>
+
+      <div class="progress-card">
+        <div class="progress-row">
+          <span id="progressText">0 of 18 checkpoints</span>
+          <strong id="progressPercent">0%</strong>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="button-row">
+          <button class="primary" id="resumeButton" type="button">Resume</button>
+          <button id="resetProgress" type="button">Reset</button>
+        </div>
+      </div>
+
+      <div class="toc-title">Field route</div>
+      <nav class="toc" id="toc">
+        <a href="#orientation"><span>00</span><span>Orient yourself</span></a>
+        <a href="#preflight"><span>01</span><span>Prepare the toolchain</span></a>
+        <a href="#build"><span>02</span><span>Build the project</span></a>
+        <a href="#notation"><span>03</span><span>Learn the notation</span></a>
+        <a href="#first-program"><span>04</span><span>Compile a real file</span></a>
+        <a href="#queries"><span>05</span><span>Ask yes, no, unknown</span></a>
+        <a href="#describe"><span>06</span><span>Describe a term</span></a>
+        <a href="#repl"><span>07</span><span>Use the REPL</span></a>
+        <a href="#consistency"><span>08</span><span>Find contradictions</span></a>
+        <a href="#compound-relational"><span>09</span><span>Compound & relational</span></a>
+        <a href="#numerical"><span>10</span><span>Numerical fragment</span></a>
+        <a href="#diagnostics"><span>11</span><span>Break it on purpose</span></a>
+        <a href="#machine"><span>12</span><span>Inspect machine modes</span></a>
+        <a href="#testing"><span>13</span><span>Run the evidence ladder</span></a>
+        <a href="#install"><span>14</span><span>Install outside the repo</span></a>
+        <a href="#review"><span>15</span><span>Make the Phase 5 call</span></a>
+        <a href="#limits"><span>16</span><span>Know the boundary</span></a>
+      </nav>
+
+      <div class="sidebar-tools">
+        <button id="themeToggle" type="button">Dark</button>
+        <button id="printGuide" type="button">Print</button>
+        <button id="expandAll" type="button">Expand</button>
+        <button id="collapseAll" type="button">Collapse</button>
+      </div>
+    </aside>
+
+    <main id="main">
+      <header class="hero">
+        <span class="eyebrow">Verified repository snapshot · 2026-08-15</span>
+        <h1>Turn Dualithor from a theory into something you can touch.</h1>
+        <p class="lede">
+          A patient, end-to-end tour of every main user-facing capability completed through Phase 5:
+          the language, files, command line, proofs, open-world results, REPL, diagnostics,
+          JSON boundaries, and the evidence behind them.
+        </p>
+        <div class="hero-meta">
+          <span><strong>Core route:</strong> about 2 hours after setup</span>
+          <span><strong>Deep gates:</strong> optional, 15 minutes or longer</span>
+          <span><strong>Writes:</strong> one disposable directory under <code>/tmp</code></span>
+          <span><strong>Network:</strong> setup only</span>
+        </div>
+      </header>
+
+      <section id="orientation" data-section>
+        <div class="section-head">
+          <div class="section-number">00</div>
+          <div>
+            <h2>Orient yourself before running anything</h2>
+            <p class="section-kicker">
+              This establishes what exists, what the tour will change on your machine, and what
+              success can honestly mean at this checkpoint.
+            </p>
+          </div>
+        </div>
+
+        <div class="callout">
+          <strong>The verified starting state</strong>
+          <code>PLAN.md</code> says Phases 1 through 5 are complete and Phase 6 is next.
+          The completed wording is preserved in <code>PLAN-ARCHIVE.md</code>. This guide was
+          checked against the <code>audit/describe-work-budget</code> working tree on
+          2026-08-15, where the main program surfaces named below all exist.
+        </div>
+
+        <div class="phase-grid" aria-label="Completed phase map">
+          <div class="phase">
+            <span class="badge">Phase 1</span>
+            <strong>Core contract</strong>
+            <p><code>core-0.1</code>, exact result words, known limits, and 26 executable conformance cases.</p>
+          </div>
+          <div class="phase">
+            <span class="badge">Phase 2</span>
+            <strong>Public runtime</strong>
+            <p>Total <code>Tfl.Runtime</code> operations and the local <code>dualithor-runtime-0.1</code> JSON-lines process.</p>
+          </div>
+          <div class="phase">
+            <span class="badge">Phase 3</span>
+            <strong>Files & command</strong>
+            <p>UTF-8 <code>.tfl</code> files, human <code>tfl</code> commands, JSON mode, and meaningful exit statuses.</p>
+          </div>
+          <div class="phase">
+            <span class="badge">Phase 4</span>
+            <strong>Interactive shell</strong>
+            <p>A reloadable REPL with in-memory history, recovery after bad input, and a JSON event stream.</p>
+          </div>
+          <div class="phase">
+            <span class="badge">Phase 5</span>
+            <strong>Source diagnostics</strong>
+            <p>Half-open Unicode code-point spans, multiple compile errors, caret ranges, and classified failures.</p>
+          </div>
+        </div>
+
+        <h3>The request path you will exercise</h3>
+        <div class="flow" role="img" aria-label="A source file flows through the loader, runtime, decision method, evidence record, and human or JSON interface">
+          <div class="flow-box"><div><code>knowledge.tfl</code>Source text</div></div>
+          <div class="flow-box"><div><code>Source_file</code>Validate file</div></div>
+          <div class="flow-box"><div><code>Runtime</code>Compile program</div></div>
+          <div class="flow-box"><div><code>Decide / Derive</code>Find support</div></div>
+          <div class="flow-box"><div><code>Evidence</code>Proof or certificate</div></div>
+          <div class="flow-box"><div><code>tfl / dualithor</code>Human or JSON</div></div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card accent">
+            <h3>What this guide changes</h3>
+            <ul>
+              <li>It creates disposable examples only in <code>/tmp/dualithor-phase5-tour</code>.</li>
+              <li>If needed, you create or reuse an isolated opam environment with OCaml 4.14.4.</li>
+              <li>The optional installation chapter installs Dualithor only into that opam environment.</li>
+              <li>Your review notes stay in this browser profile and can be downloaded by you.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>What it does not change</h3>
+            <ul>
+              <li>No Dualithor source, configuration, plan, or test file is edited.</li>
+              <li>No command uses <code>sudo</code> or changes system security settings.</li>
+              <li>The shipped <code>tfl</code> and <code>dualithor</code> programs make no network call.</li>
+              <li>The guide has no external script, font, telemetry, or background request.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="callout warning">
+          <strong>Run every command in your own terminal.</strong>
+          Setup compiles an OCaml toolchain and downloads locked dependencies. It requires network
+          access, writes into your opam directory, and can take appreciable time and disk space.
+          It does not require a password. Do not paste credentials into this guide or chat.
+        </div>
+
+        <div class="source-list">
+          <a class="source-link" href="./PLAN.md" target="_blank">
+            <strong>PLAN.md</strong><span>Authoritative current status and Phase 6 boundary</span>
+          </a>
+          <a class="source-link" href="./PLAN-ARCHIVE.md" target="_blank">
+            <strong>PLAN-ARCHIVE.md</strong><span>Delivery record for Phases 1–5</span>
+          </a>
+          <a class="source-link" href="./ARCHITECTURE.md" target="_blank">
+            <strong>ARCHITECTURE.md</strong><span>Verified module map and request flows</span>
+          </a>
+          <a class="source-link" href="./docs/core-language.md" target="_blank">
+            <strong>docs/core-language.md</strong><span>Normative <code>core-0.1</code> language contract</span>
+          </a>
+        </div>
+
+        <div class="checkpoint">
+          <input class="progress-check" id="check-orientation" type="checkbox">
+          <label for="check-orientation">
+            <strong>I understand the scope and side effects.</strong>
+            <span>I know what is verified, what the guide writes, and that Phase 6 has not begun.</span>
+          </label>
+        </div>
+      </section>
+
+      <section id="preflight" data-section>
+        <div class="section-head">
+          <div class="section-number">01</div>
+          <div>
+            <h2>Prepare the exact supported toolchain</h2>
+            <p class="section-kicker">
+              An opam “switch” is an isolated OCaml compiler plus its installed packages. It lets
+              Dualithor use its locked versions without changing another OCaml project.
+            </p>
+          </div>
+        </div>
+
+        <h3>First, observe rather than change</h3>
+        <p>
+          Run this in your own terminal. The first command anchors every later relative path in the
+          actual repository. The remaining commands only read state.
+        </p>
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · read-only preflight</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>cd /home/serrecchia/Projects/dualithor
+git status --short --branch
+opam --version
+opam switch list --short
+opam switch show
+opam exec -- ocamlc -version
+opam exec -- dune --version
+node --version
+jq --version</code></pre>
+        </div>
+
+        <div class="card warning">
+          <span class="badge warn">Observed on 2026-08-15</span>
+          <h3>This machine already has the supported compiler environment</h3>
+          <p>
+            The active isolated switch has OCaml <code>4.14.4</code> and Dune
+            <code>3.24.2</code>, which match the locked environment. An opam switch name is a
+            local label; an existing supported switch does not need to be recreated merely
+            because the product name changed.
+          </p>
+          <p>
+            The setup steps remain below for a fresh machine or a missing switch. If the
+            read-only preflight already reports these versions, keep the existing switch and
+            continue to the dependency check.
+          </p>
+        </div>
+
+        <details open>
+          <summary>Setup step 1 — refresh opam’s package definitions</summary>
+          <div class="details-body">
+            <p>
+              This contacts the configured <code>default</code> opam repository and updates its
+              package index. It does not upgrade installed packages. No <code>sudo</code> is used.
+            </p>
+            <div class="code-card">
+              <div class="code-head"><span>Terminal · network and opam index write</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>opam update default --yes</code></pre>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>Setup step 2 — create the named OCaml 4.14.4 switch</summary>
+          <div class="details-body">
+            <p>
+              This creates <code>dualithor-4.14.4</code> under your opam root and compiles the exact
+              supported compiler. It is separate from the existing <code>default</code> switch.
+              If the read-only preflight already showed OCaml 4.14.4 and Dune 3.24.2 in an
+              isolated switch, do not recreate it.
+            </p>
+            <div class="code-card">
+              <div class="code-head"><span>Terminal · creates an isolated compiler</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>opam switch create dualithor-4.14.4 ocaml-base-compiler.4.14.4 --yes</code></pre>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>Setup step 3 — select that switch in this terminal</summary>
+          <div class="details-body">
+            <p>
+              This changes only environment variables in the current terminal process. Run it once
+              in each new terminal session after creating the newly named switch. If preflight
+              already selected a supported existing switch, keep using that switch instead.
+            </p>
+            <div class="code-card">
+              <div class="code-head"><span>Terminal · current shell only</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>eval "$(opam env --switch=dualithor-4.14.4 --set-switch)"</code></pre>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>Setup step 4 — install the locked development and test dependencies</summary>
+          <div class="details-body">
+            <p>
+              This resolves from <code>dualithor.opam.locked</code> and installs the larger test graph,
+              including Node-facing differential-test support and retained historical translation
+              dependencies. It does not install Dualithor itself yet.
+            </p>
+            <div class="code-card">
+              <div class="code-head"><span>Terminal · network and switch package write</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>opam install . --deps-only --with-test --locked --yes</code></pre>
+            </div>
+            <div class="callout danger">
+              <strong>If the solver cannot satisfy the lock, stop here.</strong>
+              Do not delete <code>--locked</code>, lower a version, or edit the manifest just to
+              continue. That would test a different dependency set from the one this repository
+              claims. Save the exact solver output for diagnosis.
+            </div>
+          </div>
+        </details>
+
+        <h3>Do not continue until this checkpoint is exact</h3>
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · verification</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>opam switch show
+ocamlc -version
+dune --version
+node --version</code></pre>
+        </div>
+        <div class="output-card">
+          <div class="label">Required shape</div>
+          <pre><code>an isolated switch name
+4.14.4
+3.24.2
+v18 or newer</code></pre>
+        </div>
+        <p class="mini">
+          Official background:
+          <a href="https://opam.ocaml.org/doc/Usage.html" target="_blank" rel="noopener">opam switches and installs</a>,
+          <a href="https://ocaml.org/docs/installing-ocaml" target="_blank" rel="noopener">installing OCaml</a>.
+          These links open only when clicked.
+        </p>
+
+        <div class="checkpoint">
+          <input class="progress-check" id="check-preflight" type="checkbox">
+          <label for="check-preflight">
+            <strong>The exact locked toolchain is active.</strong>
+            <span>I saw an isolated switch with OCaml 4.14.4, Dune 3.24.2, and Node 18 or newer.</span>
+          </label>
+        </div>
+      </section>
+
+      <section id="build" data-section>
+        <div class="section-head">
+          <div class="section-number">02</div>
+          <div>
+            <h2>Build before you trust the tour</h2>
+            <p class="section-kicker">
+              Dune is the OCaml build system. <code>opam exec --</code> runs Dune using the
+              compiler and packages from the selected opam switch.
+            </p>
+          </div>
+        </div>
+
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · compile libraries and executables</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>opam exec -- dune build</code></pre>
+        </div>
+        <div class="callout">
+          <strong>Silence is success here.</strong>
+          Dune normally prints nothing when every target is already correct or builds without error.
+          A nonzero exit status or compiler diagnostic is the failure signal.
+        </div>
+
+        <p>Now invoke the actual build-tree human command and inspect its public surface.</p>
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · human command help</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>opam exec -- dune exec tfl -- --help</code></pre>
+        </div>
+        <div class="output-card">
+          <div class="label">You should see these commands</div>
+          <pre><code>tfl check [--json] FILE.tfl
+tfl query [--json] FILE.tfl PROPOSITION
+tfl describe [--json] FILE.tfl TERM
+tfl render [--json] PROPOSITION
+tfl repl [--json] FILE.tfl</code></pre>
+        </div>
+
+        <h3>Run the smallest normative gate</h3>
+        <p>
+          A <strong>conformance corpus</strong> is executable contract data: each case names a
+          language rule, input, expected canonical form, English reading, result, completeness,
+          and evidence shape. Unlike an ordinary unit test written around implementation details,
+          another implementation can consume the same JSON corpus.
+        </p>
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · core-0.1 conformance</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>opam exec -- dune exec test/test_conformance.exe</code></pre>
+        </div>
+        <div class="output-card">
+          <div class="label">Expected</div>
+          <pre><code>core-0.1 conformance: 26 passed, 0 failed</code></pre>
+        </div>
+
+        <details>
+          <summary>What this proves—and what it does not</summary>
+          <div class="details-body">
+            <p>
+              It proves the current executable agrees with all 26 normative examples. It catches
+              changed notation, ordering, readings, results, completeness labels, and proof shapes
+              represented there. It does not prove every possible program correct. Later chapters
+              add independent models, generated inputs, regression comparison, and hostile-input
+              tests because each kind of evidence catches a different failure.
+            </p>
+          </div>
+        </details>
+
+        <p class="mini">
+          Dune documents <code>dune test</code> as the standard test alias:
+          <a href="https://dune.readthedocs.io/en/stable/usage.html#running-tests" target="_blank" rel="noopener">official Dune test documentation</a>.
+        </p>
+
+        <div class="checkpoint">
+          <input class="progress-check" id="check-build" type="checkbox">
+          <label for="check-build">
+            <strong>The project builds and the normative corpus is green.</strong>
+            <span>I saw the human command help and <code>26 passed, 0 failed</code>.</span>
+          </label>
+        </div>
+      </section>
+
+      <section id="notation" data-section>
+        <div class="section-head">
+          <div class="section-number">03</div>
+          <div>
+            <h2>Learn enough TFL to predict the machine</h2>
+            <p class="section-kicker">
+              The point is not memorizing symbols. It is learning what each sign commits the
+              program to, so the later answers can surprise you only for logical reasons.
+            </p>
+          </div>
+        </div>
+
+        <h3>One proposition, two signed terms</h3>
+        <p>
+          At the basic level, the first sign controls the subject quantity and the second controls
+          predicate quality. The letters A, E, I, and O are traditional names for the four
+          categorical forms; Dualithor’s semantics are fixed by <code>core-0.1</code>, not by the labels.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Form</th><th>TFL</th><th>Reading</th><th>Commitment</th></tr></thead>
+            <tbody>
+              <tr><td>A</td><td><code>−S+P</code></td><td>Every S is P</td><td>Universal inclusion; does not assert an S exists.</td></tr>
+              <tr><td>E</td><td><code>−S−P</code></td><td>No S is P</td><td>Universal exclusion; does not assert an S exists.</td></tr>
+              <tr><td>I</td><td><code>+S+P</code></td><td>Some S is P</td><td>Asserts a witness that is both S and P.</td></tr>
+              <tr><td>O</td><td><code>+S−P</code></td><td>Some S is not P</td><td>Asserts a witness that is S and not P.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Fixed references</h3>
+            <p>
+              A trailing <code>*</code> makes a name singular: <code>Socrates*</code> denotes one
+              fixed individual. Its subject sign can be <code>±</code>, read as a wild quantity,
+              because universal and particular orientation coincide for that fixed reference.
+            </p>
+            <p><code>±Socrates*+Man</code> reads “Socrates is a man.”</p>
+          </div>
+          <div class="card">
+            <h3>Open-world commitment</h3>
+            <p>
+              The program does not treat missing information as false. “Every unicorn is white”
+              remains true if there are no unicorns, and it does not imply “some unicorn is white.”
+              Explicit negative support is different from absent positive support.
+            </p>
+          </div>
+        </div>
+
+        <h3>Let the renderer audit your reading</h3>
+        <p>
+          <code>render</code> parses one proposition, prints a deterministic English display,
+          and prints canonical source spelling. It performs no inference and loads no file.
+          ASCII <code>-</code> and <code>+-</code> are accepted; the printer emits typographic
+          <code>−</code> and <code>±</code>.
+        </p>
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · four categorical forms</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>opam exec -- dune exec tfl -- render '-Man+Mortal'
+opam exec -- dune exec tfl -- render '-Man-Dog'
+opam exec -- dune exec tfl -- render '+Dog+Friendly'
+opam exec -- dune exec tfl -- render '+Dog-Friendly'</code></pre>
+        </div>
+        <div class="output-card">
+          <div class="label">Expected readings, in order</div>
+          <pre><code>every man is mortal
+no man is dog
+some dog is friendly
+some dog is not friendly</code></pre>
+        </div>
+
+        <details>
+          <summary>Names, Unicode, compounds, relations, and proposition terms</summary>
+          <div class="details-body">
+            <ul>
+              <li>Bare names start with an ASCII letter. Quote ordinary Unicode or punctuation-bearing names: <code>"Élan"</code>.</li>
+              <li><code>(−Dog)</code> is the negative term “non-dog.”</li>
+              <li><code>(+White+Horse)</code> is one compound term, “white horse,” not two individuals.</li>
+              <li><code>(Loves+Logician)</code> is a relational term, “loves some logician.”</li>
+              <li><code>[+p+q]</code> turns a proposition into a term. Its special Boolean semantics apply only in eligible equivalence checks.</li>
+            </ul>
+            <p>
+              English is an audit display, never the semantic authority. The formal TFL tree and
+              the decision procedure determine results.
+            </p>
+          </div>
+        </details>
+
+        <div class="quiz">
+          <strong>Prediction: Does <code>−Unicorn+White</code> establish <code>+Unicorn+White</code>?</strong>
+          <button class="quiz-toggle" type="button" aria-expanded="false">Reveal answer</button>
+          <div class="quiz-answer">
+            No. The universal has no existential import. It classifies any unicorn that exists,
+            but does not create a unicorn witness. The complete atomic procedure can produce an
+            invalid result for that attempted inference.
+          </div>
+        </div>
+
+        <div class="checkpoint">
+          <input class="progress-check" id="check-notation" type="checkbox">
+          <label for="check-notation">
+            <strong>I can read the four forms and a fixed reference.</strong>
+            <span>I understand why a universal does not manufacture an example and why missing support is not falsity.</span>
+          </label>
+        </div>
+      </section>
+
+      <section id="first-program" data-section>
+        <div class="section-head">
+          <div class="section-number">04</div>
+          <div>
+            <h2>Compile your first real <code>.tfl</code> file</h2>
+            <p class="section-kicker">
+              A program is UTF-8 text with one proposition per nonblank physical line. Two minus
+              signs begin a comment outside a quoted name.
+            </p>
+          </div>
+        </div>
+
+        <p>
+          The next command creates exactly one disposable directory and overwrites exactly one
+          file inside it. It does not touch the repository.
+        </p>
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · create the foundations program</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>mkdir -p /tmp/dualithor-phase5-tour
+printf '%s\n' \
+  '-- Named individuals' \
+  '±Socrates*+Man' \
+  '±Fido*+Dog' \
+  '' \
+  '-- Classifications and exclusions' \
+  '−Man+Human' \
+  '−Human+Mortal' \
+  '−Dog+Animal' \
+  '−Animal+Mortal' \
+  '−Man−Dog' \
+  &gt; /tmp/dualithor-phase5-tour/foundations.tfl</code></pre>
+        </div>
+
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · compile the complete file</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>opam exec -- dune exec tfl -- check /tmp/dualithor-phase5-tour/foundations.tfl</code></pre>
+        </div>
+        <div class="output-card">
+          <div class="label">Expected</div>
+          <pre><code>/tmp/dualithor-phase5-tour/foundations.tfl: OK (7 statements)</code></pre>
+        </div>
+
+        <details>
+          <summary>What <code>check</code> actually checks</summary>
+          <div class="details-body">
+            <p>
+              The loader verifies the case-sensitive <code>.tfl</code> suffix, regular-file type,
+              one-mebibyte byte limit, and well-formed UTF-8. The runtime then parses and validates
+              every nonblank, non-comment line. Compilation is all-or-nothing: one malformed line
+              prevents an executable program rather than silently dropping that line.
+            </p>
+            <p>
+              <code>check</code> does <em>not</em> claim the propositions are mutually consistent.
+              A syntactically valid contradiction compiles. Consistency is a separate logical
+              operation because “well-formed text” and “satisfiable knowledge” are different ideas.
+            </p>
+          </div>
+        </details>
+
+        <div class="checkpoint">
+          <input class="progress-check" id="check-program" type="checkbox">
+          <label for="check-program">
+            <strong>My first file compiled as seven statements.</strong>
+            <span>I understand that compilation validates input but does not certify consistency.</span>
+          </label>
+        </div>
+      </section>
+
+      <section id="queries" data-section>
+        <div class="section-head">
+          <div class="section-number">05</div>
+          <div>
+            <h2>Ask three questions: yes, no, and unknown</h2>
+            <p class="section-kicker">
+              This is the conceptual center of the tour. Dualithor answers whether a proposition
+              follows from the program, not whether it happens to be true in the real world.
+            </p>
+          </div>
+        </div>
+
+        <h3>Before the commands: entailment and completeness</h3>
+        <p>
+          A program <strong>entails</strong> a query when every interpretation satisfying the
+          program also satisfies the query. A <strong>complete decision procedure</strong> for a
+          fragment can always settle every accepted case in that fragment. An incomplete search
+          may still find sound proofs, but a miss means only “this bounded procedure did not find
+          support.”
+        </p>
+        <div class="callout">
+          <strong>Complete does not mean “more confident.”</strong>
+          A proof from an incomplete method is still sound. Completeness governs what a failed
+          search is allowed to conclude. It is a property of the method over a defined fragment,
+          not a percentage attached to one answer.
+        </div>
+
+        <details open>
+          <summary>Query 1 — positive support</summary>
+          <div class="details-body">
+            <p>
+              Predict first: Socrates is a man; every man is human; every human is mortal.
+            </p>
+            <div class="code-card">
+              <div class="code-head"><span>Terminal · expect yes and status 0</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>opam exec -- dune exec tfl -- query /tmp/dualithor-phase5-tour/foundations.tfl '±Socrates*+Mortal'
+printf 'exit status: %s\n' "$?"</code></pre>
+            </div>
+            <div class="output-card">
+              <div class="label">Key lines</div>
+              <pre><code>yes — the query follows
+Method: PZ (complete)
+exit status: 0</code></pre>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>Query 2 — the contradictory follows</summary>
+          <div class="details-body">
+            <p>
+              Ask whether Socrates is not human. The program supports the exact opposite.
+            </p>
+            <div class="code-card">
+              <div class="code-head"><span>Terminal · expect no and status 1</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>opam exec -- dune exec tfl -- query /tmp/dualithor-phase5-tour/foundations.tfl '±Socrates*−Human'
+printf 'exit status: %s\n' "$?"</code></pre>
+            </div>
+            <div class="output-card">
+              <div class="label">Key lines</div>
+              <pre><code>no — the contradictory follows
+Method: PZ (complete)
+Support: Socrates is a human [+Human+Socrates*]
+exit status: 1</code></pre>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>Query 3 — complete open-world unknown</summary>
+          <div class="details-body">
+            <p>
+              Fido is a dog, animal, and mortal. Nothing connects Fido to Human or non-Human.
+            </p>
+            <div class="code-card">
+              <div class="code-head"><span>Terminal · expect unknown and status 1</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>opam exec -- dune exec tfl -- query /tmp/dualithor-phase5-tour/foundations.tfl '±Fido*+Human'
+printf 'exit status: %s\n' "$?"</code></pre>
+            </div>
+            <div class="output-card">
+              <div class="label">Key lines</div>
+              <pre><code>unknown — neither the query nor its contradictory follows
+Method: PZ (complete)
+exit status: 1</code></pre>
+            </div>
+            <p>
+              Because the P/Z method is complete for this atomic categorical fragment, this
+              unknown is not a search timeout. It exactly establishes that neither “Fido is human”
+              nor “Fido is not human” follows from the program.
+            </p>
+          </div>
+        </details>
+
+        <h3>What the P/Z method is doing</h3>
+        <p>
+          For atomic categorical propositions, universals become implication links and their
+          contrapositives. Particulars and fixed references create witness points. The method asks
+          whether adding the query’s contradictory makes a witness impossible. That closure method
+          is complete under <code>core-0.1</code>’s no-existential-import semantics.
+        </p>
+
+        <div class="verdict"><b>yes</b><div>The query has sound support. Exit status 0.</div></div>
+        <div class="verdict"><b>no</b><div>The contradictory has support. With a complete method, this is logical non-entailment. Exit status 1.</div></div>
+        <div class="verdict"><b>unknown</b><div>Neither side is established. Read the completeness line to distinguish exact open-world non-entailment from an incomplete search.</div></div>
+
+        <div class="quiz">
+          <strong>Prediction: Is “unknown (complete)” weaker or stronger than “unknown (incomplete)”?</strong>
+          <button class="quiz-toggle" type="button" aria-expanded="false">Reveal answer</button>
+          <div class="quiz-answer">
+            It is a stronger negative result. Complete unknown establishes that neither side follows.
+            Incomplete unknown says only that the bounded procedure found neither side.
+          </div>
+        </div>
+
+        <div class="checkpoint">
+          <input class="progress-check" id="check-queries" type="checkbox">
+          <label for="check-queries">
+            <strong>I observed yes, no, and complete unknown.</strong>
+            <span>I can explain why unknown is not false and why completeness matters most when search finds nothing.</span>
+          </label>
+        </div>
+      </section>
+
+      <section id="describe" data-section>
+        <div class="section-head">
+          <div class="section-number">06</div>
+          <div>
+            <h2>Ask “what follows about Socrates?”</h2>
+            <p class="section-kicker">
+              A description query turns one fixed yes/no question into a bounded collection of
+              supported classifications.
+            </p>
+          </div>
+        </div>
+
+        <p>
+          The current procedure saturates selected inference rules, keeps answers about the
+          requested term, removes answers implied by stronger retained answers, and sorts the
+          result deterministically. It deliberately does not promise the set is exhaustive.
+        </p>
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · supported descriptions</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>opam exec -- dune exec tfl -- describe /tmp/dualithor-phase5-tour/foundations.tfl 'Socrates*'
+printf 'exit status: %s\n' "$?"</code></pre>
+        </div>
+        <div class="output-card">
+          <div class="label">Observed answer set</div>
+          <pre><code>Socrates is non-dog
+Socrates is non-Fido
+Socrates is a human
+Socrates is a man
+Socrates is a mortal
+Method: bounded-saturation (incomplete: bounded-term-saturation)
+exit status: 3</code></pre>
+        </div>
+
+        <div class="callout warning">
+          <strong>Status 3 is useful output, not a crash.</strong>
+          Every displayed answer has a derivation. Status 3 says the bounded procedure cannot
+          promise there are no additional answers. Treating this as status 0 would overclaim
+          exhaustiveness; treating it as “nothing worked” would discard proven information.
+        </div>
+
+        <details>
+          <summary>Inspect why “Socrates is non-Fido” appears</summary>
+          <div class="details-body">
+            <p>
+              The human display is intentionally compact. Machine mode retains the full proof.
+              This filter selects the surprising answer and its support.
+            </p>
+            <div class="code-card">
+              <div class="code-head"><span>Terminal · proof behind one answer</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>opam exec -- dune exec tfl -- describe --json /tmp/dualithor-phase5-tour/foundations.tfl 'Socrates*' |
+  jq '.answers[] | select(.proposition.tfl == "±Socrates*+(−Fido*)") | {proposition, support}'</code></pre>
+            </div>
+            <p>
+              The explanation ties together “Socrates is a man,” “Fido is a dog,” and “no dog is
+              a man.” The proof lines record the immediate rules and substitutions rather than
+              asking you to trust the English summary.
+            </p>
+          </div>
+        </details>
+
+        <div class="checkpoint">
+          <input class="progress-check" id="check-describe" type="checkbox">
+          <label for="check-describe">
+            <strong>I received supported descriptions with status 3.</strong>
+            <span>I understand the difference between “each returned answer is proven” and “the returned set is complete.”</span>
+          </label>
+        </div>
+      </section>
+
+      <section id="repl" data-section>
+        <div class="section-head">
+          <div class="section-number">07</div>
+          <div>
+            <h2>Keep the program alive in the REPL</h2>
+            <p class="section-kicker">
+              REPL means read–evaluate–print loop: read one command, evaluate it against one
+              compiled program, print a result, then wait for the next command.
+            </p>
+          </div>
+        </div>
+
+        <p>
+          Start this interactively in your own terminal. The file compiles once. Command history is
+          held only in this process’s memory; it is not written to a history file.
+        </p>
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · interactive command</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>opam exec -- dune exec tfl -- repl /tmp/dualithor-phase5-tour/foundations.tfl</code></pre>
+        </div>
+
+        <p>At the <code>tfl&gt;</code> prompt, open these turns one at a time and type only that line.</p>
+
+        <details open>
+          <summary>REPL turn 1 — query a chain</summary>
+          <div class="details-body">
+            <div class="code-card"><div class="code-head"><span>Type at tfl&gt;</span><button class="copy-button" type="button">Copy</button></div><pre><code>query ±Socrates*+Mortal</code></pre></div>
+            <p>Expect <code>yes</code>, method <code>PZ</code>, complete.</p>
+          </div>
+        </details>
+        <details>
+          <summary>REPL turn 2 — ask for descriptions</summary>
+          <div class="details-body">
+            <div class="code-card"><div class="code-head"><span>Type at tfl&gt;</span><button class="copy-button" type="button">Copy</button></div><pre><code>describe Socrates*</code></pre></div>
+            <p>Expect the same five supported answers and the incomplete bounded-saturation label.</p>
+          </div>
+        </details>
+        <details>
+          <summary>REPL turn 3 — check the whole program</summary>
+          <div class="details-body">
+            <div class="code-card"><div class="code-head"><span>Type at tfl&gt;</span><button class="copy-button" type="button">Copy</button></div><pre><code>consistency</code></pre></div>
+            <p>Expect <code>consistent</code> under the complete P/Z procedure.</p>
+          </div>
+        </details>
+        <details>
+          <summary>REPL turn 4 — compare a contrapositive</summary>
+          <div class="details-body">
+            <div class="code-card"><div class="code-head"><span>Type at tfl&gt;</span><button class="copy-button" type="button">Copy</button></div><pre><code>equivalence −Man+Human &lt;=&gt; −(−Human)+(−Man)</code></pre></div>
+            <p>
+              Expect <code>equivalent</code> with a rewrite witness. The method is incomplete:
+              finding a path proves equivalence; failure to find one would not prove non-equivalence.
+            </p>
+          </div>
+        </details>
+        <details>
+          <summary>REPL turn 4b — trigger complete propositional truth-table equivalence</summary>
+          <div class="details-body">
+            <p>
+              For eligible lowercase, relation-free forms, square brackets give a one-member
+              propositional interpretation. The runtime can compare the two sides by a complete
+              truth table rather than bounded rewrite search.
+            </p>
+            <div class="code-card"><div class="code-head"><span>Type at tfl&gt;</span><button class="copy-button" type="button">Copy</button></div><pre><code>equivalence −[p]+[q] &lt;=&gt; −p+q</code></pre></div>
+            <p>Expect <code>equivalent</code> with method <code>dnf (complete)</code>.</p>
+          </div>
+        </details>
+        <details>
+          <summary>REPL turn 5 — make a recoverable syntax error</summary>
+          <div class="details-body">
+            <div class="code-card"><div class="code-head"><span>Type at tfl&gt;</span><button class="copy-button" type="button">Copy</button></div><pre><code>query +</code></pre></div>
+            <p>Expect a syntactic diagnostic and another prompt. The compiled program remains loaded.</p>
+          </div>
+        </details>
+        <details>
+          <summary>REPL turn 6 — prove the error did not poison the session</summary>
+          <div class="details-body">
+            <div class="code-card"><div class="code-head"><span>Type at tfl&gt;</span><button class="copy-button" type="button">Copy</button></div><pre><code>query ±Fido*+Mortal</code></pre></div>
+            <p>Expect <code>yes</code>. This is the recovery property, not merely another query.</p>
+          </div>
+        </details>
+        <details>
+          <summary>REPL turn 7 — reload safely, then leave</summary>
+          <div class="details-body">
+            <div class="code-card"><div class="code-head"><span>Type one line at a time</span><button class="copy-button" type="button">Copy</button></div><pre><code>reload
+quit</code></pre></div>
+            <p>
+              A successful reload recompiles the original path and atomically replaces the
+              in-memory program. A failed reload would retain the last valid program.
+            </p>
+          </div>
+        </details>
+
+        <details>
+          <summary>Optional: reproduce the session as a deterministic pipe transcript</summary>
+          <div class="details-body">
+            <p>
+              Piped sessions suppress the prompt. This is how process tests can compare the whole
+              conversation without pretending to type at a terminal.
+            </p>
+            <div class="code-card">
+              <div class="code-head"><span>Terminal · non-interactive transcript</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>printf '%s\n' \
+  'query ±Socrates*+Mortal' \
+  'describe Socrates*' \
+  'consistency' \
+  'equivalence −Man+Human &lt;=&gt; −(−Human)+(−Man)' \
+  'query +' \
+  'query ±Fido*+Mortal' \
+  'reload' \
+  'quit' |
+  opam exec -- dune exec tfl -- repl /tmp/dualithor-phase5-tour/foundations.tfl</code></pre>
+            </div>
+          </div>
+        </details>
+
+        <div class="checkpoint">
+          <input class="progress-check" id="check-repl" type="checkbox">
+          <label for="check-repl">
+            <strong>I used every REPL operation and recovered after bad input.</strong>
+            <span>The same compiled program survived query, describe, consistency, equivalence, an error, reload, and quit.</span>
+          </label>
+        </div>
+      </section>
+
+      <section id="consistency" data-section>
+        <div class="section-head">
+          <div class="section-number">08</div>
+          <div>
+            <h2>Make a contradiction visible</h2>
+            <p class="section-kicker">
+              Query support and program consistency are separate. The current query checker can
+              stop after the first supported side; a separate consistency operation asks whether
+              the entire premise set clashes.
+            </p>
+          </div>
+        </div>
+
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · create an inconsistent program</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>printf '%s\n' \
+  '±Socrates*+Man' \
+  '−Man+Mortal' \
+  '±Socrates*−Mortal' \
+  &gt; /tmp/dualithor-phase5-tour/inconsistent.tfl</code></pre>
+        </div>
+
+        <p>
+          First prove the distinction: this file still compiles because all three statements are
+          valid source.
+        </p>
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · syntax and fragment check</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>opam exec -- dune exec tfl -- check /tmp/dualithor-phase5-tour/inconsistent.tfl</code></pre>
+        </div>
+
+        <p>Now request the consistency record and retain its proof lines through JSON mode.</p>
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · inconsistency evidence</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>printf '%s\n' 'consistency' 'quit' |
+  opam exec -- dune exec tfl -- repl --json /tmp/dualithor-phase5-tour/inconsistent.tfl |
+  jq -c 'select(.operation == "consistency") | {status, method, completeness, evidence}'</code></pre>
+        </div>
+        <div class="output-card">
+          <div class="label">What to locate in the JSON</div>
+          <pre><code>"status":"inconsistent"
+"method":"PZ"
+"complete":true
+"rule":"DON"
+"rule":"contradiction"
+"tfl":"⊥"</code></pre>
+        </div>
+
+        <p>
+          The proof combines “Socrates is a man” and “every man is mortal” to derive “Socrates is
+          mortal,” then clashes it with the explicit “Socrates is not mortal.” The final
+          <code>⊥</code> symbol marks impossibility.
+        </p>
+
+        <div class="callout warning">
+          <strong>Do not call the current query system four-valued or paraconsistent.</strong>
+          The public <code>both</code> result is not implemented in <code>core-0.1</code>. A query
+          returns the first supported side it finds. Use consistency separately to expose
+          contradictory knowledge until the later roadmap fixes the final contract.
+        </div>
+
+        <div class="checkpoint">
+          <input class="progress-check" id="check-consistency" type="checkbox">
+          <label for="check-consistency">
+            <strong>I compiled a contradiction and then found it logically.</strong>
+            <span>I can distinguish valid source from a consistent program and saw a proof ending in <code>⊥</code>.</span>
+          </label>
+        </div>
+      </section>
+
+      <section id="compound-relational" data-section>
+        <div class="section-head">
+          <div class="section-number">09</div>
+          <div>
+            <h2>Move beyond atomic categories</h2>
+            <p class="section-kicker">
+              Compound and relational terms are where bounded derivation replaces the complete
+              atomic P/Z procedure. This is the right place to feel the difference between a
+              sound proof and an exhaustive search.
+            </p>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Compound term</h3>
+            <p>
+              <code>(+White+Horse)</code> is one term—“white horse.” A universal classification
+              of that whole term can be substituted into a positive occurrence.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Relational term</h3>
+            <p>
+              <code>(Loves+Logician)</code> is “loves some logician.” The plus sign on the object
+              supplies existential quantity. The relation head and its object roles remain formal.
+            </p>
+          </div>
+        </div>
+
+        <p>
+          The rule you will see is <strong>DON</strong>, <em>dictum de omni</em>: a universal
+          classification may replace a positive occurrence of its subject with its predicate.
+          Learn that idea before reading the proof below.
+        </p>
+
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · create compound and relational facts</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>printf '%s\n' \
+  '-- A compound term is one combined classification' \
+  '+Knight+(+White+Horse)' \
+  '−(+White+Horse)+Gentle' \
+  '' \
+  '-- A relation can contain a quantified object' \
+  '±Ada*+(Loves+Logician)' \
+  '−Logician+Human' \
+  &gt; /tmp/dualithor-phase5-tour/relations.tfl</code></pre>
+        </div>
+
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · two sound derivations</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>opam exec -- dune exec tfl -- query /tmp/dualithor-phase5-tour/relations.tfl '+Knight+Gentle'
+opam exec -- dune exec tfl -- query /tmp/dualithor-phase5-tour/relations.tfl '±Ada*+(Loves+Human)'</code></pre>
+        </div>
+        <div class="output-card">
+          <div class="label">Key shape of both results</div>
+          <pre><code>yes — the query follows
+Method: derivation (incomplete: bounded-search)</code></pre>
+        </div>
+
+        <div class="callout">
+          <strong>“Yes” and “incomplete” are compatible.</strong>
+          The explicit derivation is a sound witness. The incomplete label says the same bounded
+          rule set cannot safely turn every future miss into invalidity.
+        </div>
+
+        <details>
+          <summary>Inspect the three-line compound proof</summary>
+          <div class="details-body">
+            <div class="code-card">
+              <div class="code-head"><span>Terminal · proof lines only</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>opam exec -- dune exec tfl -- query --json /tmp/dualithor-phase5-tour/relations.tfl '+Knight+Gentle' |
+  jq '{verdict, method, completeness, evidence: [.support.evidence[] | {kind, lines: .proof.lines}]}'</code></pre>
+            </div>
+            <p>
+              Expect two <code>premise</code> lines and one <code>DON</code> line. Canonical form
+              may reorder terms while preserving the proposition’s inference identity.
+            </p>
+          </div>
+        </details>
+
+        <h3>Now force an incomplete miss</h3>
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · bounded unknown</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>opam exec -- dune exec tfl -- query /tmp/dualithor-phase5-tour/relations.tfl '+Logician+Gentle'
+printf 'exit status: %s\n' "$?"</code></pre>
+        </div>
+        <div class="output-card">
+          <div class="label">Expected</div>
+          <pre><code>unknown — the current procedure did not decide the query
+Method: derivation (incomplete: bounded-search)
+exit status: 3</code></pre>
+        </div>
+
+        <details>
+          <summary>Optional: watch an indirect proof refute a counterclaim</summary>
+          <div class="details-body">
+            <p>
+              An indirect proof temporarily adds the contradictory of the requested conclusion as
+              a <code>counterclaim</code>. If the premises plus that counterclaim derive
+              <code>⊥</code>, the original query has support. This is classical proof by
+              contradiction, with every introduced line visible.
+            </p>
+            <div class="code-card">
+              <div class="code-head"><span>Terminal · counterclaim to contradiction</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>printf '%s\n' '{"cmd":"query","program":"+Boy+(Lov+Girl)\n-Boy-(Lov+Coward)","query":"+Girl-Coward"}' |
+  opam exec -- dune exec dualithor |
+  jq '{verdict, method, completeness, support}'</code></pre>
+            </div>
+            <p>
+              Expect method <code>indirect</code>. The proof adds
+              <code>−Girl+Coward</code>, derives “some boy loves some coward,” and clashes it with
+              “no boy loves some coward.”
+            </p>
+          </div>
+        </details>
+
+        <details>
+          <summary>Optional: see why “no contradiction found” can still be undetermined</summary>
+          <div class="details-body">
+            <p>
+              Atomic consistency is complete; non-atomic consistency uses bounded refutation.
+              When that search finds no clash, the production runtime says
+              <code>undetermined</code> instead of overclaiming “consistent.”
+            </p>
+            <div class="code-card">
+              <div class="code-head"><span>Terminal · bounded consistency abstention</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>printf '%s\n' '{"cmd":"consistency","program":"+Boy+(Lov+Girl)"}' |
+  opam exec -- dune exec dualithor |
+  jq '{status, method, completeness, evidence}'</code></pre>
+            </div>
+            <p>
+              Expect <code>status: "undetermined"</code> and reason
+              <code>bounded-refutation</code>.
+            </p>
+          </div>
+        </details>
+
+        <details>
+          <summary>Optional: exercise the guarded relational passive rule</summary>
+          <div class="details-body">
+            <p>
+              With two fixed references, participant scope commutes safely. The subscript
+              <code>₂₁</code> records the role permutation; it is formal role notation, not an
+              English conjugation feature.
+            </p>
+            <div class="code-card">
+              <div class="code-head"><span>Terminal · local JSON runtime request</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>printf '%s\n' '{"cmd":"query","program":"+-John*+(Loves+-Mary*)","query":"+-Mary*+(Loves₂₁+-John*)"}' |
+  opam exec -- dune exec dualithor |
+  jq '{verdict, method, completeness, support}'</code></pre>
+            </div>
+            <p>Locate a proof line whose rule is <code>Pass</code>.</p>
+          </div>
+        </details>
+
+        <div class="checkpoint">
+          <input class="progress-check" id="check-relations" type="checkbox">
+          <label for="check-relations">
+            <strong>I saw compound and relational proofs plus an incomplete miss.</strong>
+            <span>I can say why a sound positive proof does not make the entire bounded method complete.</span>
+          </label>
+        </div>
+      </section>
+
+      <section id="numerical" data-section>
+        <div class="section-head">
+          <div class="section-number">10</div>
+          <div>
+            <h2>Touch the inherited numerical fragment—without overselling it</h2>
+            <p class="section-kicker">
+              Levels 1–3 exist today, but they are a limited sufficient-condition checker. Full
+              Numerical Term Logic is future work, not a completed Phase 5 feature.
+            </p>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Source</th><th>Printed</th><th>Display quantity</th></tr></thead>
+            <tbody>
+              <tr><td><code>+C^1+P</code></td><td><code>+C¹+P</code></td><td>many C are P</td></tr>
+              <tr><td><code>+C^2+P</code></td><td><code>+C²+P</code></td><td>most C are P</td></tr>
+              <tr><td><code>+C^3−H</code></td><td><code>+C³−H</code></td><td>few C are H, represented through the predominant complement</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          The numerical method checks three conditions: algebraic term balance, matching counts of
+          particular premises and conclusions, and a permitted carried quantity level. Passing all
+          three proves validity. Failing one proves only <code>unknown</code>; it never proves
+          invalidity.
+        </p>
+
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · create the numerical example</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>printf '%s\n' \
+  '-- Core 0.1 inherited numerical fragment' \
+  '+C^3−H' \
+  '−C+E' \
+  &gt; /tmp/dualithor-phase5-tour/numbers.tfl</code></pre>
+        </div>
+
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · supported numerical conclusion</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>opam exec -- dune exec tfl -- query --json /tmp/dualithor-phase5-tour/numbers.tfl '+E−H' |
+  jq '{verdict, method, completeness, support}'</code></pre>
+        </div>
+        <div class="output-card">
+          <div class="label">Fields to inspect</div>
+          <pre><code>"verdict": "yes"
+"method": "numerical"
+"complete": false
+"reason": "numerical-rule-set"
+"sum": true
+"particular": true
+"level": true</code></pre>
+        </div>
+
+        <h3>The opposite query is useful but still incomplete</h3>
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · contradictory support</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>opam exec -- dune exec tfl -- query /tmp/dualithor-phase5-tour/numbers.tfl '−E+H'
+printf 'exit status: %s\n' "$?"</code></pre>
+        </div>
+        <div class="output-card">
+          <div class="label">Expected</div>
+          <pre><code>contradicted — the contradictory follows, but the procedure is not exhaustive
+Method: numerical (incomplete: numerical-rule-set)
+Support: some e is not h [+E−H]
+exit status: 3</code></pre>
+        </div>
+
+        <div class="checkpoint">
+          <input class="progress-check" id="check-numerical" type="checkbox">
+          <label for="check-numerical">
+            <strong>I exercised the numerical sufficient-condition record.</strong>
+            <span>I will not mistake this inherited three-condition fragment for full Numerical Term Logic.</span>
+          </label>
+        </div>
+      </section>
+
+      <section id="diagnostics" data-section>
+        <div class="section-head">
+          <div class="section-number">11</div>
+          <div>
+            <h2>Break a file on purpose and audit the diagnostics</h2>
+            <p class="section-kicker">
+              Phase 5’s value is easiest to judge when input is wrong: independent errors should
+              survive together, point at the original Unicode text, and say what kind of failure occurred.
+            </p>
+          </div>
+        </div>
+
+        <h3>Know the failure vocabulary first</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Class</th><th>Meaning today</th></tr></thead>
+            <tbody>
+              <tr><td><code>lexical</code></td><td>The tokenizer cannot form a valid token, such as an unquoted non-ASCII bare name.</td></tr>
+              <tr><td><code>syntactic</code></td><td>Valid tokens do not form a complete proposition, or nesting exceeds the cap.</td></tr>
+              <tr><td><code>name_resolution</code></td><td>Reserved for future declarations; no current <code>core-0.1</code> source can produce it.</td></tr>
+              <tr><td><code>outside_fragment</code></td><td>The text parses, but the requested inference procedure does not support that shape.</td></tr>
+              <tr><td><code>incomplete_search</code></td><td>An accepted operation stopped without an exhaustive logical result.</td></tr>
+              <tr><td><code>resource_limit</code></td><td>Valid-shaped input exceeded a documented size or work budget.</td></tr>
+              <tr><td><code>internal</code></td><td>An unexpected implementation defect reached the total boundary; it is not blamed on user text.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · create two independent errors</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>printf '%s\n' \
+  '  +"Élan"+Mammal' \
+  '  +Élan+Mammal' \
+  '  −Man+' \
+  &gt; /tmp/dualithor-phase5-tour/broken.tfl</code></pre>
+        </div>
+
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · human diagnostics</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>opam exec -- dune exec tfl -- check /tmp/dualithor-phase5-tour/broken.tfl
+printf 'exit status: %s\n' "$?"</code></pre>
+        </div>
+        <div class="output-card">
+          <div class="label">Expected diagnostic shape</div>
+          <pre><code>broken.tfl:2:4: lexical: Unexpected character 'É' (quote the term to use non-ASCII names)
+  |   +Élan+Mammal
+  |    ^
+broken.tfl:3:8: syntactic: Expected a term, found end of input
+  |   −Man+
+  |        ^
+exit status: 2</code></pre>
+        </div>
+
+        <p>
+          Line 1 proves quoted Unicode is valid. On line 2, the two leading spaces count, the plus
+          sign is column 3, and <code>É</code> is column 4. Columns count Unicode code points, not
+          UTF-8 bytes. A half-open span includes its start and stops immediately before its end,
+          which makes adjacent spans unambiguous.
+        </p>
+
+        <details>
+          <summary>Inspect the same two source spans as JSON</summary>
+          <div class="details-body">
+            <div class="code-card">
+              <div class="code-head"><span>Terminal · structured diagnostics</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>opam exec -- dune exec tfl -- check --json /tmp/dualithor-phase5-tour/broken.tfl |
+  jq '{schema, status, exit_status, error_count: (.errors | length), errors: [.errors[] | {class, line, column, span, source_line}]}'</code></pre>
+            </div>
+            <p>
+              Expect <code>error_count: 2</code>, <code>exit_status: 2</code>, and start/end
+              records containing one-based line and column plus explicitly named zero-based
+              <code>codepoint_offset</code>.
+            </p>
+          </div>
+        </details>
+
+        <details>
+          <summary>Distinguish valid syntax from an unsupported inference shape</summary>
+          <div class="details-body">
+            <p>
+              The next query parses. It is refused because a numerical level is nested inside a
+              proposition term instead of the accepted atomic categorical numerical fragment.
+            </p>
+            <div class="code-card">
+              <div class="code-head"><span>Terminal · outside_fragment</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>opam exec -- dune exec tfl -- query /tmp/dualithor-phase5-tour/foundations.tfl '+[+p^2+q]+r'</code></pre>
+            </div>
+            <div class="output-card">
+              <div class="label">Expected class</div>
+              <pre><code>outside_fragment: quantity levels are supported only in categorical (atomic) syllogisms</code></pre>
+            </div>
+          </div>
+        </details>
+
+        <div class="checkpoint">
+          <input class="progress-check" id="check-diagnostics" type="checkbox">
+          <label for="check-diagnostics">
+            <strong>I saw two independent, Unicode-aware diagnostics.</strong>
+            <span>I can distinguish lexical, syntactic, and outside-fragment failures from logical results.</span>
+          </label>
+        </div>
+      </section>
+
+      <section id="machine" data-section>
+        <div class="section-head">
+          <div class="section-number">12</div>
+          <div>
+            <h2>Look through both machine-facing windows</h2>
+            <p class="section-kicker">
+              Human output optimizes for reading. Stable JSON retains canonical forms,
+              completeness, proof evidence, source spans, and process status for programs that
+              need to integrate Dualithor.
+            </p>
+          </div>
+        </div>
+
+        <h3>Window 1: one-shot <code>tfl --json</code></h3>
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · summarize one tfl-cli-0.1 record</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>opam exec -- dune exec tfl -- query --json /tmp/dualithor-phase5-tour/foundations.tfl '±Socrates*+Mortal' |
+  jq '{schema, operation, status, exit_status, verdict, method, completeness, query, support_kinds: [.support.evidence[].kind]}'</code></pre>
+        </div>
+        <div class="output-card">
+          <div class="label">Contract fields</div>
+          <pre><code>"schema": "tfl-cli-0.1"
+"operation": "query"
+"exit_status": 0
+"verdict": "yes"
+"method": "PZ"
+"complete": true
+"support_kinds": ["closure-certificate"]</code></pre>
+        </div>
+
+        <p>
+          The proposition view separates <code>tfl</code> (canonical source spelling),
+          <code>canonical</code> (inference identity), and <code>english</code> (display text).
+          Those are deliberately not collapsed into one string.
+        </p>
+
+        <h3>Window 2: the long-lived local <code>dualithor</code> process</h3>
+        <p>
+          JSON Lines means one JSON value per physical line. The <code>dualithor</code> executable is
+          a local standard-input/standard-output process, not a network server. Each request gets
+          one reply, and handled bad input must not consume the following request.
+          <code>jq</code> below is only a display filter; Dualithor does not depend on it.
+        </p>
+
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · all five runtime operations</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>printf '%s\n' \
+  '{"cmd":"compile","program":"+-Socrates*+Man\n-Man+Mortal"}' \
+  '{"cmd":"query","program":"+-Socrates*+Man\n-Man+Mortal","query":"+-Socrates*+Mortal"}' \
+  '{"cmd":"describe","program":"+-Socrates*+Man\n-Man+Mortal","term":"Socrates*"}' \
+  '{"cmd":"consistency","program":"+-Socrates*+Man\n+-Socrates*-Man"}' \
+  '{"cmd":"equivalence","left":"-Dog+Mammal","right":"-(−Mammal)+(−Dog)"}' |
+  opam exec -- dune exec dualithor |
+  jq -c '{operation, ok, verdict, status, method, completeness, answer_count: (.answers | length), equivalent}'</code></pre>
+        </div>
+        <div class="output-card">
+          <div class="label">Expected operation sequence</div>
+          <pre><code>compile      ok=true
+query        verdict=yes, PZ, complete
+describe     2 answers, bounded-saturation, incomplete
+consistency  status=inconsistent, PZ, complete
+equivalence  equivalent=true, rewrite witness, incomplete</code></pre>
+        </div>
+
+        <details>
+          <summary>Prove one malformed request does not kill the process</summary>
+          <div class="details-body">
+            <div class="code-card">
+              <div class="code-head"><span>Terminal · refusal then recovery</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>printf '%s\n' \
+  'not-json' \
+  '{"cmd":"render","tfl":"-Man+Mortal"}' |
+  opam exec -- dune exec dualithor</code></pre>
+            </div>
+            <div class="output-card">
+              <div class="label">Expected two replies</div>
+              <pre><code>{"error":"line is not valid JSON"}
+{"ok":true,"english":"every man is mortal"}</code></pre>
+            </div>
+            <p>
+              Recovery matters because a crash in a line protocol would lose every queued request
+              behind the bad one, not just that request.
+            </p>
+          </div>
+        </details>
+
+        <p class="mini">
+          Further reading:
+          <a href="./docs/runtime-api.md" target="_blank">Dualithor runtime contract</a>,
+          <a href="./docs/command-line.md" target="_blank">command and REPL contracts</a>,
+          <a href="https://jsonlines.org/" target="_blank" rel="noopener">JSON Lines format</a>.
+        </p>
+
+        <div class="checkpoint">
+          <input class="progress-check" id="check-machine" type="checkbox">
+          <label for="check-machine">
+            <strong>I exercised both stable JSON surfaces.</strong>
+            <span>I saw all runtime operations and proved the long-lived process recovered after malformed JSON.</span>
+          </label>
+        </div>
+      </section>
+
+      <section id="testing" data-section>
+        <div class="section-head">
+          <div class="section-number">13</div>
+          <div>
+            <h2>Run the evidence ladder, understanding each rung</h2>
+            <p class="section-kicker">
+              “The tests pass” is too vague. These gates compare Dualithor against different
+              authorities, so their failures would mean different things.
+            </p>
+          </div>
+        </div>
+
+        <h3>First: do not confuse three kinds of completeness</h3>
+        <div class="grid-3">
+          <div class="card">
+            <span class="badge">Logic</span>
+            <h3>Procedure completeness</h3>
+            <p>
+              A method can decide every accepted case in a defined logical fragment. P/Z has this
+              contract for atomic categorical <code>core-0.1</code>.
+            </p>
+          </div>
+          <div class="card">
+            <span class="badge neutral">Search</span>
+            <h3>Bounded exploration</h3>
+            <p>
+              Derivation can find sound proofs but stop without exhausting every consequence. Its
+              miss is <code>unknown</code>, not invalid.
+            </p>
+          </div>
+          <div class="card">
+            <span class="badge warn">Tests</span>
+            <h3>Suite coverage</h3>
+            <p>
+              Passing examples never proves a suite has tested every behavior. Dualithor combines
+              contracts, independent models, generators, regression comparison, and mutation audits.
+            </p>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Gate</th><th>Independent question</th><th>What a pass supports</th><th>Important limit</th></tr></thead>
+            <tbody>
+              <tr><td>26-case conformance</td><td>Does the executable match the normative <code>core-0.1</code> examples?</td><td>Language contract stability.</td><td>Only the cases represented.</td></tr>
+              <tr><td>62 literature cases</td><td>Does behavior match curated published examples and nearby negatives?</td><td>Contact with source cases.</td><td>Not every published extension exists.</td></tr>
+              <tr><td>Finite-model oracle</td><td>Does categorical entailment agree with an independent semantic evaluator?</td><td>Independent correctness evidence.</td><td>The oracle does not model the entire language.</td></tr>
+              <tr><td>Differential gate</td><td>Does OCaml agree with the frozen JavaScript reference?</td><td>Port and regression fidelity.</td><td>Both implementations can share an old mistake.</td></tr>
+              <tr><td>Generated properties</td><td>Do invariants hold over thousands of varied inputs?</td><td>Broad structural pressure.</td><td>Generators define what can be reached.</td></tr>
+              <tr><td>102,000 hostile inputs</td><td>Does the total boundary refuse garbage and extreme shapes safely?</td><td>No uncaught parser/inference failure in that corpus.</td><td>Not a proof against every denial-of-service shape.</td></tr>
+              <tr><td>Process-boundary tests</td><td>Do real executables preserve output, exit status, and stream recovery?</td><td>User-facing integration behavior.</td><td>Platform-specific behavior still deserves CI.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Focused interface gates</h3>
+        <p>Run these sequentially. Dune uses one workspace lock, so launching them concurrently is not a valid speedup.</p>
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · fast focused suite</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>opam exec -- dune exec test/test_conformance.exe
+opam exec -- dune exec test/test_runtime.exe
+opam exec -- dune exec test/test_source_file.exe
+opam exec -- dune exec test/test_tfl_command.exe
+opam exec -- dune exec test/test_cli.exe</code></pre>
+        </div>
+        <div class="output-card">
+          <div class="label">Verified counts</div>
+          <pre><code>core-0.1 conformance: 26 passed, 0 failed
+public runtime tests: 16 passed, 0 failed
+source-file tests: 11 passed, 0 failed
+tfl command tests: 26 passed, 0 failed
+cli boundary: 39 checks passed</code></pre>
+        </div>
+
+        <h3>The forced full repository suite</h3>
+        <p>
+          <code>--force</code> makes Dune rerun tests instead of reusing successful cached targets.
+          Expect substantial generated progress output. The authoring run completed green in
+          <strong>1 minute 45.96 seconds</strong> on this machine, but it was run under the
+          pre-existing unsupported OCaml 4.14.1 switch; your 4.14.4 run is the meaningful supported check.
+        </p>
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · full standing suite</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>time opam exec -- dune test --force</code></pre>
+        </div>
+        <div class="callout">
+          <strong>Success is the final exit status, not one pretty line.</strong>
+          The suite contains many executables running in parallel and prints numerous local
+          summaries. Let the command finish. A red failure anywhere makes the whole Dune command
+          nonzero.
+        </div>
+
+        <details>
+          <summary>Optional high-confidence gate A — 20,000 iterations per oracle suite</summary>
+          <div class="details-body">
+            <p>
+              An oracle is an independent evaluator used as a reference for a bounded domain.
+              This command drives six suites: categorical exactness, rule-step soundness,
+              relational derivation, guarded passive equivalence, indirect proof, and statement-model agreement.
+            </p>
+            <div class="code-card">
+              <div class="code-head"><span>Terminal · independent semantic pressure</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>opam exec -- dune exec test/test_oracle.exe -- -n 20000</code></pre>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>Optional high-confidence gate B — 884,000-input differential run</summary>
+          <div class="details-body">
+            <p>
+              Differential testing sends matching generated inputs to the OCaml engine and the
+              frozen JavaScript reference, then compares results and often whole proof records.
+              Node 18 or newer is required. The recorded 2026-08-01 mass run took 12 minutes
+              14 seconds on that machine; your time will depend on hardware.
+            </p>
+            <div class="code-card">
+              <div class="code-head"><span>Terminal · full port-regression gate</span><button class="copy-button" type="button">Copy</button></div>
+              <pre><code>opam exec -- dune exec test/test_differential.exe -- -mass</code></pre>
+            </div>
+            <p>
+              The current archive records zero unexpected disagreement across all 18 comparisons
+              after the latest inference-work-budget maintenance. That is strong regression
+              evidence, not formal verification.
+            </p>
+          </div>
+        </details>
+
+        <details>
+          <summary>Authoring verification record</summary>
+          <div class="details-body">
+            <p>
+              Before this guide was written, the repository worktree was clean. Live probes then
+              confirmed every example in the guide, the five focused gates above, and the forced
+              full suite. The full run included the 26 conformance cases, 62 paper cases, 102,000
+              adversarial inputs, the six 1,000-iteration standing oracle suites, and all 18
+              standing differential comparisons. No source change was made to obtain a green result.
+            </p>
+          </div>
+        </details>
+
+        <div class="checkpoint">
+          <input class="progress-check" id="check-focused-tests" type="checkbox">
+          <label for="check-focused-tests">
+            <strong>The five focused interface gates are green.</strong>
+            <span>I understand what each gate compares rather than treating all green checks as interchangeable.</span>
+          </label>
+        </div>
+        <div class="checkpoint">
+          <input class="progress-check" id="check-full-tests" type="checkbox">
+          <label for="check-full-tests">
+            <strong>The forced full suite completed with exit status 0.</strong>
+            <span>I let the process finish under the supported 4.14.4 switch and did not judge it from partial output.</span>
+          </label>
+        </div>
+      </section>
+
+      <section id="install" data-section>
+        <div class="section-head">
+          <div class="section-number">14</div>
+          <div>
+            <h2>Prove the product works outside its own checkout</h2>
+            <p class="section-kicker">
+              Running <code>dune exec</code> proves the build tree works. Installing into the named
+              switch proves the public executable names and package boundary work from elsewhere.
+            </p>
+          </div>
+        </div>
+
+        <div class="callout warning">
+          <strong>Side effect of this chapter</strong>
+          The next command installs the local Dualithor package into the active
+          supported OCaml 4.14.4 opam switch. It creates the public <code>tfl</code> and
+          <code>dualithor</code> commands there. It uses no system-wide path and no <code>sudo</code>.
+        </div>
+
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · install the local package</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>cd /home/serrecchia/Projects/dualithor
+opam pin add dualithor . --kind=path --no-action --yes
+opam install dualithor --locked --yes</code></pre>
+        </div>
+
+        <p class="mini">
+          The explicit <code>path</code> pin makes opam package the checked-out files you are
+          testing, including deliberate uncommitted changes. Without it, opam recognizes this
+          as a Git repository and may silently rebuild the branch’s last committed revision.
+          <code>--no-action</code> separates that source choice from the locked installation on
+          the next line.
+        </p>
+
+        <p>
+          Now leave the repository, invoke the public command by name, and return. This is a real
+          Phase 3 acceptance check rather than a shortcut through <code>_build</code>.
+        </p>
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · installed command smoke test</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>cd /tmp/dualithor-phase5-tour
+opam exec -- tfl check foundations.tfl
+opam exec -- tfl query foundations.tfl '±Socrates*+Mortal'
+cd /home/serrecchia/Projects/dualithor</code></pre>
+        </div>
+        <div class="output-card">
+          <div class="label">Expected substance</div>
+          <pre><code>foundations.tfl: OK (7 statements)
+yes — the query follows
+Method: PZ (complete)</code></pre>
+        </div>
+
+        <details>
+          <summary>Why the normal shipped dependency surface is smaller</summary>
+          <div class="details-body">
+            <p>
+              A normal Dualithor installation requires Dune, <code>yojson</code>, and OCaml’s base Unix
+              support. The larger Lwt, Cohttp, TLS, and Mirage Crypto graph is selected only by
+              tests and the retained historical translation client. Neither shipped command has
+              a network client.
+            </p>
+          </div>
+        </details>
+
+        <div class="checkpoint">
+          <input class="progress-check" id="check-install" type="checkbox">
+          <label for="check-install">
+            <strong>The installed <code>tfl</code> command worked outside the repository.</strong>
+            <span>I tested the public package boundary, not only the Dune build-tree executable.</span>
+          </label>
+        </div>
+      </section>
+
+      <section id="review" data-section>
+        <div class="section-head">
+          <div class="section-number">15</div>
+          <div>
+            <h2>Make the Phase 5 call from experience</h2>
+            <p class="section-kicker">
+              Green tests answer “does it match its contracts?” They do not answer “is this the
+              language product we want?” Record the product judgment while the experience is fresh.
+            </p>
+          </div>
+        </div>
+
+        <div class="callout">
+          <strong>Your notes are private and local.</strong>
+          Inputs below are stored in this browser profile’s local storage for this file. Nothing is
+          sent anywhere. “Download review” creates a plain-text file only when you click it.
+        </div>
+
+        <div class="grid-2">
+          <div class="review-item">
+            <label for="rating-setup">1. Setup and first-run experience</label>
+            <select id="rating-setup" data-persist>
+              <option value="">Choose after testing</option>
+              <option>Great as it is</option>
+              <option>Usable, with friction</option>
+              <option>Needs attention before Phase 6</option>
+              <option>Blocked</option>
+            </select>
+            <textarea id="notes-setup" data-persist placeholder="What was slow, confusing, surprising, or reassuring?"></textarea>
+          </div>
+
+          <div class="review-item">
+            <label for="rating-syntax">2. TFL notation and English readings</label>
+            <select id="rating-syntax" data-persist>
+              <option value="">Choose after testing</option>
+              <option>Great as it is</option>
+              <option>Usable, with friction</option>
+              <option>Needs attention before Phase 6</option>
+              <option>Blocked</option>
+            </select>
+            <textarea id="notes-syntax" data-persist placeholder="Which forms felt natural? Which readings obscured the formal meaning?"></textarea>
+          </div>
+
+          <div class="review-item">
+            <label for="rating-results">3. Yes, no, unknown, and completeness</label>
+            <select id="rating-results" data-persist>
+              <option value="">Choose after testing</option>
+              <option>Great as it is</option>
+              <option>Usable, with friction</option>
+              <option>Needs attention before Phase 6</option>
+              <option>Blocked</option>
+            </select>
+            <textarea id="notes-results" data-persist placeholder="Could you predict the exit statuses and explain complete versus incomplete results?"></textarea>
+          </div>
+
+          <div class="review-item">
+            <label for="rating-proofs">4. Proofs and evidence</label>
+            <select id="rating-proofs" data-persist>
+              <option value="">Choose after testing</option>
+              <option>Great as it is</option>
+              <option>Usable, with friction</option>
+              <option>Needs attention before Phase 6</option>
+              <option>Blocked</option>
+            </select>
+            <textarea id="notes-proofs" data-persist placeholder="Did the evidence help you trust and debug an answer? What was too low-level?"></textarea>
+          </div>
+
+          <div class="review-item">
+            <label for="rating-repl">5. REPL interaction and recovery</label>
+            <select id="rating-repl" data-persist>
+              <option value="">Choose after testing</option>
+              <option>Great as it is</option>
+              <option>Usable, with friction</option>
+              <option>Needs attention before Phase 6</option>
+              <option>Blocked</option>
+            </select>
+            <textarea id="notes-repl" data-persist placeholder="Did the command vocabulary, history, reload behavior, and recovery feel coherent?"></textarea>
+          </div>
+
+          <div class="review-item">
+            <label for="rating-diagnostics">6. Diagnostics and source locations</label>
+            <select id="rating-diagnostics" data-persist>
+              <option value="">Choose after testing</option>
+              <option>Great as it is</option>
+              <option>Usable, with friction</option>
+              <option>Needs attention before Phase 6</option>
+              <option>Blocked</option>
+            </select>
+            <textarea id="notes-diagnostics" data-persist placeholder="Did every error point to something actionable? Were the classes understandable?"></textarea>
+          </div>
+
+          <div class="review-item">
+            <label for="rating-json">7. JSON and embedding boundaries</label>
+            <select id="rating-json" data-persist>
+              <option value="">Choose after testing</option>
+              <option>Great as it is</option>
+              <option>Usable, with friction</option>
+              <option>Needs attention before Phase 6</option>
+              <option>Blocked</option>
+            </select>
+            <textarea id="notes-json" data-persist placeholder="Were schema, status, completeness, and evidence fields sufficient and legible?"></textarea>
+          </div>
+
+          <div class="review-item">
+            <label for="rating-confidence">8. Correctness evidence</label>
+            <select id="rating-confidence" data-persist>
+              <option value="">Choose after testing</option>
+              <option>Great as it is</option>
+              <option>Usable, with friction</option>
+              <option>Needs attention before Phase 6</option>
+              <option>Blocked</option>
+            </select>
+            <textarea id="notes-confidence" data-persist placeholder="Which gate increased confidence? Which important claim still lacks the evidence you want?"></textarea>
+          </div>
+        </div>
+
+        <div class="review-item" style="margin-top:1rem">
+          <label for="final-call">Your current Phase 5 judgment</label>
+          <select id="final-call" data-persist>
+            <option value="">Choose after the complete tour</option>
+            <option>Proceed to Phase 6</option>
+            <option>Proceed, but record non-blocking product debt</option>
+            <option>Pause for a named repair before Phase 6</option>
+            <option>I need another learning pass before deciding</option>
+          </select>
+          <textarea id="notes-final" data-persist placeholder="Name the strongest positive, the largest concern, and the exact evidence behind each."></textarea>
+          <div class="button-row">
+            <button class="primary" id="downloadReview" type="button">Download review</button>
+            <button id="clearReview" type="button">Clear review fields</button>
+          </div>
+        </div>
+
+        <div class="checkpoint">
+          <input class="progress-check" id="check-review" type="checkbox">
+          <label for="check-review">
+            <strong>I recorded an evidence-backed product judgment.</strong>
+            <span>My call distinguishes verified behavior, personal reaction, and unverified questions.</span>
+          </label>
+        </div>
+      </section>
+
+      <section id="limits" data-section>
+        <div class="section-head">
+          <div class="section-number">16</div>
+          <div>
+            <h2>Leave with the honest boundary in your head</h2>
+            <p class="section-kicker">
+              The current kernel is real and usable. It is not yet the full language promised by
+              the roadmap, and nonexistent features should not be redescribed as broken versions
+              of something that exists.
+            </p>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card accent">
+            <h3>Exists and was exercised</h3>
+            <ul>
+              <li>Parser, canonical printer, and deterministic English display</li>
+              <li>Categorical, fixed-reference, compound, relational, proposition-term, and limited levelled forms</li>
+              <li>Complete atomic P/Z decision and bounded non-atomic proof search</li>
+              <li>Whole-program compile, query, describe, consistency, and equivalence operations</li>
+              <li>UTF-8 <code>.tfl</code> files, human CLI, REPL, and two stable JSON schemas</li>
+              <li>Proofs or certificates, explicit completeness, source spans, and classified failures</li>
+            </ul>
+          </div>
+          <div class="card warning">
+            <h3>Does not yet exist in <code>core-0.1</code></h3>
+            <ul>
+              <li>Answer variables</li>
+              <li>User-defined rules and recursion</li>
+              <li>Modules, imports, declarations, or name resolution</li>
+              <li>Full Numerical Term Logic</li>
+              <li>Modal, relevance, free-term, or synthetic profiles</li>
+              <li>Negation as failure or implicit closed-world mode</li>
+              <li>A public <code>both</code> query result</li>
+            </ul>
+          </div>
+        </div>
+
+        <h3>Current behavior that must retain its label</h3>
+        <ul>
+          <li>Relational and compound search is bounded and incomplete; a miss is not invalidity.</li>
+          <li>Term descriptions return proven answers but not a guaranteed exhaustive answer set.</li>
+          <li>The numerical layer is a sound sufficient-condition rule set, not a complete numerical decision procedure.</li>
+          <li>English can be awkward and is never authoritative over formal meaning.</li>
+          <li>Consistency for non-atomic programs can be undetermined when no contradiction is found.</li>
+          <li>Size and work budgets can return <code>resource_limit</code> instead of a logical result.</li>
+        </ul>
+
+        <div class="callout">
+          <strong>What Phase 6 actually is</strong>
+          Phase 6 locks the primary sources, semantics, profile boundaries, proof procedures,
+          completeness claims, and permitted combinations for the published extension family.
+          It is contract and source work before extension syntax. The plan explicitly forbids
+          implementing new extension syntax before that foundation agrees.
+        </div>
+
+        <h3>Clean up the disposable examples when you are done</h3>
+        <p>
+          This removes only the exact scratch directory created by this guide. The deletion is not
+          recoverable from that directory, but every file in it can be recreated from the commands above.
+        </p>
+        <div class="code-card">
+          <div class="code-head"><span>Terminal · optional exact cleanup</span><button class="copy-button" type="button">Copy</button></div>
+          <pre><code>rm -r /tmp/dualithor-phase5-tour</code></pre>
+        </div>
+
+        <div class="source-list">
+          <a class="source-link" href="./docs/engine-surface.md" target="_blank">
+            <strong>docs/engine-surface.md</strong><span>Total API and failure taxonomy</span>
+          </a>
+          <a class="source-link" href="./SECURITY.md" target="_blank">
+            <strong>SECURITY.md</strong><span>Trust boundaries, limits, and audit history</span>
+          </a>
+          <a class="source-link" href="./data/conformance/core-0.1.json" target="_blank">
+            <strong>data/conformance/core-0.1.json</strong><span>26 normative executable cases</span>
+          </a>
+          <a class="source-link" href="./docs/differential-report.md" target="_blank">
+            <strong>docs/differential-report.md</strong><span>884,000-input handover evidence and limits</span>
+          </a>
+        </div>
+
+        <div class="checkpoint">
+          <input class="progress-check" id="check-limits" type="checkbox">
+          <label for="check-limits">
+            <strong>I know exactly where Phase 5 stops.</strong>
+            <span>I can name what exists, what is incomplete, what is nonexistent, and why Phase 6 is next.</span>
+          </label>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <p>
+          Built as a self-contained local guide for
+          <code>/home/serrecchia/Projects/dualithor</code>. No external asset loads, no telemetry,
+          no project-source edits. Snapshot claims were verified against repository files and live
+          commands on 2026-08-15.
+        </p>
+      </footer>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      var progressKey = "dualithor-phase5-guide-progress-v1";
+      var reviewKey = "dualithor-phase5-guide-review-v1";
+      var themeKey = "dualithor-phase5-guide-theme-v1";
+      var legacyProgressKey = "horos-phase5-guide-progress-v1";
+      var legacyReviewKey = "horos-phase5-guide-review-v1";
+      var legacyThemeKey = "horos-phase5-guide-theme-v1";
+      var checks = Array.prototype.slice.call(document.querySelectorAll(".progress-check"));
+      var toast = document.getElementById("toast");
+      var toastTimer;
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add("show");
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(function () {
+          toast.classList.remove("show");
+        }, 1800);
+      }
+
+      function safeLoad(key, fallback) {
+        try {
+          var value = localStorage.getItem(key);
+          return value ? JSON.parse(value) : fallback;
+        } catch (error) {
+          return fallback;
+        }
+      }
+
+      function safeSave(key, value) {
+        try {
+          localStorage.setItem(key, JSON.stringify(value));
+        } catch (error) {
+          showToast("Browser storage is unavailable; progress will last only for this page.");
+        }
+      }
+
+      function migrateStoredValue(legacyKey, currentKey) {
+        try {
+          if (localStorage.getItem(currentKey) !== null) return;
+          var legacyValue = localStorage.getItem(legacyKey);
+          if (legacyValue === null) return;
+          localStorage.setItem(currentKey, legacyValue);
+          localStorage.removeItem(legacyKey);
+        } catch (error) {
+          /* The guide still works without persistent browser storage. */
+        }
+      }
+
+      migrateStoredValue(legacyProgressKey, progressKey);
+      migrateStoredValue(legacyReviewKey, reviewKey);
+      migrateStoredValue(legacyThemeKey, themeKey);
+
+      function updateProgress() {
+        var done = checks.filter(function (box) { return box.checked; }).length;
+        var total = checks.length;
+        var percent = total ? Math.round((done / total) * 100) : 0;
+        document.getElementById("progressText").textContent = done + " of " + total + " checkpoints";
+        document.getElementById("progressPercent").textContent = percent + "%";
+        document.getElementById("progressFill").style.width = percent + "%";
+      }
+
+      var savedProgress = safeLoad(progressKey, {});
+      checks.forEach(function (box) {
+        box.checked = Boolean(savedProgress[box.id]);
+        box.addEventListener("change", function () {
+          var state = {};
+          checks.forEach(function (item) { state[item.id] = item.checked; });
+          safeSave(progressKey, state);
+          updateProgress();
+        });
+      });
+      updateProgress();
+
+      document.getElementById("resumeButton").addEventListener("click", function () {
+        var next = checks.find(function (box) { return !box.checked; });
+        var target = next ? next.closest("section") : document.getElementById("review");
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+
+      document.getElementById("resetProgress").addEventListener("click", function () {
+        if (!window.confirm("Reset all guide checkpoints? Review notes will be kept.")) return;
+        checks.forEach(function (box) { box.checked = false; });
+        safeSave(progressKey, {});
+        updateProgress();
+        showToast("Progress reset.");
+      });
+
+      function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text);
+        }
+        return new Promise(function (resolve, reject) {
+          var area = document.createElement("textarea");
+          area.value = text;
+          area.setAttribute("readonly", "");
+          area.style.position = "fixed";
+          area.style.opacity = "0";
+          document.body.appendChild(area);
+          area.select();
+          try {
+            document.execCommand("copy");
+            resolve();
+          } catch (error) {
+            reject(error);
+          } finally {
+            area.remove();
+          }
+        });
+      }
+
+      document.querySelectorAll(".copy-button").forEach(function (button) {
+        button.addEventListener("click", function () {
+          var code = button.closest(".code-card").querySelector("code").textContent;
+          copyText(code).then(function () {
+            var original = button.textContent;
+            button.textContent = "Copied";
+            showToast("Copied exactly as shown.");
+            window.setTimeout(function () { button.textContent = original; }, 1300);
+          }).catch(function () {
+            showToast("Copy failed; select the command text manually.");
+          });
+        });
+      });
+
+      document.querySelectorAll(".quiz-toggle").forEach(function (button) {
+        button.addEventListener("click", function () {
+          var answer = button.parentElement.querySelector(".quiz-answer");
+          var visible = answer.classList.toggle("visible");
+          button.setAttribute("aria-expanded", String(visible));
+          button.textContent = visible ? "Hide answer" : "Reveal answer";
+        });
+      });
+
+      var savedReview = safeLoad(reviewKey, {});
+      var reviewFields = Array.prototype.slice.call(document.querySelectorAll("[data-persist]"));
+      reviewFields.forEach(function (field) {
+        if (Object.prototype.hasOwnProperty.call(savedReview, field.id)) {
+          field.value = savedReview[field.id];
+        }
+        field.addEventListener("input", function () {
+          var state = {};
+          reviewFields.forEach(function (item) { state[item.id] = item.value; });
+          safeSave(reviewKey, state);
+        });
+      });
+
+      document.getElementById("clearReview").addEventListener("click", function () {
+        if (!window.confirm("Clear every review rating and note? Download first if you want a copy.")) return;
+        reviewFields.forEach(function (field) { field.value = ""; });
+        safeSave(reviewKey, {});
+        showToast("Review fields cleared.");
+      });
+
+      document.getElementById("downloadReview").addEventListener("click", function () {
+        var lines = [
+          "Dualithor Phase 5 hands-on review",
+          "Generated: " + new Date().toLocaleString(),
+          "Repository snapshot guide: audit/describe-work-budget working tree (2026-08-15)",
+          ""
+        ];
+        reviewFields.forEach(function (field) {
+          var label = document.querySelector('label[for="' + field.id + '"]');
+          if (label) lines.push(label.textContent.trim());
+          lines.push(field.value.trim() || "(no response)");
+          lines.push("");
+        });
+        var completed = checks.filter(function (box) { return box.checked; }).length;
+        lines.push("Guide checkpoints: " + completed + " of " + checks.length);
+        var blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement("a");
+        link.href = url;
+        link.download = "dualithor-phase5-review.txt";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        showToast("Review downloaded.");
+      });
+
+      var initialTheme = null;
+      try {
+        initialTheme = localStorage.getItem(themeKey);
+      } catch (error) {
+        initialTheme = null;
+      }
+      if (!initialTheme && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        initialTheme = "dark";
+      }
+      if (initialTheme === "dark") document.documentElement.dataset.theme = "dark";
+
+      function updateThemeLabel() {
+        var dark = document.documentElement.dataset.theme === "dark";
+        document.getElementById("themeToggle").textContent = dark ? "Light" : "Dark";
+      }
+      updateThemeLabel();
+
+      document.getElementById("themeToggle").addEventListener("click", function () {
+        var dark = document.documentElement.dataset.theme === "dark";
+        if (dark) {
+          delete document.documentElement.dataset.theme;
+          try { localStorage.setItem(themeKey, "light"); } catch (error) { /* Theme still changes for this page. */ }
+        } else {
+          document.documentElement.dataset.theme = "dark";
+          try { localStorage.setItem(themeKey, "dark"); } catch (error) { /* Theme still changes for this page. */ }
+        }
+        updateThemeLabel();
+      });
+
+      document.getElementById("printGuide").addEventListener("click", function () { window.print(); });
+      document.getElementById("expandAll").addEventListener("click", function () {
+        document.querySelectorAll("details").forEach(function (item) { item.open = true; });
+      });
+      document.getElementById("collapseAll").addEventListener("click", function () {
+        document.querySelectorAll("details").forEach(function (item) { item.open = false; });
+      });
+
+      var links = Array.prototype.slice.call(document.querySelectorAll(".toc a"));
+      var sections = Array.prototype.slice.call(document.querySelectorAll("[data-section]"));
+      if ("IntersectionObserver" in window) {
+        var observer = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (!entry.isIntersecting) return;
+            links.forEach(function (link) {
+              link.classList.toggle("active", link.getAttribute("href") === "#" + entry.target.id);
+            });
+          });
+        }, { rootMargin: "-18% 0px -70% 0px", threshold: 0 });
+        sections.forEach(function (section) { observer.observe(section); });
+      }
+    }());
+  </script>
+</body>
+</html>

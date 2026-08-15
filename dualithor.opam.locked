@@ -1,13 +1,13 @@
 opam-version: "2.0"
-name: "horos"
+name: "dualithor"
 version: "dev"
 synopsis:
   "A proof-producing logic programming language based on term logic (TFL)"
 maintainer: "Kyle Serrecchia <kserrec@gmail.com>"
 authors: "Kyle Serrecchia <kserrec@gmail.com>"
 license: "MIT"
-homepage: "https://github.com/kserrec/horos"
-bug-reports: "https://github.com/kserrec/horos/issues"
+homepage: "https://github.com/kserrec/dualithor"
+bug-reports: "https://github.com/kserrec/dualithor/issues"
 depends: [
   "angstrom" {= "0.16.1" & with-test}
   "asn1-combinators" {= "0.3.2" & with-test}
@@ -97,7 +97,7 @@ build: [
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/kserrec/horos.git"
+dev-repo: "git+https://github.com/kserrec/dualithor.git"
 pin-depends: [
   [
     "mirage-crypto.2.3.0"
