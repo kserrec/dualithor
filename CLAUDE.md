@@ -4,7 +4,7 @@ Guidance for coding agents working in this repository.
 
 ## What this is
 
-Horos is an OCaml implementation of a proof-producing logic programming language
+Dualithor is an OCaml implementation of a proof-producing logic programming language
 based on term logic (TFL). The existing parser, inference engine, program operations,
 renderer, and correctness harness are the language kernel. The active job is to build the
 complete language described in `PLAN.md` without silently replacing TFL semantics with
@@ -22,10 +22,10 @@ old project look as though it never existed.
 `data/conformance/core-0.1.json` is its executable, language-neutral example corpus. An
 implementation disagreement with those artifacts is a contract defect, not an implicit
 language change. `docs/runtime-api.md` specifies the total `Tfl.Runtime` production API and
-the `horos-runtime-0.1` JSON-lines boundary. `docs/command-line.md` specifies UTF-8 `.tfl`
+the `dualithor-runtime-0.1` JSON-lines boundary. `docs/command-line.md` specifies UTF-8 `.tfl`
 files, the human `tfl` executable, `tfl-cli-0.1`, diagnostic locations, and exit statuses.
 
-**Naming convention:** the project is Horos, the repository and package are `horos`; the
+**Naming convention:** the project is Dualithor, the repository and package are `dualithor`; the
 language is TFL; the eventual human executable is `tfl`. In ordinary code and documentation, call the logic
 “term logic” or “TFL.” Spell out the literature name only where it adds needed context,
 because “functor” otherwise means an unrelated OCaml module construct.
@@ -76,7 +76,7 @@ caches results; use `--force` when a real rerun is required.
   systems, generalized frameworks, configuration, or abstractions without a current use.
 - A dependency must earn its place. Keep `yojson` for the JSON boundary and `qcheck` for
   property testing. The Cohttp/TLS graph exists only for tests and manual development of
-  the retained legacy translation client; it must not enter the normal installed Horos
+  the retained legacy translation client; it must not enter the normal installed Dualithor
   runtime. Any new dependency needs a real use site and a one-line cost/reason record
   before it is added.
 - Tests protect concrete threats: a wrong verdict, hidden incompleteness, changed proof,

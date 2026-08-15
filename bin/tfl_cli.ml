@@ -226,7 +226,7 @@ let usage program_name =
 
 Every reply is one JSON object. Protocol failures carry an "error" field.
 Runtime compile or operation failures carry "ok":false, schema
-"horos-runtime-0.1", and an "errors" array; each error has a class (lexical |
+"dualithor-runtime-0.1", and an "errors" array; each error has a class (lexical |
 syntactic | outside_fragment | resource_limit | internal), which is the
 fragment-membership signal. The older check, parse, and render commands retain
 their original response shapes.

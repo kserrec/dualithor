@@ -1,12 +1,13 @@
-# Horos public runtime API
+# Dualithor public runtime API
 
 | Contract metadata | Value |
 |---|---|
-| Schema | `horos-runtime-0.1` |
+| Schema | `dualithor-runtime-0.1` |
 | Introduced | 2026-08-09 |
+| Product and schema identity updated | 2026-08-15 |
 | Source-span fields added | 2026-08-11 |
 | OCaml module | `Tfl.Runtime` |
-| Process | `horos` (`bin/tfl_cli.exe` in the source tree) |
+| Process | `dualithor` (`bin/tfl_cli.exe` in the source tree) |
 | Human command | `tfl`, specified separately in [command-line.md](command-line.md) |
 
 This is the production boundary for executing a complete `core-0.1` TFL program. The
@@ -114,7 +115,7 @@ The Phase 2 commands are:
 Successful Phase 2 responses contain:
 
 ```json
-{"ok":true,"schema":"horos-runtime-0.1","operation":"..."}
+{"ok":true,"schema":"dualithor-runtime-0.1","operation":"..."}
 ```
 
 Compile or operation failures contain `ok:false`, the same schema, and an `errors` array.

@@ -1,8 +1,44 @@
-# Horos plan archive
+# Dualithor plan archive
 
-Completed phases moved verbatim from PLAN.md. This file is the permanent record;
-entries are never condensed or reordered. Each entry keeps the wording it had in the
-plan at completion. The live plan (PLAN.md) keeps a one-line pointer to each entry.
+Completed phases moved from PLAN.md. This file is the permanent delivery record;
+entries are never condensed or reordered. Each entry keeps its completion evidence and
+delivery details, while project-wide product, package, process, and protocol identity
+renames are normalized to the current name. The live plan (PLAN.md) keeps a one-line
+pointer to each entry.
+
+---
+
+### Maintenance phase — 2026-08-15 Dualithor identity cutover ✅ COMPLETE
+
+This approved maintenance phase replaces the former public product, engine, package,
+process, repository, and protocol identity with “Dualithor.” The TFL language name and the
+human-facing `tfl` command remain unchanged.
+
+1. Rename the Dune project and package, public OCaml libraries, installable engine command,
+   runtime schema identifier, repository metadata, CI references, tests, and documentation.
+2. Rename the hands-on guide without losing saved browser progress or invalidating the old
+   local guide filename during the transition.
+3. Verify the build, focused command and source-file suites, full repository suite, opam
+   metadata, locked working-tree installation, installed commands outside the repository,
+   and the guide in a real headless browser.
+4. Rename the public GitHub repository and update the local `origin` remote.
+
+**Acceptance:** active product surfaces consistently say Dualithor; TFL syntax, semantics,
+and the `tfl` command are unchanged; the only retained former-name text is compatibility
+data for the old guide; both installed commands work outside the build tree; all
+verification is green; and the public repository is reachable as `kserrec/dualithor`.
+
+**Delivered:** the package is `dualithor`, the public libraries are `dualithor.tfl` and
+`dualithor.verify`, the engine executable is `dualithor`, and runtime replies identify schema
+`dualithor-runtime-0.1`. The `tfl` command and every logical rule remain unchanged. The guide
+is now `DUALITHOR-PHASE-5-HANDS-ON.html`; an old-filename compatibility link and a one-time
+browser-storage migration preserve existing readers' progress. The checkout now lives at
+`/home/serrecchia/Projects/dualithor`; an old-path compatibility link keeps active tools and
+saved shell locations working during the transition. The public repository is
+`https://github.com/kserrec/dualithor`, and local `origin` uses that destination.
+The focused suites, forced clean-cache full Dune suite, both opam lints, locked path-pinned
+install, outside-repository `tfl`/`dualithor` probes, JavaScript syntax check, and
+headless-browser loads all passed.
 
 ---
 
@@ -96,7 +132,7 @@ receiving an uncaught exception.
 **Delivered:** `Tfl.Runtime` is the one total production API over an abstract,
 all-lines-valid compiled program. Stable records expose canonical TFL, English, explicit
 completeness reasons, and proof/certificate/numerical/equivalence support. The
-`horos-runtime-0.1` JSON-lines commands compile, query, describe, check consistency, and
+`dualithor-runtime-0.1` JSON-lines commands compile, query, describe, check consistency, and
 compare equivalence without breaking the existing request/reply stream. Focused runtime,
 program, safety, and process-boundary tests are green. The 2026-08-10 post-completion
 security audit probed the new boundary hostilely and found no defect (recorded in
@@ -126,7 +162,7 @@ installable `tfl` executable checks files, runs ground queries, describes terms,
 propositions with terminal text by default and explicit `tfl-cli-0.1` under `--json`. Exit
 statuses distinguish success, complete logical non-entailment, input/compile failure,
 incomplete search, and internal failure; incomplete contradictory support stays incomplete
-rather than overclaiming non-entailment. The existing `horos` JSON-lines boundary shares
+rather than overclaiming non-entailment. The existing `dualithor` JSON-lines boundary shares
 runtime serializers and remains byte-contract compatible. Focused loader, command,
 runtime, program, process, and adversarial suites are green; the forced full suite and an
 isolated-prefix install/query from outside the checkout are also green.
@@ -136,7 +172,7 @@ output now renders terminal controls and malformed path bytes visibly, and the l
 rejects FIFOs, devices, sockets, directories, and symlinks to nonregular targets without
 waiting for content. Repository guards now cover every dotenv filename variant. The
 historical translation client's Lwt/Cohttp/TLS/Mirage graph is retained for tests and
-manual development but filtered out of a normal Horos installation in both the generated
+manual development but filtered out of a normal Dualithor installation in both the generated
 manifest and transitive lock.
 
 The follow-on Phase 3 test audit used ten targeted invalid mutations to challenge those

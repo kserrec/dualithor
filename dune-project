@@ -1,19 +1,19 @@
 (lang dune 3.6)
 
-(name horos)
+(name dualithor)
 
 (authors "Kyle Serrecchia <kserrec@gmail.com>")
 (maintainers "Kyle Serrecchia <kserrec@gmail.com>")
 (license MIT)
-(homepage https://github.com/kserrec/horos)
-(bug_reports https://github.com/kserrec/horos/issues)
+(homepage https://github.com/kserrec/dualithor)
+(bug_reports https://github.com/kserrec/dualithor/issues)
 (source
- (github kserrec/horos))
+ (github kserrec/dualithor))
 
 (generate_opam_files true)
 
 (package
- (name horos)
+ (name dualithor)
  (synopsis "A proof-producing logic programming language based on term logic (TFL)")
  (depends
   (ocaml
@@ -24,7 +24,7 @@
   (qcheck-core :with-test)
   yojson
   ;; The retained translation client is historical development code, not an
-  ;; installed Horos runtime. Keep its network/TLS graph behind [with-test] so
+  ;; installed Dualithor runtime. Keep its network/TLS graph behind [with-test] so
   ;; a normal [tfl] installation has no network stack.
   (lwt :with-test)
   (cohttp-lwt-unix :with-test)

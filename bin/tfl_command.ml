@@ -1,5 +1,5 @@
 (* Human-facing command line introduced in Phase 3 and extended with the
-   Phase 4 REPL and Phase 5 source diagnostics. The long-lived [horos]
+   Phase 4 REPL and Phase 5 source diagnostics. The long-lived [dualithor]
    JSON-lines process remains a separate executable and protocol. *)
 
 type diagnostic = {

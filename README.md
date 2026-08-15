@@ -1,8 +1,7 @@
-# Horos
+# Dualithor
 
-Horos is an in-development, proof-producing logic programming language based on Term
-Functor Logic (TFL), implemented in OCaml. Its name comes from the ancient Greek word for
-“term.”
+Dualithor is an in-development, proof-producing logic programming language based on Term
+Functor Logic (TFL), implemented in OCaml.
 
 The project is being rebuilt around the language that was already hiding inside the former
 TFL-Verify research system. The existing engine can parse TFL, decide supported fragments,
@@ -68,8 +67,8 @@ opam exec -- dune test
 ```
 
 `--with-test` deliberately installs the larger offline test and retained legacy-translation
-development graph. A normal Horos package installation selects no Lwt, Cohttp, TLS, or
-Mirage Crypto dependency; the shipped `tfl` and `horos` commands have no network client.
+development graph. A normal Dualithor package installation selects no Lwt, Cohttp, TLS, or
+Mirage Crypto dependency; the shipped `tfl` and `dualithor` commands have no network client.
 
 Save a program such as this as `knowledge.tfl`:
 
@@ -90,7 +89,7 @@ tfl repl knowledge.tfl
 
 Add `--json` to a one-shot command to request a stable `tfl-cli-0.1` machine record;
 `tfl repl --json FILE.tfl` instead emits a `tfl-repl-0.1` JSON-lines session stream. The
-separate `horos` executable remains the long-lived JSON-lines engine boundary. For example:
+separate `dualithor` executable remains the long-lived JSON-lines engine boundary. For example:
 
 ```bash
 printf '%s\n' '{"cmd":"query","program":"+-Socrates*+Man\n-Man+Mortal","query":"+-Socrates*+Mortal"}' | opam exec -- dune exec bin/tfl_cli.exe
@@ -103,7 +102,7 @@ printf '%s\n' '{"cmd":"query","program":"+-Socrates*+Man\n-Man+Mortal","query":"
 - `PLAN.md` — the authoritative language roadmap and acceptance checks.
 - `docs/core-language.md` — the normative `core-0.1` syntax, semantics, result, and limits
   reference; `docs/port-spec.md` is its detailed mechanics appendix.
-- `docs/runtime-api.md` — the total OCaml runtime and `horos-runtime-0.1` JSON contract.
+- `docs/runtime-api.md` — the total OCaml runtime and `dualithor-runtime-0.1` JSON contract.
 - `docs/command-line.md` — `.tfl` file, human command, REPL, JSON/session mode,
   diagnostic-location, and exit-status contracts.
 - `data/conformance/core-0.1.json` — language-neutral normative examples checked by the

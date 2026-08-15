@@ -265,7 +265,7 @@ let replace_file path contents =
   close_out channel
 
 let with_temp contents run =
-  let path, channel = Filename.open_temp_file "horos-command-" ".tfl" in
+  let path, channel = Filename.open_temp_file "dualithor-command-" ".tfl" in
   output_string channel contents;
   close_out channel;
   Fun.protect ~finally:(fun () -> Sys.remove path) (fun () -> run path)
@@ -325,7 +325,7 @@ let contains text fragment =
   fragment = "" || search 0
 
 let with_non_utf8_temp contents run =
-  let path, channel = Filename.open_temp_file "horos-command-\255-" ".tfl" in
+  let path, channel = Filename.open_temp_file "dualithor-command-\255-" ".tfl" in
   output_string channel contents;
   close_out channel;
   Fun.protect
@@ -353,7 +353,7 @@ let terminal_controls =
 let with_terminal_control_temp contents run =
   let controls = terminal_controls |> List.map fst |> String.concat "" in
   let path, channel =
-    Filename.open_temp_file ("horos-command-" ^ controls ^ "spoof-") ".tfl"
+    Filename.open_temp_file ("dualithor-command-" ^ controls ^ "spoof-") ".tfl"
   in
   output_string channel contents;
   close_out channel;
