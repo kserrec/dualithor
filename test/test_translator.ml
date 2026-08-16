@@ -14,10 +14,13 @@ let payload translations untranslatable : Schema.payload =
   {
     translations =
       List.map
-        (fun (nl, tfl, confidence) : Schema.translation -> { nl; tfl; confidence })
+        (fun (nl, tfl, confidence) : Schema.translation ->
+          { nl; tfl; confidence })
         translations;
     untranslatable =
-      List.map (fun (nl, reason) : Schema.untranslatable -> { nl; reason }) untranslatable;
+      List.map
+        (fun (nl, reason) : Schema.untranslatable -> { nl; reason })
+        untranslatable;
   }
 
 let outcome_name (o : Translator.outcome) =
@@ -55,7 +58,9 @@ let () =
           check_eq tfl "-Auditor+";
           check (confidence = 0.4) "confidence not carried through";
           check
-            (List.mem (Tfl.Safe.kind_name failure.kind) [ "lexical"; "syntactic" ])
+            (List.mem
+               (Tfl.Safe.kind_name failure.kind)
+               [ "lexical"; "syntactic" ])
             ("expected a parse class, got " ^ Tfl.Safe.kind_name failure.kind)
       | other -> failwith ("expected unparseable, got " ^ outcome_name other));
   expect "a declined sentence is a first-class outcome"
@@ -64,8 +69,11 @@ let () =
     "declined";
   (* Without this, a model that quietly drops a sentence shrinks the
      denominator and flatters every rate we report. *)
-  expect "a dropped sentence is reported, not forgotten" "Every auditor is an employee."
-    (payload [ ("Some contractor works for a subsidiary.", "+C+(Work+S)", 0.8) ] [])
+  expect "a dropped sentence is reported, not forgotten"
+    "Every auditor is an employee."
+    (payload
+       [ ("Some contractor works for a subsidiary.", "+C+(Work+S)", 0.8) ]
+       [])
     "absent"
 
 (* ── The matching rule, and what it refuses ────────────────────────────── *)
@@ -75,8 +83,11 @@ let () =
     "Every  auditor is an employee."
     (payload [ ("every auditor is an employee.", "-Auditor+Employee", 0.9) ] [])
     "translated";
-  expect "leading and trailing whitespace still match" "Every auditor is an employee."
-    (payload [ ("\n  Every auditor is an employee.  ", "-Auditor+Employee", 0.9) ] [])
+  expect "leading and trailing whitespace still match"
+    "Every auditor is an employee."
+    (payload
+       [ ("\n  Every auditor is an employee.  ", "-Auditor+Employee", 0.9) ]
+       [])
     "translated";
   (* The refusal that matters: a paraphrase is not a match. Pairing a formula
      with a sentence it may not be about is worse than reporting nothing,
@@ -85,10 +96,13 @@ let () =
     "Every auditor is an employee."
     (payload [ ("All auditors are employees.", "-Auditor+Employee", 0.9) ] [])
     "absent";
-  test "an unmatched reply is surfaced as extra, not silently dropped" (fun () ->
+  test "an unmatched reply is surfaced as extra, not silently dropped"
+    (fun () ->
       let _, extra =
         classify_one "Every auditor is an employee."
-          (payload [ ("All auditors are employees.", "-Auditor+Employee", 0.9) ] [])
+          (payload
+             [ ("All auditors are employees.", "-Auditor+Employee", 0.9) ]
+             [])
       in
       check_eq (String.concat "|" extra) "All auditors are employees.")
 
@@ -108,17 +122,22 @@ let () =
         (String.concat "," (List.map (fun (i : Translator.item) -> i.nl) items))
         "First.,Second.,Third.";
       check_eq
-        (String.concat "," (List.map (fun i -> outcome_name i.Translator.outcome) items))
+        (String.concat ","
+           (List.map (fun i -> outcome_name i.Translator.outcome) items))
         "translated,declined,translated");
   test "a repeated sentence uses the first answer and surfaces the duplicate"
     (fun () ->
       let p =
         payload
-          [ ("Every auditor is an employee.", "-Auditor+Employee", 0.9);
-            ("Every auditor is an employee.", "-Auditor+Manager", 0.2) ]
+          [
+            ("Every auditor is an employee.", "-Auditor+Employee", 0.9);
+            ("Every auditor is an employee.", "-Auditor+Manager", 0.2);
+          ]
           []
       in
-      let items, extra = Translator.classify p [ "Every auditor is an employee." ] in
+      let items, extra =
+        Translator.classify p [ "Every auditor is an employee." ]
+      in
       (match (List.hd items).outcome with
       | Translated { tfl; _ } -> check_eq tfl "-Auditor+Employee"
       | other -> failwith ("expected translated, got " ^ outcome_name other));
@@ -134,15 +153,19 @@ let () =
       in
       let items, _ = Translator.classify p sentences in
       let s = Translator.stats items in
-      check (s.total = 4 && s.translated = 2 && s.unparseable = 1 && s.declined = 1)
-        (Printf.sprintf "counts wrong: %d/%d/%d/%d" s.total s.translated s.unparseable
-           s.declined);
+      check
+        (s.total = 4 && s.translated = 2 && s.unparseable = 1 && s.declined = 1)
+        (Printf.sprintf "counts wrong: %d/%d/%d/%d" s.total s.translated
+           s.unparseable s.declined);
       match Translator.parse_rate s with
       | Some r -> check (Float.abs (r -. (2. /. 3.)) < 1e-9) "expected 2/3"
       | None -> failwith "expected a rate");
   test "parse rate is absent when nothing was attempted" (fun () ->
-      let items, _ = Translator.classify (payload [] [ ("a", "tense") ]) [ "a" ] in
-      check (Translator.parse_rate (Translator.stats items) = None)
+      let items, _ =
+        Translator.classify (payload [] [ ("a", "tense") ]) [ "a" ]
+      in
+      check
+        (Translator.parse_rate (Translator.stats items) = None)
         "an all-declined run has no parse rate")
 
 let () = finish "translator harness"

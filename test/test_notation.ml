@@ -189,7 +189,8 @@ let run_unit_tests () =
   test "quoted terms reject terminal control sequences" (fun () ->
       fails_with "+\"red\x1b[31m\"+P" "Control and bidirectional";
       fails_with "+\"carriage\rreturn\"+P" "Control and bidirectional");
-  test "unsafe bare characters are named without replaying the control" (fun () ->
+  test "unsafe bare characters are named without replaying the control"
+    (fun () ->
       let expect_code src code =
         match parse_proposition src with
         | _ -> failwith "an unsafe character should have been refused"

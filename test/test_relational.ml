@@ -11,12 +11,7 @@ open Harness
 let expect_work_limit premises conclusion label =
   match Tfl.Safe.check ~premises ~conclusion with
   | Error
-      {
-        kind = Tfl.Safe.Resource_limit;
-        where = Some "argument";
-        message;
-        _;
-      } ->
+      { kind = Tfl.Safe.Resource_limit; where = Some "argument"; message; _ } ->
       check
         (message = Tfl.Derive.work_limit_message Tfl.Derive.default_max_work)
         (label ^ ": wrong resource-limit message")
@@ -30,8 +25,8 @@ let expect_work_limit premises conclusion label =
            (verdict_name result))
 
 let semantically_entails premises conclusion =
-  Semantics.counter_model ~max_n:4 ~cap:2_000_000
-    (List.map p premises) (p conclusion)
+  Semantics.counter_model ~max_n:4 ~cap:2_000_000 (List.map p premises)
+    (p conclusion)
   = None
 
 let () =
@@ -135,14 +130,11 @@ let () =
            [ "+Philosopher+(Teaches−Student)" ]
            "−Student+(Teaches₂₁+Philosopher)")
         "∃∀ ⊨ ∀∃";
-      check
-        (not (semantically_entails [ "−A+(R+B)" ] "+B+(R₂₁−A)"))
-        "∀∃ ⊭ ∃∀";
+      check (not (semantically_entails [ "−A+(R+B)" ] "+B+(R₂₁−A)")) "∀∃ ⊭ ∃∀";
       expect_work_limit
         [ "+Philosopher+(Teaches−Student)" ]
         "−Student+(Teaches₂₁+Philosopher)" "forward scope search";
-      expect_work_limit [ "−A+(R+B)" ] "+B+(R₂₁−A)"
-        "reverse scope search");
+      expect_work_limit [ "−A+(R+B)" ] "+B+(R₂₁−A)" "reverse scope search");
 
   (* Proterms and pronominalization *)
   test "proterms take wild quantity; general terms still cannot" (fun () ->

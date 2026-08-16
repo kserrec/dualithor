@@ -47,10 +47,11 @@ let few_shots : (string * string) list =
     ("Every man loves some woman.", "-Man+(Lov+Woman)");
     ("Some boy loves some girl.", "+Boy+(Lov+Girl)");
     ("Some boy loves every girl.", "+Boy+(Lov-Girl)");
-    ("Every head of a horse is a head of an animal.",
-     "-(Head+Horse)+(Head+Animal)");
+    ( "Every head of a horse is a head of an animal.",
+      "-(Head+Horse)+(Head+Animal)" );
     ("Mary loves John.", "+-Mary*+(Lov+-John*)");
-    ("Some girl is loved by some boy.", "+Girl+(Lov\xe2\x82\x82\xe2\x82\x81+Boy)");
+    ( "Some girl is loved by some boy.",
+      "+Girl+(Lov\xe2\x82\x82\xe2\x82\x81+Boy)" );
     (* TFL⁺ quantity levels. ^1 many and ^2 most read straight off the sign;
        ^3 does not, and the 2026-08-02 correction is why both are taught. Level
        3 marks the predominant *complement*, so `few S are P` needs the MINUS
@@ -72,15 +73,15 @@ let few_shots : (string * string) list =
 
 let untranslatable_examples : (string * string) list =
   [
-    ("The train left before the bell rang.",
-     "temporal ordering — the notation has no tense or event structure");
-    ("At least three of the five directors approved.",
-     "counting over a fixed set — quantity levels are coarse (many/most/few), \
-      not numeric thresholds");
-    ("Birds normally fly, but penguins do not.",
-     "a default with an exception — the notation has no defeasible reading");
-    ("If the alarm sounds then the door locks.",
-     "a conditional between whole clauses, not a relation between terms");
+    ( "The train left before the bell rang.",
+      "temporal ordering — the notation has no tense or event structure" );
+    ( "At least three of the five directors approved.",
+      "counting over a fixed set — quantity levels are coarse (many/most/few), \
+       not numeric thresholds" );
+    ( "Birds normally fly, but penguins do not.",
+      "a default with an exception — the notation has no defeasible reading" );
+    ( "If the alarm sounds then the door locks.",
+      "a conditional between whole clauses, not a relation between terms" );
   ]
 
 (* ── The system prompt ────────────────────────────────────────────────────
@@ -92,7 +93,8 @@ let render_pairs pairs =
 
 let render_declines pairs =
   String.concat "\n"
-    (List.map (fun (nl, why) -> Printf.sprintf "  %s  ->  declined: %s" nl why)
+    (List.map
+       (fun (nl, why) -> Printf.sprintf "  %s  ->  declined: %s" nl why)
        pairs)
 
 let notation =
@@ -173,7 +175,8 @@ let system : string =
        from.";
       notation;
       "Examples:\n" ^ render_pairs few_shots;
-      "Sentences to decline, and why:\n" ^ render_declines untranslatable_examples;
+      "Sentences to decline, and why:\n"
+      ^ render_declines untranslatable_examples;
       output_contract;
     ]
 
@@ -187,6 +190,7 @@ let user (sentences : string list) : string =
   in
   Printf.sprintf
     "Translate each of these %d sentences. Return the JSON object described \
-     above and nothing else.\n\n%s"
+     above and nothing else.\n\n\
+     %s"
     (List.length sentences)
     (String.concat "\n" numbered)

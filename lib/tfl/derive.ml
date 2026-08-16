@@ -66,8 +66,7 @@ let create_work_budget ?(limit = default_max_work) () =
   { limit; remaining = limit }
 
 let work_limit_message limit =
-  Printf.sprintf
-    "Inference search exceeded the %d-term-node work limit" limit
+  Printf.sprintf "Inference search exceeded the %d-term-node work limit" limit
 
 let consume_work budget amount =
   let amount = max 1 amount in
@@ -170,8 +169,8 @@ let saturate ?(max_lines = 400) ?(max_work = default_max_work) ?work_budget
            @
            let () = consume_work work pair_work in
            List.map
-               (fun p -> (p, "DON", [ !j; !i ]))
-               (Rules.apply_don lj.s_prop li.s_prop)
+             (fun p -> (p, "DON", [ !j; !i ]))
+             (Rules.apply_don lj.s_prop li.s_prop)
          else [])
         @
         if allow "Add" then
@@ -269,8 +268,8 @@ let extract (lines : sat_line array) (roots : int list)
 let size_cap ~slack ~base (props : prop list) =
   List.fold_left (fun acc p -> max acc (Infer.prop_nodes p)) base props + slack
 
-let derive ?max_lines ?max_work ?work_budget ?(slack = 8)
-    (premises : prop list) (goal : prop) : proof =
+let derive ?max_lines ?max_work ?work_budget ?(slack = 8) (premises : prop list)
+    (goal : prop) : proof =
   List.iter Infer.validate_prop premises;
   Infer.validate_prop goal;
   let size_cap = size_cap ~slack ~base:(Infer.prop_nodes goal) premises in

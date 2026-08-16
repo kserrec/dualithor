@@ -27,19 +27,25 @@ let is_body s = function C.Body b -> b = s | _ -> false
 let () =
   (* The regression itself: under the old classification an empty 200 was a
      body, and failed downstream in parse_response — outside the retry loop. *)
-  check "empty 200 body is retried" (is_retry (C.disposition_of ~code:200 ~raw:""));
+  check "empty 200 body is retried"
+    (is_retry (C.disposition_of ~code:200 ~raw:""));
   check "whitespace-only 200 body is retried"
     (is_retry (C.disposition_of ~code:200 ~raw:" \n\t "));
   check "a real 200 body is returned"
-    (is_body {|{"choices":[]}|} (C.disposition_of ~code:200 ~raw:{|{"choices":[]}|}));
-  check "204 with no body is retried" (is_retry (C.disposition_of ~code:204 ~raw:""));
+    (is_body {|{"choices":[]}|}
+       (C.disposition_of ~code:200 ~raw:{|{"choices":[]}|}));
+  check "204 with no body is retried"
+    (is_retry (C.disposition_of ~code:204 ~raw:""));
   (* Unchanged behaviour, pinned so the split did not quietly move it. *)
-  check "429 is retried" (is_retry (C.disposition_of ~code:429 ~raw:"slow down"));
+  check "429 is retried"
+    (is_retry (C.disposition_of ~code:429 ~raw:"slow down"));
   check "500 is retried" (is_retry (C.disposition_of ~code:500 ~raw:"boom"));
   check "503 is retried" (is_retry (C.disposition_of ~code:503 ~raw:"boom"));
   check "401 fails fast" (is_fatal (C.disposition_of ~code:401 ~raw:"bad key"));
-  check "400 fails fast" (is_fatal (C.disposition_of ~code:400 ~raw:"bad request"));
-  check "404 fails fast" (is_fatal (C.disposition_of ~code:404 ~raw:"no such model"))
+  check "400 fails fast"
+    (is_fatal (C.disposition_of ~code:400 ~raw:"bad request"));
+  check "404 fails fast"
+    (is_fatal (C.disposition_of ~code:404 ~raw:"no such model"))
 
 (* ── The retry loop ──────────────────────────────────────────────────────── *)
 
@@ -60,10 +66,14 @@ let attempts_of f =
   (!n, result)
 
 let () =
-  let n, r = attempts_of (fun _ -> Lwt.fail (C.Retryable "empty body on HTTP 200")) in
+  let n, r =
+    attempts_of (fun _ -> Lwt.fail (C.Retryable "empty body on HTTP 200"))
+  in
   check "a retryable failure is attempted three times" (n = 3);
   check "and then reports the last error"
-    (match r with Error (C.Llm_error m) -> m = "empty body on HTTP 200 (after 3 attempts)" | _ -> false);
+    (match r with
+    | Error (C.Llm_error m) -> m = "empty body on HTTP 200 (after 3 attempts)"
+    | _ -> false);
 
   let n, r =
     attempts_of (fun i ->
@@ -73,10 +83,14 @@ let () =
   check "a call that recovers on the third attempt succeeds"
     (n = 3 && r = Ok "recovered");
 
-  let n, r = attempts_of (fun _ -> Lwt.fail (C.Llm_error "HTTP 401: bad key")) in
+  let n, r =
+    attempts_of (fun _ -> Lwt.fail (C.Llm_error "HTTP 401: bad key"))
+  in
   check "a fatal failure is not retried" (n = 1);
   check "and propagates unchanged"
-    (match r with Error (C.Llm_error m) -> m = "HTTP 401: bad key" | _ -> false);
+    (match r with
+    | Error (C.Llm_error m) -> m = "HTTP 401: bad key"
+    | _ -> false);
 
   (* An unexpected exception (a network drop surfacing as Unix_error, say) is
      transient by default — the old loop did this and it stays. *)
@@ -104,13 +118,17 @@ let () =
    the narrower empty-body case one layer down. A structured provider error is
    different in kind and still fails fast. *)
 
-let raises_retryable f = match f () with _ -> false | exception C.Retryable _ -> true
-let raises_fatal f = match f () with _ -> false | exception C.Llm_error _ -> true
+let raises_retryable f =
+  match f () with _ -> false | exception C.Retryable _ -> true
+
+let raises_fatal f =
+  match f () with _ -> false | exception C.Llm_error _ -> true
 
 let () =
   let parse s () = C.parse_response s in
   check "an unreadable body is retryable" (raises_retryable (parse ""));
-  check "a truncated body is retryable" (raises_retryable (parse {|{"choices":|}));
+  check "a truncated body is retryable"
+    (raises_retryable (parse {|{"choices":|}));
   check "a non-object body is retryable" (raises_retryable (parse "[]"));
   check "a body with no choices is retryable" (raises_retryable (parse "{}"));
   check "an empty choices array is retryable"
@@ -124,10 +142,13 @@ let () =
      printed an empty payload and left nothing to diagnose from. *)
   check "failure messages name the body size"
     (match C.parse_response "{}" with
-    | exception C.Retryable m ->
+    | exception C.Retryable m -> (
         (* "(2 bytes)" for "{}" *)
         let re = Str.regexp_string "(2 bytes)" in
-        (try ignore (Str.search_forward re m 0); true with Not_found -> false)
+        try
+          ignore (Str.search_forward re m 0);
+          true
+        with Not_found -> false)
     | _ -> false);
   let good =
     {|{"id":"gen-1","choices":[{"message":{"content":"hi"}}],"usage":{"prompt_tokens":3,"completion_tokens":1,"cost":0.5}}|}
@@ -137,11 +158,16 @@ let () =
       check "a well-formed body parses" (r.content = "hi" && id = "gen-1");
       check "tokens and cost are read"
         (r.prompt_tokens = 3 && r.completion_tokens = 1 && r.cost = Some 0.5)
-  | exception e -> check ("a well-formed body parses: " ^ Printexc.to_string e) false);
+  | exception e ->
+      check ("a well-formed body parses: " ^ Printexc.to_string e) false);
   (* A free call is JSON `0`, which yojson types as `Int`. *)
-  (match C.parse_response {|{"choices":[{"message":{"content":"x"}}],"usage":{"cost":0}}|} with
-  | r, _ -> check "a zero cost is counted, not filed as unpriced" (r.cost = Some 0.)
-  | exception _ -> check "a zero cost is counted" false)
+  match
+    C.parse_response
+      {|{"choices":[{"message":{"content":"x"}}],"usage":{"cost":0}}|}
+  with
+  | r, _ ->
+      check "a zero cost is counted, not filed as unpriced" (r.cost = Some 0.)
+  | exception _ -> check "a zero cost is counted" false
 
 (* ── The cost ceiling ────────────────────────────────────────────────────── *)
 

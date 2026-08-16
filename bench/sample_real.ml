@@ -12,9 +12,11 @@
 open Bench.Cfr
 
 let sources =
-  [ ("7", "273", "SNAP: certification of eligible households");
+  [
+    ("7", "273", "SNAP: certification of eligible households");
     ("20", "416", "SSI for the aged, blind, and disabled");
-    ("24", "5", "HUD programs: general requirements") ]
+    ("24", "5", "HUD programs: general requirements");
+  ]
 
 let per_part = 20
 
@@ -44,7 +46,8 @@ let json_escape s =
       | '"' -> Buffer.add_string b "\\\""
       | '\\' -> Buffer.add_string b "\\\\"
       | '\n' -> Buffer.add_string b "\\n"
-      | c when Char.code c < 0x20 -> Buffer.add_string b (Printf.sprintf "\\u%04x" (Char.code c))
+      | c when Char.code c < 0x20 ->
+          Buffer.add_string b (Printf.sprintf "\\u%04x" (Char.code c))
       | c -> Buffer.add_char b c)
     s;
   Buffer.contents b
@@ -57,7 +60,9 @@ let () =
     (fun (title, part, subject) ->
       let path = Printf.sprintf "data/raw/cfr-%s-%s.xml" title part in
       if not (Sys.file_exists path) then
-        failwith (path ^ " missing — see data/fidelity/real/PROTOCOL.md for the fetch URL");
+        failwith
+          (path
+         ^ " missing — see data/fidelity/real/PROTOCOL.md for the fetch URL");
       let candidates =
         paragraphs (read_file path)
         |> List.map (fun p -> squeeze (decode (strip_tags p)))

@@ -25,8 +25,10 @@ let paragraphs (xml : string) : string list =
   let n = String.length xml in
   let find_from pat from =
     let pl = String.length pat in
-    let rec go j = if j + pl > n then None
-      else if String.sub xml j pl = pat then Some j else go (j + 1)
+    let rec go j =
+      if j + pl > n then None
+      else if String.sub xml j pl = pat then Some j
+      else go (j + 1)
     in
     go from
   in
@@ -56,10 +58,21 @@ let strip_tags (s : string) : string =
   Buffer.contents b
 
 let entities =
-  [ ("&amp;", "&"); ("&lt;", "<"); ("&gt;", ">"); ("&quot;", "\"");
-    ("&apos;", "'"); ("&#8212;", "\xe2\x80\x94"); ("&#8211;", "\xe2\x80\x93");
-    ("&#8217;", "'"); ("&#8220;", "\""); ("&#8221;", "\""); ("&#167;", "\xc2\xa7");
-    ("&nbsp;", " "); ("&#160;", " ") ]
+  [
+    ("&amp;", "&");
+    ("&lt;", "<");
+    ("&gt;", ">");
+    ("&quot;", "\"");
+    ("&apos;", "'");
+    ("&#8212;", "\xe2\x80\x94");
+    ("&#8211;", "\xe2\x80\x93");
+    ("&#8217;", "'");
+    ("&#8220;", "\"");
+    ("&#8221;", "\"");
+    ("&#167;", "\xc2\xa7");
+    ("&nbsp;", " ");
+    ("&#160;", " ");
+  ]
 
 let replace_all ~sub ~by s =
   let sl = String.length sub and n = String.length s in
@@ -68,8 +81,12 @@ let replace_all ~sub ~by s =
     let b = Buffer.create n in
     let i = ref 0 in
     while !i < n do
-      if !i + sl <= n && String.sub s !i sl = sub then (Buffer.add_string b by; i := !i + sl)
-      else (Buffer.add_char b s.[!i]; incr i)
+      if !i + sl <= n && String.sub s !i sl = sub then (
+        Buffer.add_string b by;
+        i := !i + sl)
+      else (
+        Buffer.add_char b s.[!i];
+        incr i)
     done;
     Buffer.contents b
   end
@@ -100,25 +117,37 @@ let decode_numeric (s : string) : string =
   while !i < n do
     if !i + 2 < n && s.[!i] = '&' && s.[!i + 1] = '#' then (
       match String.index_from_opt s !i ';' with
-      | Some j when j - !i <= 10 ->
+      | Some j when j - !i <= 10 -> (
           let body = String.sub s (!i + 2) (j - !i - 2) in
           let parsed =
             try
-              if String.length body > 1 && (body.[0] = 'x' || body.[0] = 'X') then
-                Some (int_of_string ("0x" ^ String.sub body 1 (String.length body - 1)))
+              if String.length body > 1 && (body.[0] = 'x' || body.[0] = 'X')
+              then
+                Some
+                  (int_of_string
+                     ("0x" ^ String.sub body 1 (String.length body - 1)))
               else Some (int_of_string body)
             with _ -> None
           in
-          (match parsed with
-          | Some cp when cp > 0 && cp < 0x110000 -> utf8_of_code b cp; i := j + 1
-          | _ -> Buffer.add_char b s.[!i]; incr i)
-      | _ -> Buffer.add_char b s.[!i]; incr i)
-    else (Buffer.add_char b s.[!i]; incr i)
+          match parsed with
+          | Some cp when cp > 0 && cp < 0x110000 ->
+              utf8_of_code b cp;
+              i := j + 1
+          | _ ->
+              Buffer.add_char b s.[!i];
+              incr i)
+      | _ ->
+          Buffer.add_char b s.[!i];
+          incr i)
+    else (
+      Buffer.add_char b s.[!i];
+      incr i)
   done;
   Buffer.contents b
 
 let decode s =
-  decode_numeric (List.fold_left (fun acc (a, b) -> replace_all ~sub:a ~by:b acc) s entities)
+  decode_numeric
+    (List.fold_left (fun acc (a, b) -> replace_all ~sub:a ~by:b acc) s entities)
 
 let squeeze (s : string) : string =
   let b = Buffer.create (String.length s) in
@@ -126,8 +155,12 @@ let squeeze (s : string) : string =
   String.iter
     (fun c ->
       let c = if c = '\n' || c = '\t' || c = '\r' then ' ' else c in
-      if c = ' ' then (if not !sp then Buffer.add_char b ' '; sp := true)
-      else (Buffer.add_char b c; sp := false))
+      if c = ' ' then (
+        if not !sp then Buffer.add_char b ' ';
+        sp := true)
+      else (
+        Buffer.add_char b c;
+        sp := false))
     s;
   String.trim (Buffer.contents b)
 
@@ -140,7 +173,9 @@ let strip_markers (s : string) : string =
       match String.index_from_opt s i ')' with
       | Some j when j - i <= 6 ->
           let k = ref (j + 1) in
-          while !k < n && s.[!k] = ' ' do incr k done;
+          while !k < n && s.[!k] = ' ' do
+            incr k
+          done;
           go !k
       | _ -> i
     else i
@@ -151,8 +186,26 @@ let strip_markers (s : string) : string =
 (* ── Sentence splitting (PROTOCOL "Extraction" 4) ────────────────────────── *)
 
 let protected_abbrevs =
-  [ "U.S.C."; "C.F.R."; "Pub. L."; "No."; "Nos."; "Sec."; "Secs."; "e.g.";
-    "i.e."; "etc."; "cf."; "Dr."; "Mr."; "Mrs."; "Ms."; "St."; "Jr."; "vs." ]
+  [
+    "U.S.C.";
+    "C.F.R.";
+    "Pub. L.";
+    "No.";
+    "Nos.";
+    "Sec.";
+    "Secs.";
+    "e.g.";
+    "i.e.";
+    "etc.";
+    "cf.";
+    "Dr.";
+    "Mr.";
+    "Mrs.";
+    "Ms.";
+    "St.";
+    "Jr.";
+    "vs.";
+  ]
 
 (* Does the text ending at [i] (inclusive of the period) finish an abbreviation
    we must not split on? Also protects a single capital letter + period, as in
@@ -163,10 +216,10 @@ let ends_protected (s : string) (i : int) : bool =
       let al = String.length a in
       i + 1 >= al && String.sub s (i + 1 - al) al = a)
     protected_abbrevs
-  || (i >= 1
-      && (let c = s.[i - 1] in
-          c >= 'A' && c <= 'Z')
-      && (i = 1 || s.[i - 2] = ' ' || s.[i - 2] = '('))
+  || i >= 1
+     && (let c = s.[i - 1] in
+         c >= 'A' && c <= 'Z')
+     && (i = 1 || s.[i - 2] = ' ' || s.[i - 2] = '(')
 
 let split_sentences (s : string) : string list =
   let n = String.length s in
@@ -178,7 +231,10 @@ let split_sentences (s : string) : string list =
       (* boundary iff followed by whitespace then a capital *)
       let j = ref (!i + 1) in
       let saw_space = ref false in
-      while !j < n && s.[!j] = ' ' do saw_space := true; incr j done;
+      while !j < n && s.[!j] = ' ' do
+        saw_space := true;
+        incr j
+      done;
       if !saw_space && !j < n && s.[!j] >= 'A' && s.[!j] <= 'Z' then begin
         out := String.sub s !start (!i + 1 - !start) :: !out;
         start := !j;
@@ -219,11 +275,8 @@ let take_every_kth (xs : 'a list) (want : int) : 'a list =
   if n <= want then xs
   else
     let k = max 1 (n / want) in
-    let picked =
-      List.filteri (fun i _ -> i mod k = 0) xs
-    in
+    let picked = List.filteri (fun i _ -> i mod k = 0) xs in
     List.filteri (fun i _ -> i < want) picked
-
 
 (* ── Section-level selection (PROTOCOL-2, the independent variable) ──────── *)
 
@@ -237,7 +290,9 @@ let sections (xml : string) : (string * string) list =
   let find pat from =
     let pl = String.length pat in
     let rec go j =
-      if j + pl > n then None else if String.sub xml j pl = pat then Some j else go (j + 1)
+      if j + pl > n then None
+      else if String.sub xml j pl = pat then Some j
+      else go (j + 1)
     in
     go from
   in
@@ -245,7 +300,7 @@ let sections (xml : string) : (string * string) list =
   while !continue_ do
     match find "<DIV8" !i with
     | None -> continue_ := false
-    | Some s -> (
+    | Some s ->
         (* body runs to the next DIV8 or end of document *)
         let e = match find "<DIV8" (s + 5) with Some j -> j | None -> n in
         let body = String.sub xml s (e - s) in
@@ -254,12 +309,13 @@ let sections (xml : string) : (string * string) list =
           | Some h when h < e -> (
               match find "</HEAD>" h with
               | Some he when he < e ->
-                  squeeze (decode (strip_tags (String.sub xml (h + 6) (he - h - 6))))
+                  squeeze
+                    (decode (strip_tags (String.sub xml (h + 6) (he - h - 6))))
               | _ -> "")
           | _ -> ""
         in
         out := (head, body) :: !out;
-        i := e)
+        i := e
   done;
   List.rev !out
 
@@ -288,7 +344,8 @@ let json_escape s =
       | '"' -> Buffer.add_string b "\\\""
       | '\\' -> Buffer.add_string b "\\\\"
       | '\n' -> Buffer.add_string b "\\n"
-      | c when Char.code c < 0x20 -> Buffer.add_string b (Printf.sprintf "\\u%04x" (Char.code c))
+      | c when Char.code c < 0x20 ->
+          Buffer.add_string b (Printf.sprintf "\\u%04x" (Char.code c))
       | c -> Buffer.add_char b c)
     s;
   Buffer.contents b

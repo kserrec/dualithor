@@ -14,7 +14,12 @@
 let normative = "data/fidelity/real/labels.jsonl"
 let defs = "data/fidelity/real/labels-defs.jsonl"
 
-type row = { id : string; group : string; label : string; blockers : string list }
+type row = {
+  id : string;
+  group : string;
+  label : string;
+  blockers : string list;
+}
 
 let read_rows path group_of =
   let ic = open_in path in
@@ -34,7 +39,12 @@ let read_rows path group_of =
               | _ -> []
             in
             go
-              ({ id = str "id"; group = group_of j; label = str "label"; blockers }
+              ({
+                 id = str "id";
+                 group = group_of j;
+                 label = str "label";
+                 blockers;
+               }
               :: acc)
       in
       go [])
@@ -48,8 +58,15 @@ let is_strict r = r.label = "in"
 let is_ambient r = is_strict r || r.blockers = [ "deontic" ]
 
 let all_blockers =
-  [ "multi-clause"; "deontic"; "cross-reference"; "tense"; "arithmetic";
-    "not-a-proposition"; "defeasible" ]
+  [
+    "multi-clause";
+    "deontic";
+    "cross-reference";
+    "tense";
+    "arithmetic";
+    "not-a-proposition";
+    "defeasible";
+  ]
 
 let report name rows =
   let n = List.length rows in
@@ -75,7 +92,9 @@ let report name rows =
    usually deontic as well. *)
 let ceiling rows solved =
   List.length
-    (List.filter (fun r -> List.for_all (fun b -> List.mem b solved) r.blockers) rows)
+    (List.filter
+       (fun r -> List.for_all (fun b -> List.mem b solved) r.blockers)
+       rows)
 
 let () =
   let norm = read_rows normative (fun _ -> "normative") in
@@ -84,9 +103,13 @@ let () =
   in
   let d1 = List.filter (fun r -> r.group = "D1-definitions") d in
   let d2 = List.filter (fun r -> r.group = "D2-standards-of-identity") d in
-  print_endline "HISTORICAL INVALIDATED MEASUREMENT — see data/fidelity/real/ERRATUM-2026-08-11.md";
+  print_endline
+    "HISTORICAL INVALIDATED MEASUREMENT — see \
+     data/fidelity/real/ERRATUM-2026-08-11.md";
   print_endline "coverage of real regulatory text (PLAN 4.6)";
-  print_endline "regenerated from the committed labels; diff against docs/coverage-report-2026-08-02.md";
+  print_endline
+    "regenerated from the committed labels; diff against \
+     docs/coverage-report-2026-08-02.md";
   report "normative regulation (7 CFR 273, 20 CFR 416, 24 CFR 5)" norm;
   report "D1  definitions sections (20 CFR 416, 24 CFR 5)" d1;
   report "D2  standards of identity (21 CFR 131/133/137)" d2;

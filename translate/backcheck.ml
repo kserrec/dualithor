@@ -36,8 +36,13 @@ type judgement = {
    exactly the near-misses this check exists to surface. *)
 type outcome = Agrees | Partial | Disagrees
 
-let outcome_of j = match j.score with 2 -> Agrees | 1 -> Partial | _ -> Disagrees
-let outcome_name = function Agrees -> "agrees" | Partial -> "partial" | Disagrees -> "disagrees"
+let outcome_of j =
+  match j.score with 2 -> Agrees | 1 -> Partial | _ -> Disagrees
+
+let outcome_name = function
+  | Agrees -> "agrees"
+  | Partial -> "partial"
+  | Disagrees -> "disagrees"
 
 (* ── Rendering ────────────────────────────────────────────────────────────
    Through the 3.4 readable orientation, so a relational subject reads
@@ -90,7 +95,8 @@ let user (pairs : (string * string) list) : string =
   in
   Printf.sprintf
     "Judge each of these %d pairs. Return the JSON object described above and \
-     nothing else.\n\n%s"
+     nothing else.\n\n\
+     %s"
     (List.length pairs)
     (String.concat "\n\n" (List.mapi block pairs))
 
@@ -100,7 +106,8 @@ let user (pairs : (string * string) list) : string =
    otherwise read as "no disagreement found", which is the wrong default for a
    safety check. *)
 
-let parse_reply (n : int) (raw : string) : ((int * int * string) list, string) result =
+let parse_reply (n : int) (raw : string) :
+    ((int * int * string) list, string) result =
   let open Yojson.Safe.Util in
   match Yojson.Safe.from_string (Schema.strip_fence raw) with
   | exception _ -> Error "judge reply is not JSON"
@@ -116,7 +123,8 @@ let parse_reply (n : int) (raw : string) : ((int * int * string) list, string) r
                   let note =
                     match member "note" it with `String s -> s | _ -> ""
                   in
-                  if idx < 1 || idx > n then failwith "judgement index out of range";
+                  if idx < 1 || idx > n then
+                    failwith "judgement index out of range";
                   if score < 0 || score > 2 then failwith "score outside 0..2";
                   (idx, score, note))
                 items
@@ -159,5 +167,10 @@ let check ~(model : string) (pairs : (string * Tfl.Ast.prop) list) :
                 match find (i + 1) with
                 | Some (_, score, note) -> { nl; rendering; score; note }
                 | None ->
-                    { nl; rendering; score = 0; note = "the judge returned no verdict" })
+                    {
+                      nl;
+                      rendering;
+                      score = 0;
+                      note = "the judge returned no verdict";
+                    })
               rendered))

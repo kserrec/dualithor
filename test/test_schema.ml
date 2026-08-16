@@ -23,11 +23,14 @@ let ok name raw f =
 let rejects name raw needle =
   test name (fun () ->
       match of_string raw with
-      | Ok _ -> failwith (Printf.sprintf "%s: accepted a malformed payload" name)
+      | Ok _ ->
+          failwith (Printf.sprintf "%s: accepted a malformed payload" name)
       | Error why ->
           let contains hay nee =
             let n = String.length nee and h = String.length hay in
-            let rec go i = i + n <= h && (String.sub hay i n = nee || go (i + 1)) in
+            let rec go i =
+              i + n <= h && (String.sub hay i n = nee || go (i + 1))
+            in
             n = 0 || go 0
           in
           check (contains why needle)
@@ -59,20 +62,24 @@ let () =
     {|{"untranslatable": [{"nl": "a", "reason": "tense"}]}|} (fun p ->
       check (p.translations = []) "expected no translations");
   ok "both arrays may be empty" {|{"translations": [], "untranslatable": []}|}
-    (fun p -> check (p.translations = [] && p.untranslatable = []) "expected empty");
+    (fun p ->
+      check (p.translations = [] && p.untranslatable = []) "expected empty");
   ok "unknown top-level keys are ignored"
     {|{"translations": [], "untranslatable": [], "notes": "chatty model"}|}
     (fun p -> check (p.translations = []) "expected empty");
   (* Fencing is a formatting habit, not a translation failure. *)
   ok "a ```json fence comes off"
     ("```json\n" ^ full ^ "\n```")
-    (fun p -> check (List.length p.translations = 2) "expected two translations");
+    (fun p ->
+      check (List.length p.translations = 2) "expected two translations");
   ok "a bare ``` fence comes off"
     ("```\n" ^ full ^ "\n```")
-    (fun p -> check (List.length p.translations = 2) "expected two translations");
+    (fun p ->
+      check (List.length p.translations = 2) "expected two translations");
   ok "surrounding whitespace is tolerated"
     ("\n\n  " ^ full ^ "  \n")
-    (fun p -> check (List.length p.translations = 2) "expected two translations")
+    (fun p ->
+      check (List.length p.translations = 2) "expected two translations")
 
 (* ── Refused ───────────────────────────────────────────────────────────── *)
 
@@ -81,12 +88,12 @@ let () =
   rejects "a truncated payload" {|{"translations": [{"nl": "a",|} "not JSON";
   rejects "a top-level array" {|[{"nl": "a", "tfl": "-A+B"}]|} "payload";
   rejects "an empty object — no answer at all" {|{}|} "neither";
-  rejects "translations is not an array"
-    {|{"translations": {"nl": "a"}}|} "translations";
-  rejects "an item that is not an object"
-    {|{"translations": ["-A+B"]}|} "translations[0]";
-  rejects "a missing tfl"
-    {|{"translations": [{"nl": "a", "confidence": 1}]}|} "translations[0].tfl";
+  rejects "translations is not an array" {|{"translations": {"nl": "a"}}|}
+    "translations";
+  rejects "an item that is not an object" {|{"translations": ["-A+B"]}|}
+    "translations[0]";
+  rejects "a missing tfl" {|{"translations": [{"nl": "a", "confidence": 1}]}|}
+    "translations[0].tfl";
   rejects "an empty tfl — a formula that says nothing"
     {|{"translations": [{"nl": "a", "tfl": "", "confidence": 1}]}|}
     "translations[0].tfl";
@@ -113,8 +120,8 @@ let () =
     {|{"translations": [{"nl": "a", "tfl": "-A+B", "confidence": 1},
                         {"nl": "b", "tfl": "-C+D"}]}|}
     "translations[1].confidence";
-  rejects "a decline with no reason"
-    {|{"untranslatable": [{"nl": "a"}]}|} "untranslatable[0].reason";
+  rejects "a decline with no reason" {|{"untranslatable": [{"nl": "a"}]}|}
+    "untranslatable[0].reason";
   rejects "a decline with an empty reason"
     {|{"untranslatable": [{"nl": "a", "reason": ""}]}|}
     "untranslatable[0].reason"

@@ -22,7 +22,13 @@ let batch = 12
    Nothing about them reaches the judge. *)
 let known_bad = [ "c02"; "c06" ]
 
-type row = { id : string; split : string; grade : string; nl : string; got : string }
+type row = {
+  id : string;
+  split : string;
+  grade : string;
+  nl : string;
+  got : string;
+}
 
 let load () =
   let ic = open_in results in
@@ -41,8 +47,8 @@ let load () =
             | _ ->
                 failwith
                   (Printf.sprintf
-                     "%s: expected 6 tab-separated columns (split id grade nl gold got), got \
-                      %d — re-run bench/run_fidelity.exe"
+                     "%s: expected 6 tab-separated columns (split id grade nl \
+                      gold got), got %d — re-run bench/run_fidelity.exe"
                      results
                      (List.length (String.split_on_char '\t' l))))
         | exception End_of_file -> List.rev acc
@@ -67,7 +73,9 @@ let () =
     List.filter_map
       (fun r ->
         match Tfl.Safe.parse r.got with
-        | Ok p when List.mem r.grade [ "exact"; "structural"; "equivalent"; "wrong" ] ->
+        | Ok p
+          when List.mem r.grade [ "exact"; "structural"; "equivalent"; "wrong" ]
+          ->
             Some (r, p)
         | _ -> None)
       (load ())
@@ -79,7 +87,9 @@ let () =
     (fun i group ->
       Printf.printf "  batch %d%!" (i + 1);
       let pairs = List.map (fun (r, p) -> (r.nl, p)) group in
-      match Lwt_main.run (Translate.Backcheck.check ~model:judge_model pairs) with
+      match
+        Lwt_main.run (Translate.Backcheck.check ~model:judge_model pairs)
+      with
       | Ok js ->
           print_newline ();
           judged := !judged @ List.map2 (fun (r, _) j -> (r, j)) group js
@@ -95,7 +105,11 @@ let () =
   List.iter
     (fun (r, j) ->
       if List.mem r.id known_bad then
-        Printf.printf "  %s  %-9s  %s\n     source:  %s\n     reading: %s\n     note:    %s\n"
+        Printf.printf
+          "  %s  %-9s  %s\n\
+          \     source:  %s\n\
+          \     reading: %s\n\
+          \     note:    %s\n"
           r.id
           (if flagged j then "FLAGGED" else "MISSED")
           (if flagged j then "✓" else "✗")
@@ -109,10 +123,14 @@ let () =
   let bad = List.filter (fun (r, _) -> List.mem r.id known_bad) !judged in
   let caught = List.filter (fun (_, j) -> flagged j) bad in
   Printf.printf "\n=== summary\n";
-  Printf.printf "  known-bad caught     %d/%d\n" (List.length caught) (List.length bad);
-  Printf.printf "  false positives      %d/%d = %.0f%% of correct translations\n"
+  Printf.printf "  known-bad caught     %d/%d\n" (List.length caught)
+    (List.length bad);
+  Printf.printf
+    "  false positives      %d/%d = %.0f%% of correct translations\n"
     (List.length fp) (List.length correct)
-    (100. *. float_of_int (List.length fp) /. float_of_int (max 1 (List.length correct)));
+    (100.
+    *. float_of_int (List.length fp)
+    /. float_of_int (max 1 (List.length correct)));
   if fp <> [] then (
     print_endline "\n  over-flagged (these are faithful translations):";
     List.iter

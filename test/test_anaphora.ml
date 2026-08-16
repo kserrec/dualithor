@@ -42,8 +42,8 @@ let check name b =
 
 (* Semantic entailment, by enumeration up to domain size 4. *)
 let entails premises conclusion =
-  Semantics.counter_model ~max_n:4 ~cap:2_000_000
-    (List.map p premises) (p conclusion)
+  Semantics.counter_model ~max_n:4 ~cap:2_000_000 (List.map p premises)
+    (p conclusion)
   = None
 
 let verdict premises conclusion =
@@ -64,14 +64,16 @@ let () =
 (* ── Fixed reference means singleton: some and every collapse ────────────── *)
 
 let () =
-  check "some-that-boy entails every-that-boy" (entails [ "+Boy'+Tall" ] "-Boy'+Tall");
+  check "some-that-boy entails every-that-boy"
+    (entails [ "+Boy'+Tall" ] "-Boy'+Tall");
   check "and back again" (entails [ "-Boy'+Tall" ] "+Boy'+Tall");
   (* The control that stops the above from being vacuous. *)
   check "a general term does not collapse"
     (not (entails [ "+Boy+Tall" ] "-Boy+Tall"));
   (* The engine agrees with the semantics here — this one is inside the
      categorical fragment, so its verdict is decisive rather than `Unknown`. *)
-  check "the engine certifies the collapse" (verdict [ "+Boy'+Tall" ] "-Boy'+Tall" = Valid);
+  check "the engine certifies the collapse"
+    (verdict [ "+Boy'+Tall" ] "-Boy'+Tall" = Valid);
   check "and refuses it for a general term"
     (verdict [ "+Boy+Tall" ] "-Boy+Tall" = Invalid)
 
@@ -113,7 +115,8 @@ let () =
     (entails
        [ "-Artist+(Admire+Beekeeper')"; "+Beekeeper'+Nice" ]
        "-Artist+(Admire+Nice)");
-  check "a general-term object is not — this is the reading a pronoun would need"
+  check
+    "a general-term object is not — this is the reading a pronoun would need"
     (not
        (entails
           [ "-Artist+(Admire+Beekeeper)"; "+Beekeeper+Nice" ]

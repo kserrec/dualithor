@@ -1,7 +1,15 @@
 (library
  (name translate)
  (modules env config llm_client schema prompts cache translator backcheck)
- (libraries tfl tfl_verify yojson lwt lwt.unix cohttp cohttp-lwt cohttp-lwt-unix))
+ (libraries
+  tfl
+  tfl_verify
+  yojson
+  lwt
+  lwt.unix
+  cohttp
+  cohttp-lwt
+  cohttp-lwt-unix))
 
 ; The live smoke tests: both spend real (tiny) money and need the key — run by
 ; hand, never wired into `dune test`.

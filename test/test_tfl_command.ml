@@ -325,7 +325,9 @@ let contains text fragment =
   fragment = "" || search 0
 
 let with_non_utf8_temp contents run =
-  let path, channel = Filename.open_temp_file "dualithor-command-\255-" ".tfl" in
+  let path, channel =
+    Filename.open_temp_file "dualithor-command-\255-" ".tfl"
+  in
   output_string channel contents;
   close_out channel;
   Fun.protect

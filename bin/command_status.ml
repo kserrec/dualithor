@@ -19,10 +19,7 @@ let name = function
   | Incomplete_search -> "incomplete-search"
   | Internal_failure -> "internal-failure"
 
-type unexpected_failure = {
-  status : t;
-  message : string;
-}
+type unexpected_failure = { status : t; message : string }
 
 let unexpected_failure error =
   { status = Internal_failure; message = Printexc.to_string error }

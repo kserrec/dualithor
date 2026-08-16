@@ -36,7 +36,8 @@ let () =
           let printed = Tfl.Notation.print_proposition p in
           match Tfl.Safe.parse printed with
           | Error _ ->
-              failwith (Printf.sprintf "%S: printed form %S will not parse" nl printed)
+              failwith
+                (Printf.sprintf "%S: printed form %S will not parse" nl printed)
           | Ok p' ->
               check (Tfl.Ast.prop_eq p p')
                 (Printf.sprintf "%S: %s printed as %s, which reads differently"
@@ -46,29 +47,33 @@ let () =
 (* ── Coverage ──────────────────────────────────────────────────────────── *)
 
 let props = List.map (fun (_, _, p) -> p) parsed
-
 let signed_terms (p : Tfl.Ast.prop) = [ p.subject; p.predicate ]
 
 (* Every signed term anywhere in a proposition, objects and compound elements
    included — coverage questions are about the whole tree, not the top level. *)
 let rec all_signed (st : Tfl.Ast.signed_term) : Tfl.Ast.signed_term list =
   st
-  :: (match st.term with
-     | Tfl.Ast.Compound elems | Tfl.Ast.Rel { objects = elems; _ } ->
-         List.concat_map all_signed elems
-     | _ -> [])
+  ::
+  (match st.term with
+  | Tfl.Ast.Compound elems | Tfl.Ast.Rel { objects = elems; _ } ->
+      List.concat_map all_signed elems
+  | _ -> [])
 
-let every_signed = List.concat_map all_signed (List.concat_map signed_terms props)
+let every_signed =
+  List.concat_map all_signed (List.concat_map signed_terms props)
 
 let rec terms_of (t : Tfl.Ast.term) : Tfl.Ast.term list =
   t
-  :: (match t with
-     | Tfl.Ast.Neg inner -> terms_of inner
-     | Tfl.Ast.Compound elems | Tfl.Ast.Rel { objects = elems; _ } ->
-         List.concat_map (fun (st : Tfl.Ast.signed_term) -> terms_of st.term) elems
-     | _ -> [])
+  ::
+  (match t with
+  | Tfl.Ast.Neg inner -> terms_of inner
+  | Tfl.Ast.Compound elems | Tfl.Ast.Rel { objects = elems; _ } ->
+      List.concat_map (fun (st : Tfl.Ast.signed_term) -> terms_of st.term) elems
+  | _ -> [])
 
-let every_term = List.concat_map (fun (st : Tfl.Ast.signed_term) -> terms_of st.term)
+let every_term =
+  List.concat_map
+    (fun (st : Tfl.Ast.signed_term) -> terms_of st.term)
     (List.concat_map signed_terms props)
 
 let covers name pred = test ("covers " ^ name) (fun () -> check (pred ()) name)
@@ -77,7 +82,8 @@ let exists_signed f () = List.exists f every_signed
 
 let form s_sign p_sign () =
   List.exists
-    (fun (p : Tfl.Ast.prop) -> p.subject.sign = s_sign && p.predicate.sign = p_sign)
+    (fun (p : Tfl.Ast.prop) ->
+      p.subject.sign = s_sign && p.predicate.sign = p_sign)
     props
 
 let () =
@@ -102,7 +108,9 @@ let () =
   covers "the wild sign a singular subject needs"
     (exists_signed (fun st -> st.sign = Tfl.Ast.Wild));
   covers "singular terms"
-    (exists_term (function Tfl.Ast.Atom { singular = true; _ } -> true | _ -> false));
+    (exists_term (function
+      | Tfl.Ast.Atom { singular = true; _ } -> true
+      | _ -> false));
   covers "negative terms"
     (exists_term (function Tfl.Ast.Neg _ -> true | _ -> false));
   covers "compound terms"
@@ -115,14 +123,17 @@ let () =
       List.exists
         (function
           | Tfl.Ast.Rel { objects; _ } ->
-              List.exists (fun (st : Tfl.Ast.signed_term) -> st.sign = Tfl.Ast.Minus) objects
+              List.exists
+                (fun (st : Tfl.Ast.signed_term) -> st.sign = Tfl.Ast.Minus)
+                objects
           | _ -> false)
         every_term);
   (* Hyphens lex as minus, so a quoted name is the only way to write one; a
      prompt that stops showing this teaches an unparseable habit. *)
   covers "a quoted name (the hyphen trap)"
     (exists_term (function
-      | Tfl.Ast.Atom { name; _ } -> String.contains name ' ' || String.contains name '-'
+      | Tfl.Ast.Atom { name; _ } ->
+          String.contains name ' ' || String.contains name '-'
       | _ -> false));
   covers "a TFL⁺ quantity level" (exists_signed (fun st -> st.level > 0))
 
@@ -137,14 +148,17 @@ let () =
           (fun (p : Tfl.Ast.prop) ->
             match p.predicate.term with
             | Tfl.Ast.Rel { head = Tfl.Ast.Atom { name; _ }; objects } ->
-                let base, roles = Tfl.Infer.head_roles name (List.length objects + 1) in
+                let base, roles =
+                  Tfl.Infer.head_roles name (List.length objects + 1)
+                in
                 if roles <> [] && base <> name then Some (base, roles) else None
             | _ -> None)
           props
       in
       match passive with
       | Some (_, roles) ->
-          check (roles = [ 2; 1 ])
+          check
+            (roles = [ 2; 1 ])
             (Printf.sprintf "expected the 2-1 swap, got [%s]"
                (String.concat ";" (List.map string_of_int roles)))
       | None -> failwith "no few-shot carries a pairing-subscript head")
@@ -160,18 +174,24 @@ let () =
   test "every few-shot pair reaches the system prompt" (fun () ->
       List.iter
         (fun (nl, tfl) ->
-          check (contains system nl) (Printf.sprintf "%S missing from the prompt" nl);
-          check (contains system tfl) (Printf.sprintf "%S missing from the prompt" tfl))
+          check (contains system nl)
+            (Printf.sprintf "%S missing from the prompt" nl);
+          check (contains system tfl)
+            (Printf.sprintf "%S missing from the prompt" tfl))
         few_shots);
   test "every decline example reaches the system prompt" (fun () ->
       List.iter
         (fun (nl, reason) ->
-          check (contains system nl) (Printf.sprintf "%S missing from the prompt" nl);
-          check (contains system reason) (Printf.sprintf "reason for %S missing" nl))
+          check (contains system nl)
+            (Printf.sprintf "%S missing from the prompt" nl);
+          check (contains system reason)
+            (Printf.sprintf "reason for %S missing" nl))
         untranslatable_examples);
   test "the JSON contract is stated" (fun () ->
       check (contains system "\"translations\"") "translations key not named";
-      check (contains system "\"untranslatable\"") "untranslatable key not named";
+      check
+        (contains system "\"untranslatable\"")
+        "untranslatable key not named";
       check (contains system "confidence") "confidence not explained");
   (* No verdicts in the prompt: a model shown a valid/invalid judgement can
      reason to the answer and fit a formula to it, which is the confound the
@@ -179,8 +199,10 @@ let () =
   test "the prompt teaches no verdicts" (fun () ->
       List.iter
         (fun word ->
-          check (not (contains system word))
-            (Printf.sprintf "the prompt mentions %S — it must not judge arguments" word))
+          check
+            (not (contains system word))
+            (Printf.sprintf
+               "the prompt mentions %S — it must not judge arguments" word))
         [ "valid"; "invalid"; "entail"; "follows from"; "conclusion" ]);
   test "the user message numbers the sentences it sends" (fun () ->
       let u = user [ "Every horse is an animal."; "No dog is a cat." ] in
@@ -199,37 +221,46 @@ let () =
    English reading rather than against our restatement of the rule. *)
 
 let () =
-  test "a `Few ...` few-shot is taught, with level 3 and a minus predicate" (fun () ->
+  test "a `Few ...` few-shot is taught, with level 3 and a minus predicate"
+    (fun () ->
       let few =
         List.filter
           (fun (nl, _, _) ->
-            String.length nl >= 4 && String.lowercase_ascii (String.sub nl 0 4) = "few ")
+            String.length nl >= 4
+            && String.lowercase_ascii (String.sub nl 0 4) = "few ")
           parsed
       in
       check (few <> []) "no `Few ...` pair is taught — the flip is untested";
       List.iter
         (fun (nl, tfl, (p : Tfl.Ast.prop)) ->
           check (p.subject.level = 3)
-            (Printf.sprintf "%S: subject level is %d, expected 3" nl p.subject.level);
+            (Printf.sprintf "%S: subject level is %d, expected 3" nl
+               p.subject.level);
           check
             (p.predicate.sign = Tfl.Ast.Minus)
             (Printf.sprintf
-               "%S is taught as %s — a `few S are P` sentence needs the MINUS predicate \
-                sign, or it asserts the opposite"
+               "%S is taught as %s — a `few S are P` sentence needs the MINUS \
+                predicate sign, or it asserts the opposite"
                nl tfl))
         few);
   (* The independent check: the engine reads it back as the sentence says. *)
   test "every `Few ...` few-shot reads back without a negation" (fun () ->
       List.iter
         (fun (nl, _, p) ->
-          if String.length nl >= 4 && String.lowercase_ascii (String.sub nl 0 4) = "few " then
+          if
+            String.length nl >= 4
+            && String.lowercase_ascii (String.sub nl 0 4) = "few "
+          then
             let reading = Tfl.Render.read_prop p in
             check
               (not (contains reading " not "))
-              (Printf.sprintf "%S renders as %S — the polarity is inverted" nl reading))
+              (Printf.sprintf "%S renders as %S — the polarity is inverted" nl
+                 reading))
         parsed);
   test "the notation text states that level 3 flips polarity" (fun () ->
       check (contains system "+S^3-P") "the flipped form is not shown";
-      check (contains system "COMPLEMENT") "the reason for the flip is not stated")
+      check
+        (contains system "COMPLEMENT")
+        "the reason for the flip is not stated")
 
 let () = finish "translation prompt"

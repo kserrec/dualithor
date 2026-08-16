@@ -73,8 +73,7 @@ let is_display_control_refusal src message pos =
 (* None = both engines agree on [src] via [fn]; Some d = disagreement d. *)
 let compare_on fn src : string option =
   match (ocaml_parse fn src, Shim_client.call shim fn [ `String src ]) with
-  | Failed (message, pos), _
-    when is_display_control_refusal src message pos ->
+  | Failed (message, pos), _ when is_display_control_refusal src message pos ->
       incr display_control_divergences;
       None
   | Parsed (ast, printed), Ok js_ast -> (
@@ -911,8 +910,8 @@ let negative_control () =
    that the safe engine refused while the reference remained unchanged. *)
 let display_control_boundary () =
   let expected =
-    "Control and bidirectional formatting characters are not allowed in \
-     quoted terms (at position 6)"
+    "Control and bidirectional formatting characters are not allowed in quoted \
+     terms (at position 6)"
   in
   let check_one label src =
     match
@@ -922,8 +921,8 @@ let display_control_boundary () =
     | Failed (message, 6), Ok _ when message = expected -> true
     | Failed (message, pos), Ok _ ->
         Printf.eprintf
-          "✗ display-control boundary (%s): OCaml refusal was %S at %d\n"
-          label message pos;
+          "✗ display-control boundary (%s): OCaml refusal was %S at %d\n" label
+          message pos;
         false
     | Parsed _, Ok _ ->
         Printf.eprintf
@@ -1068,7 +1067,6 @@ let () =
   exit
     (if
        (not control_ok) || (not display_control_ok) || (not corpus_ok)
-       || (not exemption_ok)
-       || qcheck_failures <> 0
+       || (not exemption_ok) || qcheck_failures <> 0
      then 1
      else 0)

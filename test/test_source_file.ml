@@ -31,8 +31,7 @@ let () =
   if
     Array.length Sys.argv = 3
     && Sys.argv.(1) = "--source-descriptor-must-be-closed"
-  then
-    Unix._exit (if descriptor_target_is_open Sys.argv.(2) then 1 else 0)
+  then Unix._exit (if descriptor_target_is_open Sys.argv.(2) then 1 else 0)
 
 let with_temp suffix contents run =
   let path, channel = Filename.open_temp_file "dualithor-source-" suffix in
@@ -80,15 +79,15 @@ let descriptor_is_closed_on_exec path =
   let after_open _descriptor =
     observed := true;
     match Unix.fork () with
-    | 0 ->
-        (try
-           Unix.execv executable
-             [|
-               executable;
-               "--source-descriptor-must-be-closed";
-               Unix.realpath path;
-             |]
-         with _ -> Unix._exit 127)
+    | 0 -> (
+        try
+          Unix.execv executable
+            [|
+              executable;
+              "--source-descriptor-must-be-closed";
+              Unix.realpath path;
+            |]
+        with _ -> Unix._exit 127)
     | pid -> (
         match Unix.waitpid [] pid with
         | _, Unix.WEXITED 0 -> ()

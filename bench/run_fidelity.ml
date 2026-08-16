@@ -41,7 +41,9 @@ let str n j = Yojson.Safe.Util.to_string (mem n j)
 let parse_gold where s =
   match Tfl.Safe.parse s with
   | Ok p -> p
-  | Error _ -> failwith (Printf.sprintf "%s: gold %S does not parse (run dune test)" where s)
+  | Error _ ->
+      failwith
+        (Printf.sprintf "%s: gold %S does not parse (run dune test)" where s)
 
 let load () =
   let ic = open_in items_path in
@@ -50,7 +52,9 @@ let load () =
       ~finally:(fun () -> close_in_noerr ic)
       (fun () ->
         let rec go acc =
-          match input_line ic with l -> go (l :: acc) | exception End_of_file -> List.rev acc
+          match input_line ic with
+          | l -> go (l :: acc)
+          | exception End_of_file -> List.rev acc
         in
         go [])
   in
@@ -81,7 +85,8 @@ let load () =
               :: !sentences
         | `String "decline" ->
             declines :=
-              { d_id = str "id" j; d_split = str "split" j; d_nl = str "nl" j } :: !declines
+              { d_id = str "id" j; d_split = str "split" j; d_nl = str "nl" j }
+              :: !declines
         | `String "argument" ->
             let id = str "id" j in
             let line p = (str "nl" p, parse_gold id (str "tfl" p)) in
@@ -118,7 +123,8 @@ type tally = {
   mutable equivalent : int;
   mutable wrong : int;
   mutable unparseable : int;
-  mutable missing : int; (* absent, or declined when it should have translated *)
+  mutable missing : int;
+      (* absent, or declined when it should have translated *)
   mutable declined_right : int;
   mutable declined_total : int;
   mutable arg_verdict_right : int;
@@ -159,17 +165,18 @@ let add a b =
 let translated t = t.exact + t.structural + t.equivalent
 let attempted t = translated t + t.wrong + t.unparseable
 
-let pct a b = if b = 0 then "n/a" else Printf.sprintf "%.0f%%" (100. *. float_of_int a /. float_of_int b)
+let pct a b =
+  if b = 0 then "n/a"
+  else Printf.sprintf "%.0f%%" (100. *. float_of_int a /. float_of_int b)
 
 let record tally ~split (log : out_channel) id nl (accepted : Tfl.Ast.prop list)
     (o : Translate.Translator.outcome) =
   let gold_src =
-    match accepted with
-    | g :: _ -> Tfl.Notation.print_proposition g
-    | [] -> "-"
+    match accepted with g :: _ -> Tfl.Notation.print_proposition g | [] -> "-"
   in
   let line grade detail =
-    Printf.fprintf log "%s\t%s\t%s\t%s\t%s\t%s\n" split id grade nl gold_src detail
+    Printf.fprintf log "%s\t%s\t%s\t%s\t%s\t%s\n" split id grade nl gold_src
+      detail
   in
   let grade, detail =
     match o with
@@ -212,13 +219,27 @@ let call model sentences =
 let run_model model (sentences, declines, arguments) =
   Printf.printf "\n=== %s\n%!" model;
   (try Sys.mkdir results_dir 0o755 with _ -> ());
-  let log = open_out (Filename.concat results_dir ("fidelity-" ^ String.map (function '/' -> '_' | c -> c) model ^ ".tsv")) in
+  let log =
+    open_out
+      (Filename.concat results_dir
+         ("fidelity-"
+         ^ String.map (function '/' -> '_' | c -> c) model
+         ^ ".tsv"))
+  in
   Fun.protect ~finally:(fun () -> close_out_noerr log) @@ fun () ->
   Printf.fprintf log "split\tid\tgrade\tnl\tgold\tgot\n";
   let dev = empty_tally () and ev = empty_tally () in
   let tally_of = function "dev" -> dev | _ -> ev in
-  List.iter (fun d -> let t = tally_of d.d_split in t.declined_total <- t.declined_total + 1) declines;
-  List.iter (fun a -> let t = tally_of a.a_split in t.arg_total <- t.arg_total + 1) arguments;
+  List.iter
+    (fun d ->
+      let t = tally_of d.d_split in
+      t.declined_total <- t.declined_total + 1)
+    declines;
+  List.iter
+    (fun a ->
+      let t = tally_of a.a_split in
+      t.arg_total <- t.arg_total + 1)
+    arguments;
 
   (* Sentences and declines together, mixed across batches. *)
   let mixed =
@@ -227,7 +248,8 @@ let run_model model (sentences, declines, arguments) =
   let nbatches = (List.length mixed + batch_size - 1) / batch_size in
   List.iteri
     (fun i batch ->
-      Printf.printf "  batch %d/%d (%d sentences)%!" (i + 1) nbatches (List.length batch);
+      Printf.printf "  batch %d/%d (%d sentences)%!" (i + 1) nbatches
+        (List.length batch);
       let nls = List.map (function `S s -> s.s_nl | `D d -> d.d_nl) batch in
       match call model nls with
       (* A failed batch used to tally nothing at all, so its sentences left the
@@ -256,21 +278,25 @@ let run_model model (sentences, declines, arguments) =
               | `S s -> (
                   let tally = tally_of s.s_split in
                   match outcome_of r s.s_nl with
-                  | Some o -> record tally ~split:s.s_split log s.s_id s.s_nl s.accepted o
+                  | Some o ->
+                      record tally ~split:s.s_split log s.s_id s.s_nl s.accepted
+                        o
                   | None -> tally.missing <- tally.missing + 1)
               | `D d -> (
                   let tally = tally_of d.d_split in
                   let line grade detail =
-                    Printf.fprintf log "%s\t%s\t%s\t%s\t-\t%s\n" d.d_split d.d_id grade d.d_nl
-                      detail
+                    Printf.fprintf log "%s\t%s\t%s\t%s\t-\t%s\n" d.d_split
+                      d.d_id grade d.d_nl detail
                   in
                   match outcome_of r d.d_nl with
                   | Some (Declined { reason }) ->
                       tally.declined_right <- tally.declined_right + 1;
                       line "declined-correctly" reason
-                  | Some (Translated { tfl; _ }) -> line "SHOULD-HAVE-DECLINED" tfl
+                  | Some (Translated { tfl; _ }) ->
+                      line "SHOULD-HAVE-DECLINED" tfl
                   (* refusing by writing nonsense is not the same as declining *)
-                  | Some (Unparseable { tfl; _ }) -> line "unparseable-not-declined" tfl
+                  | Some (Unparseable { tfl; _ }) ->
+                      line "unparseable-not-declined" tfl
                   | Some Absent | None -> line "absent" "-"))
             batch)
     (deal nbatches mixed);
@@ -318,25 +344,31 @@ let run_model model (sentences, declines, arguments) =
               | Unknown -> "unknown"
               | Error _ -> "error"
             in
-            if v = a.a_verdict then tally.arg_verdict_right <- tally.arg_verdict_right + 1;
+            if v = a.a_verdict then
+              tally.arg_verdict_right <- tally.arg_verdict_right + 1;
             Printf.printf "  → engine says %s, gold %s\n%!" v a.a_verdict;
-            Printf.fprintf log "%s\t%s\tverdict-%s\t(whole argument)\t%s\t%s\n" a.a_split a.a_id
+            Printf.fprintf log "%s\t%s\tverdict-%s\t(whole argument)\t%s\t%s\n"
+              a.a_split a.a_id
               (if v = a.a_verdict then "match" else "MISMATCH")
               a.a_verdict v)
           else (
             print_newline ();
-            Printf.fprintf log "%s\t%s\tverdict-unavailable\t(whole argument)\t%s\t-\n" a.a_split
+            Printf.fprintf log
+              "%s\t%s\tverdict-unavailable\t(whole argument)\t%s\t-\n" a.a_split
               a.a_id a.a_verdict))
     arguments;
 
   let report label t =
     Printf.printf
-      "\n  [%s] faithfulness   %s correct of %d attempted  (exact %d, structural %d, \
-       equivalent %d)\n"
+      "\n\
+      \  [%s] faithfulness   %s correct of %d attempted  (exact %d, structural \
+       %d, equivalent %d)\n"
       label
       (pct (translated t) (attempted t))
       (attempted t) t.exact t.structural t.equivalent;
-    Printf.printf "  [%s] parse rate     %s (%d unparseable, %d wrong-but-parsed, %d missing)\n"
+    Printf.printf
+      "  [%s] parse rate     %s (%d unparseable, %d wrong-but-parsed, %d \
+       missing)\n"
       label
       (pct (attempted t - t.unparseable) (attempted t))
       t.unparseable t.wrong t.missing;
@@ -344,8 +376,10 @@ let run_model model (sentences, declines, arguments) =
       (pct t.declined_right t.declined_total)
       t.declined_right t.declined_total;
     Printf.printf
-      "  [%s] arguments      %d/%d gold verdict reproduced end-to-end (%d fully parsed)\n%!" label
-      t.arg_verdict_right t.arg_total t.arg_all_parsed
+      "  [%s] arguments      %d/%d gold verdict reproduced end-to-end (%d \
+       fully parsed)\n\
+       %!"
+      label t.arg_verdict_right t.arg_total t.arg_all_parsed
   in
   (* eval first: it is the number that survives a prompt change *)
   report "eval" ev;
@@ -373,24 +407,30 @@ let () =
     + List.length (List.filter (fun x -> x.d_split = sp) d)
     + List.length (List.filter (fun x -> x.a_split = sp) a)
   in
-  Printf.printf "gold set: %d sentences, %d declines, %d arguments — %d dev, %d eval\n%!"
-    (List.length s) (List.length d) (List.length a) (in_split "dev") (in_split "eval");
-  Printf.printf "cost ceiling: $%.2f for this run (translate/config.ml); cached calls are free\n%!"
+  Printf.printf
+    "gold set: %d sentences, %d declines, %d arguments — %d dev, %d eval\n%!"
+    (List.length s) (List.length d) (List.length a) (in_split "dev")
+    (in_split "eval");
+  Printf.printf
+    "cost ceiling: $%.2f for this run (translate/config.ml); cached calls are \
+     free\n\
+     %!"
     Translate.Config.cost_ceiling_usd;
   let rows =
     try List.map (fun m -> run_model m data) Translate.Config.models
     with Translate.Llm_client.Cost_ceiling why -> abort_on_ceiling why
   in
   print_endline "\n=== summary";
-  Printf.printf "%-28s %-6s %-14s %-14s %s\n" "model" "split" "faithful" "declines"
-    "argument verdicts";
+  Printf.printf "%-28s %-6s %-14s %-14s %s\n" "model" "split" "faithful"
+    "declines" "argument verdicts";
   List.iter
     (fun (m, splits) ->
       List.iter
         (fun (label, t) ->
           Printf.printf "%-28s %-6s %-14s %-14s %d/%d\n" m label
-            (Printf.sprintf "%s (%d/%d)" (pct (translated t) (attempted t)) (translated t)
-               (attempted t))
+            (Printf.sprintf "%s (%d/%d)"
+               (pct (translated t) (attempted t))
+               (translated t) (attempted t))
             (Printf.sprintf "%s (%d/%d)"
                (pct t.declined_right t.declined_total)
                t.declined_right t.declined_total)
@@ -398,7 +438,9 @@ let () =
         splits)
     rows;
   print_endline ("\n" ^ Translate.Llm_client.spend_report ());
-  print_endline "per-item results in data/results/fidelity-*.tsv (first column is the split)";
+  print_endline
+    "per-item results in data/results/fidelity-*.tsv (first column is the \
+     split)";
   (* A run that lost sentences is not a measurement, and the percentages above
      will not say so on their own — every one of them still computes over
      whatever came back. So the run declares itself incomplete and exits
@@ -414,7 +456,8 @@ let () =
   in
   if missing > 0 then (
     Printf.printf
-      "\n!! INCOMPLETE — %d sentence slot(s) never came back. These numbers are \
+      "\n\
+       !! INCOMPLETE — %d sentence slot(s) never came back. These numbers are \
        NOT a measurement:\n\
       \   every percentage above is computed over what arrived. Re-run (cached \
        calls are free) before citing anything.\n"

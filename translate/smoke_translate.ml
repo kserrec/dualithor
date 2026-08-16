@@ -23,7 +23,8 @@ let show_outcome (o : Translate.Translator.outcome) =
   match o with
   | Translated { tfl; prop; confidence } ->
       Printf.sprintf "ok        %-34s [%s]  c=%.2f" tfl
-        (Tfl.Render.read_prop prop) confidence
+        (Tfl.Render.read_prop prop)
+        confidence
   | Unparseable { tfl; failure; confidence } ->
       Printf.sprintf "UNPARSED  %-34s (%s: %s)  c=%.2f" tfl
         (Tfl.Safe.kind_name failure.kind)
@@ -46,16 +47,20 @@ let report (r : Translate.Translator.run) =
     | None -> "; parse rate n/a (nothing attempted)"
     | Some p ->
         Printf.sprintf "; parse rate %.0f%% (%d/%d attempted)" (p *. 100.)
-          s.translated (s.translated + s.unparseable))
+          s.translated
+          (s.translated + s.unparseable))
 
 let () =
   let ok =
     List.for_all
       (fun model ->
         Printf.printf "\n=== %s\n%!" model;
-        match Lwt_main.run (Translate.Translator.translate ~model sentences) with
+        match
+          Lwt_main.run (Translate.Translator.translate ~model sentences)
+        with
         | Ok r ->
-            if r.from_cache then print_endline "  (served from cache — no spend)";
+            if r.from_cache then
+              print_endline "  (served from cache — no spend)";
             report r;
             true
         | Error why ->
@@ -70,8 +75,8 @@ let () =
   print_endline (Translate.Llm_client.spend_report ());
   if ok then
     print_endline
-      "4.3 smoke: every model returned a well-formed payload; usage appended to \
-       data/usage.jsonl"
+      "4.3 smoke: every model returned a well-formed payload; usage appended \
+       to data/usage.jsonl"
   else (
     print_endline "4.3 smoke: FAILURE";
     exit 1)

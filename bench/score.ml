@@ -28,14 +28,18 @@ open Tfl.Ast
 let normalise (s : string) : string =
   String.to_seq s
   |> Seq.filter_map (fun c ->
-         if (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') then Some c
-         else if c >= 'A' && c <= 'Z' then Some (Char.lowercase_ascii c)
-         else None)
+      if (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') then Some c
+      else if c >= 'A' && c <= 'Z' then Some (Char.lowercase_ascii c)
+      else None)
   |> String.of_seq
 
 let is_subsequence (short : string) (long : string) : bool =
   let n = String.length short and m = String.length long in
-  let rec go i j = i >= n || (j < m && if short.[i] = long.[j] then go (i + 1) (j + 1) else go i (j + 1)) in
+  let rec go i j =
+    i >= n
+    || j < m
+       && if short.[i] = long.[j] then go (i + 1) (j + 1) else go i (j + 1)
+  in
   go 0 0
 
 let common_prefix (a : string) (b : string) : int =
@@ -87,7 +91,8 @@ let bind env a b =
 
 let rec iso_term env (a : term) (b : term) : env option =
   match (a, b) with
-  | Atom x, Atom y -> if x.singular = y.singular then bind env x.name y.name else None
+  | Atom x, Atom y ->
+      if x.singular = y.singular then bind env x.name y.name else None
   | Neg x, Neg y -> iso_term env x y
   (* Compound elements are unordered — match them as a bijection, with
      backtracking, since a greedy pass can bind a name pair that blocks a later
@@ -104,12 +109,14 @@ let rec iso_term env (a : term) (b : term) : env option =
   | _ -> None
 
 and iso_st env (x : signed_term) (y : signed_term) : env option =
-  if x.sign <> y.sign || x.level <> y.level then None else iso_term env x.term y.term
+  if x.sign <> y.sign || x.level <> y.level then None
+  else iso_term env x.term y.term
 
 and iso_ordered env xs ys =
   match (xs, ys) with
   | [], [] -> Some env
-  | x :: xs, y :: ys -> Option.bind (iso_st env x y) (fun env -> iso_ordered env xs ys)
+  | x :: xs, y :: ys ->
+      Option.bind (iso_st env x y) (fun env -> iso_ordered env xs ys)
   | _ -> None
 
 and iso_unordered env xs ys =

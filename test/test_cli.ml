@@ -91,9 +91,9 @@ let evidence_kinds json =
   Yojson.Safe.Util.member "evidence" json
   |> Yojson.Safe.Util.to_list
   |> List.map (fun e ->
-         match Yojson.Safe.Util.member "kind" e with
-         | `String k -> k
-         | _ -> "<missing>")
+      match Yojson.Safe.Util.member "kind" e with
+      | `String k -> k
+      | _ -> "<missing>")
 
 let () =
   let help = run_help "dualithor" in
@@ -152,8 +152,7 @@ let () =
   check "a refused formula carries its taxonomy class"
     (field "ok" r.(6) = "false" && field "class" r.(6) = "syntactic");
   check "a parsed formula comes back canonical, with its English"
-    (field "ok" r.(7) = "true"
-    && field "english" r.(7) = "every man is mortal");
+    (field "ok" r.(7) = "true" && field "english" r.(7) = "every man is mortal");
   check "the numerical abstention reaches the caller as unknown (5.3)"
     (field "verdict" r.(8) = "unknown" && field "method" r.(8) = "numerical");
   check "render speaks the quantity word on a relational predicate (5.0)"
@@ -203,8 +202,7 @@ let () =
          (fun answer ->
            Yojson.Safe.Util.member "lines"
              (Yojson.Safe.Util.member "support" answer)
-           |> Yojson.Safe.Util.to_list
-           <> [])
+           |> Yojson.Safe.Util.to_list <> [])
          describe_answers);
   let consistency_json = Yojson.Safe.from_string r.(14) in
   check "program consistency exposes its refutation evidence"
@@ -248,15 +246,15 @@ let () =
     (Array.length replies = 2
     && String.length replies.(0) > 500_000
     && field "method" replies.(0) = "dnf"
-    && evidence_kinds (Yojson.Safe.from_string replies.(0)) = [ "truth-table" ]);
+    && evidence_kinds (Yojson.Safe.from_string replies.(0)) = [ "truth-table" ]
+    );
   check "the request after a large response is still processed"
     (field "ok" replies.(1) = "true");
 
   (* An empty line is not a request and must not produce a reply, or the
      caller's reply-to-request pairing silently shifts by one. *)
   let replies = run [ ""; "   "; {|{"cmd":"parse","tfl":"-Man+Mortal"}|} ] in
-  check "blank lines are skipped rather than answered"
-    (List.length replies = 1);
+  check "blank lines are skipped rather than answered" (List.length replies = 1);
 
   (* The limit has to apply while reading, before Yojson allocates a complete
      hostile line. Draining the rejected line is equally important: the valid
@@ -267,12 +265,10 @@ let () =
      surfaces as a spurious extra reply and fails the reply count. *)
   let oversized = String.make (1_048_576 + 1_024) 'x' in
   let replies =
-    run [ oversized; {|{"cmd":"parse","tfl":"-Man+Mortal"}|} ]
-    |> Array.of_list
+    run [ oversized; {|{"cmd":"parse","tfl":"-Man+Mortal"}|} ] |> Array.of_list
   in
   check "an oversized protocol line gets one structured refusal"
-    (Array.length replies = 2
-    && field "class" replies.(0) = "resource_limit");
+    (Array.length replies = 2 && field "class" replies.(0) = "resource_limit");
   check "the request after an oversized line is still processed"
     (field "ok" replies.(1) = "true");
 
@@ -281,16 +277,13 @@ let () =
      stream for more than five seconds. The refusal and following success pin
      both the work budget and stream recovery. *)
   let compound =
-    "+("
-    ^ String.concat "" (List.init 32 (fun _ -> "+A"))
-    ^ ")+P"
+    "+(" ^ String.concat "" (List.init 32 (fun _ -> "+A")) ^ ")+P"
   in
   let started = Unix.gettimeofday () in
   let replies =
     run
       [
-        Printf.sprintf
-          {|{"cmd":"query","program":"%s","query":"-X+Y"}|}
+        Printf.sprintf {|{"cmd":"query","program":"%s","query":"-X+Y"}|}
           compound;
         {|{"cmd":"parse","tfl":"-Man+Mortal"}|};
       ]
@@ -302,11 +295,13 @@ let () =
     |> Yojson.Safe.Util.to_list
   in
   check "a pathological valid query is refused within the process latency gate"
-    (elapsed < 2.0 && Array.length replies = 2
-   &&
-   match resource_errors with
-   | [ failure ] -> Yojson.Safe.Util.member "class" failure = `String "resource_limit"
-   | _ -> false);
+    (elapsed < 2.0
+    && Array.length replies = 2
+    &&
+    match resource_errors with
+    | [ failure ] ->
+        Yojson.Safe.Util.member "class" failure = `String "resource_limit"
+    | _ -> false);
   check "the request after inference work exhaustion is still processed"
     (field "ok" replies.(1) = "true");
 
@@ -328,8 +323,7 @@ let () =
   let replies =
     run
       [
-        Printf.sprintf
-          {|{"cmd":"describe","program":"%s","term":"A"}|}
+        Printf.sprintf {|{"cmd":"describe","program":"%s","term":"A"}|}
           dense_program;
         {|{"cmd":"parse","tfl":"-Man+Mortal"}|};
       ]
@@ -343,7 +337,8 @@ let () =
     | `List (failure :: _) -> Yojson.Safe.Util.member "class" failure
     | _ -> `Null
   in
-  check "a pathological valid describe is refused as resource_limit, not answered"
+  check
+    "a pathological valid describe is refused as resource_limit, not answered"
     (Array.length replies = 2
     && refusal_class replies.(0) = `String "resource_limit");
   check "the request after describe work exhaustion is still processed"

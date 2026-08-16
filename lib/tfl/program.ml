@@ -279,8 +279,8 @@ let query_term ?max_lines ?slack (program : prop list) (term : term) :
 type query_verdict = Q_yes | Q_no | Q_unknown
 type prop_query = { q_verdict : query_verdict; support : Decide.result option }
 
-let query_prop ?max_lines ?max_work ?slack (program : prop list) (query : prop) :
-    prop_query =
+let query_prop ?max_lines ?max_work ?slack (program : prop list) (query : prop)
+    : prop_query =
   List.iter Infer.validate_prop program;
   Infer.validate_prop query;
   let yes = Decide.check_argument ?max_lines ?max_work ?slack program query in
@@ -455,13 +455,9 @@ let truth_table_fits_budget atoms a b =
       (fun total name -> total + String.length "−" + String.length name)
       0 atoms
   in
-  let output_fits =
-    max_row_bytes <= max_dnf_bytes / row_count
-  in
+  let output_fits = max_row_bytes <= max_dnf_bytes / row_count in
   let nodes_per_row = Infer.prop_nodes a + Infer.prop_nodes b in
-  let work_fits =
-    nodes_per_row <= max_truth_table_node_visits / row_count
-  in
+  let work_fits = nodes_per_row <= max_truth_table_node_visits / row_count in
   output_fits && work_fits
 
 (* Non-null only when the prop is purely propositional: every atom
@@ -563,9 +559,7 @@ let decide_equivalence ?max_nodes (a : prop) (b : prop) : equivalence_decision =
         let rows = ref [] in
         let equal = ref true in
         for m = 0 to (1 lsl n) - 1 do
-          let asg name =
-            m land (1 lsl Hashtbl.find positions name) <> 0
-          in
+          let asg name = m land (1 lsl Hashtbl.find positions name) <> 0 in
           let va = sat_a asg and vb = sat_b asg in
           if va <> vb then equal := false;
           if va then (

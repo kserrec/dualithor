@@ -25,10 +25,15 @@ let () =
         "legacy candidate extraction did not preserve the historical reversal");
 
   test "protected abbreviations do not create false boundaries" (fun () ->
-      let text = "A U.S.C. citation remains within this sentence. Next rules apply." in
+      let text =
+        "A U.S.C. citation remains within this sentence. Next rules apply."
+      in
       check
         (Bench.Cfr.split_sentences text
-        = [ "A U.S.C. citation remains within this sentence."; "Next rules apply." ])
+        = [
+            "A U.S.C. citation remains within this sentence.";
+            "Next rules apply.";
+          ])
         "a protected abbreviation created an extra sentence");
 
   finish "cfr extraction"

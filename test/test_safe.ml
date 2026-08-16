@@ -212,15 +212,10 @@ let unit_checks () =
         List.init 17 (fun _ -> String.make Tfl.Safe.max_source_bytes 'x')
       in
       check
-        (match
-           Tfl.Safe.check ~premises:oversized_argument ~conclusion:""
-         with
-        | Error
-            {
-              kind = Tfl.Safe.Resource_limit;
-              where = Some "argument";
-              _;
-            } -> true
+        (match Tfl.Safe.check ~premises:oversized_argument ~conclusion:"" with
+        | Error { kind = Tfl.Safe.Resource_limit; where = Some "argument"; _ }
+          ->
+            true
         | _ -> false)
         "combined argument bytes must be bounded");
   test "argument premise count is bounded before parsing" (fun () ->
@@ -228,22 +223,19 @@ let unit_checks () =
         List.init (Tfl.Safe.max_argument_premises + 1) (fun _ -> "−A+B")
       in
       match Tfl.Safe.check ~premises ~conclusion:"−A+B" with
-      | Error
-          { kind = Tfl.Safe.Resource_limit; where = Some "argument"; _ } -> ()
+      | Error { kind = Tfl.Safe.Resource_limit; where = Some "argument"; _ } ->
+          ()
       | _ -> failwith "an oversized premise list was not refused");
   test "valid compound inference is work-bounded (<1s CPU)" (fun () ->
       let premise =
-        "+("
-        ^ String.concat "" (List.init 32 (fun _ -> "+A"))
-        ^ ")+P"
+        "+(" ^ String.concat "" (List.init 32 (fun _ -> "+A")) ^ ")+P"
       in
       let cpu_start = process_cpu_seconds () in
-      let outcome =
-        Tfl.Safe.check ~premises:[ premise ] ~conclusion:"−X+Y"
-      in
+      let outcome = Tfl.Safe.check ~premises:[ premise ] ~conclusion:"−X+Y" in
       let cpu_seconds = process_cpu_seconds () -. cpu_start in
       check (cpu_seconds < 1.0)
-        (Printf.sprintf "the inference work refusal consumed %.3fs CPU" cpu_seconds);
+        (Printf.sprintf "the inference work refusal consumed %.3fs CPU"
+           cpu_seconds);
       match outcome with
       | Error
           {
@@ -253,8 +245,7 @@ let unit_checks () =
             _;
           } ->
           check
-            (message =
-             Tfl.Derive.work_limit_message Tfl.Derive.default_max_work)
+            (message = Tfl.Derive.work_limit_message Tfl.Derive.default_max_work)
             "the refusal must name the inference work limit"
       | _ -> failwith "the pathological valid argument was not work-bounded");
   test "program bytes and individual line bytes are bounded" (fun () ->
@@ -264,12 +255,7 @@ let unit_checks () =
       | _ -> failwith "an oversized program was not refused");
       let over_line = String.make (Tfl.Safe.max_source_bytes + 1) 'x' in
       match Tfl.Safe.parse_program over_line with
-      | Error
-          {
-            kind = Tfl.Safe.Resource_limit;
-            where = Some "line 1";
-            _;
-          } -> ()
+      | Error { kind = Tfl.Safe.Resource_limit; where = Some "line 1"; _ } -> ()
       | _ -> failwith "an oversized program line was not refused");
   test "program line and proposition counts are bounded" (fun () ->
       let too_many_lines = String.make Tfl.Safe.max_program_lines '\n' in
@@ -281,8 +267,8 @@ let unit_checks () =
         |> String.concat "\n"
       in
       match Tfl.Safe.parse_program too_many_props with
-      | Error
-          { kind = Tfl.Safe.Resource_limit; where = Some "program"; _ } -> ()
+      | Error { kind = Tfl.Safe.Resource_limit; where = Some "program"; _ } ->
+          ()
       | _ -> failwith "an oversized program proposition count was not refused");
   test "failures name the input they came from" (fun () ->
       match Tfl.Safe.check ~premises:[ "−S+P"; "!!" ] ~conclusion:"−S+P" with
@@ -324,10 +310,12 @@ let cancellation_probe () =
     List.map Tfl.Notation.parse_proposition
       ([ "+A+B"; "−B−B" ] @ List.init u (fun i -> Printf.sprintf "−J%d+K%d" i i))
   in
-  test "the cancellation search stops at its deterministic node budget" (fun () ->
+  test "the cancellation search stops at its deterministic node budget"
+    (fun () ->
       check
         (Tfl.Decide.cancellation_node_budget = 500_000)
-        "the production cancellation budget changed from the documented 500,000 nodes";
+        "the production cancellation budget changed from the documented \
+         500,000 nodes";
       let certificate = Tfl.Decide.check_inconsistent (props 20) in
       match certificate with
       | None -> failwith "the set is inconsistent; the closure should say so"

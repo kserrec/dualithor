@@ -51,7 +51,8 @@ let match_key (s : string) : string =
   String.iter
     (fun c ->
       match c with
-      | ' ' | '\t' | '\n' | '\r' -> if Buffer.length b > 0 then pending_space := true
+      | ' ' | '\t' | '\n' | '\r' ->
+          if Buffer.length b > 0 then pending_space := true
       | c ->
           if !pending_space then Buffer.add_char b ' ';
           pending_space := false;
@@ -73,7 +74,8 @@ let index_by_nl (nls : (string * 'a) list) : (string, 'a) Hashtbl.t =
 let classify (p : Schema.payload) (sentences : string list) :
     item list * string list =
   let translations =
-    index_by_nl (List.map (fun (t : Schema.translation) -> (t.nl, t)) p.translations)
+    index_by_nl
+      (List.map (fun (t : Schema.translation) -> (t.nl, t)) p.translations)
   in
   let declines =
     index_by_nl
@@ -89,9 +91,11 @@ let classify (p : Schema.payload) (sentences : string list) :
             Hashtbl.replace claimed k ();
             let outcome =
               match Tfl.Safe.parse t.tfl with
-              | Ok prop -> Translated { tfl = t.tfl; prop; confidence = t.confidence }
+              | Ok prop ->
+                  Translated { tfl = t.tfl; prop; confidence = t.confidence }
               | Error failure ->
-                  Unparseable { tfl = t.tfl; failure; confidence = t.confidence }
+                  Unparseable
+                    { tfl = t.tfl; failure; confidence = t.confidence }
             in
             { nl; outcome }
         | None -> (
@@ -143,12 +147,19 @@ let stats (items : item list) : stats =
       | Unparseable _ -> { s with unparseable = s.unparseable + 1 }
       | Declined _ -> { s with declined = s.declined + 1 }
       | Absent -> { s with absent = s.absent + 1 })
-    { total = List.length items; translated = 0; unparseable = 0; declined = 0; absent = 0 }
+    {
+      total = List.length items;
+      translated = 0;
+      unparseable = 0;
+      declined = 0;
+      absent = 0;
+    }
     items
 
 let parse_rate (s : stats) : float option =
   let attempted = s.translated + s.unparseable in
-  if attempted = 0 then None else Some (float_of_int s.translated /. float_of_int attempted)
+  if attempted = 0 then None
+  else Some (float_of_int s.translated /. float_of_int attempted)
 
 (* ── The call ─────────────────────────────────────────────────────────────
    A malformed payload is returned as [Error], not raised and not partially

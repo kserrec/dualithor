@@ -36,13 +36,14 @@ let candidates =
   | Corrected -> candidates_of
   | Legacy -> candidates_of_legacy_reversed
 
-let d1 =
-  [ ("7", "273", "SNAP"); ("20", "416", "SSI"); ("24", "5", "HUD") ]
+let d1 = [ ("7", "273", "SNAP"); ("20", "416", "SSI"); ("24", "5", "HUD") ]
 
 let d2 =
-  [ ("21", "131", "milk and cream");
+  [
+    ("21", "131", "milk and cream");
     ("21", "133", "cheeses and related products");
-    ("21", "137", "cereal flours and related products") ]
+    ("21", "137", "cereal flours and related products");
+  ]
 
 let path title part = Printf.sprintf "data/raw/cfr-%s-%s.xml" title part
 
@@ -76,7 +77,8 @@ let () =
       in
       let cands = List.concat_map (fun (_, b) -> candidates b) secs in
       let picked = take_every_kth cands per_source in
-      Printf.printf "D1 %-12s %2d definition sections, %4d candidates, sampled %d\n%!"
+      Printf.printf
+        "D1 %-12s %2d definition sections, %4d candidates, sampled %d\n%!"
         (Printf.sprintf "%s CFR %s" title part)
         (List.length secs) (List.length cands) (List.length picked);
       emit "D1-definitions" title part subject picked)

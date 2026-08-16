@@ -39,7 +39,9 @@ let read_request_line ic =
   let saw_input = ref false in
   let rec read () =
     match input_char ic with
-    | '\n' -> if !oversized then Request_too_large else Request (Buffer.contents buffer)
+    | '\n' ->
+        if !oversized then Request_too_large
+        else Request (Buffer.contents buffer)
     | char ->
         saw_input := true;
         if !oversized then ()
@@ -171,7 +173,10 @@ let cmd_render json =
       match Tfl.Safe.parse src with
       | Error f -> failure_json f
       | Ok p ->
-          `Assoc [ ("ok", `Bool true); ("english", `String (Tfl.Render.read_prop p)) ])
+          `Assoc
+            [
+              ("ok", `Bool true); ("english", `String (Tfl.Render.read_prop p));
+            ])
 
 let commands =
   [
@@ -188,20 +193,21 @@ let commands =
 let handle (line : string) : Yojson.Safe.t =
   match Yojson.Safe.from_string line with
   | exception _ -> error "line is not valid JSON"
-  | (`Assoc _ as json) -> (
+  | `Assoc _ as json -> (
       match string_field "cmd" json with
       | Error m ->
           error m
             ~fields:
-              [ ("commands", `List (List.map (fun (n, _) -> `String n) commands)) ]
+              [
+                ("commands", `List (List.map (fun (n, _) -> `String n) commands));
+              ]
       | Ok name -> (
           match List.assoc_opt name commands with
           | Some f -> (
               (* Belt and braces over Tfl.Safe's own totality: an unexpected
                  exception here would kill the stream and take every queued
                  request with it, so it becomes one error line instead. *)
-              try f json
-              with e -> error ("internal: " ^ Printexc.to_string e))
+              try f json with e -> error ("internal: " ^ Printexc.to_string e))
           | None ->
               error
                 (Printf.sprintf "unknown cmd %S" name)

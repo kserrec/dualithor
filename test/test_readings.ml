@@ -46,7 +46,8 @@ let () =
      ones; "does not" is where the inversion surfaces. *)
   test "level 3 inverts polarity on a relation, as it does on a plain term"
     (fun () ->
-      reads "+Officer^3+(Sign+Contract)" "few officer does not sign some contract";
+      reads "+Officer^3+(Sign+Contract)"
+        "few officer does not sign some contract";
       reads "+Officer^3-(Sign+Contract)" "few officer sign some contract");
 
   test "the object quantities inside the relation are untouched" (fun () ->

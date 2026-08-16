@@ -11,7 +11,7 @@ let add_byte_escape buffer value =
 let escape_invalid_utf8 text =
   let escaped = Buffer.create (String.length text) in
   let rec copy byte =
-    if byte < String.length text then (
+    if byte < String.length text then
       let decoded = String.get_utf_8_uchar text byte in
       if Uchar.utf_decode_is_valid decoded then (
         let width = Uchar.utf_decode_length decoded in
@@ -19,7 +19,7 @@ let escape_invalid_utf8 text =
         copy (byte + width))
       else (
         add_byte_escape escaped (Char.code text.[byte]);
-        copy (byte + 1)))
+        copy (byte + 1))
   in
   copy 0;
   Buffer.contents escaped

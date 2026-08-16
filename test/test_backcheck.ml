@@ -14,22 +14,26 @@ let p = Tfl.Notation.parse_proposition
 (* ── The mechanism has to be capable of the catch ──────────────────────── *)
 
 let () =
-  test "the sign inversion renders differently from the correct formula" (fun () ->
+  test "the sign inversion renders differently from the correct formula"
+    (fun () ->
       (* c02: "No non-member is eligible."
          gold  -(-Member)-Eligible      GPT wrote  -(-Member)+Eligible *)
       let good = Backcheck.render (p "-(-Member)-Eligible") in
       let bad = Backcheck.render (p "-(-Member)+Eligible") in
       check (good <> bad)
         (Printf.sprintf
-           "both formulas render as %S — the back-check could never catch this" good);
+           "both formulas render as %S — the back-check could never catch this"
+           good);
       Printf.printf "  gold renders as: %S\n  GPT renders as:  %S\n" good bad);
   test "quantity changes survive rendering" (fun () ->
       check
-        (Backcheck.render (p "-Trustee+Fiduciary") <> Backcheck.render (p "+Trustee+Fiduciary"))
+        (Backcheck.render (p "-Trustee+Fiduciary")
+        <> Backcheck.render (p "+Trustee+Fiduciary"))
         "every/some render identically");
   test "quantity levels survive rendering" (fun () ->
       check
-        (Backcheck.render (p "+Claimant^2+Veteran") <> Backcheck.render (p "+Claimant+Veteran"))
+        (Backcheck.render (p "+Claimant^2+Veteran")
+        <> Backcheck.render (p "+Claimant+Veteran"))
         "most/some render identically — a dropped quantifier would be invisible");
   test "relational scope survives rendering" (fun () ->
       check
@@ -65,13 +69,21 @@ let () =
       in
       check (List.length v = 2) "expected two judgements");
   test "a fenced reply is read" (fun () ->
-      let v = ok_reply 1 "```json\n{\"judgements\":[{\"n\":1,\"score\":1,\"note\":\"weaker\"}]}\n```" in
+      let v =
+        ok_reply 1
+          "```json\n\
+           {\"judgements\":[{\"n\":1,\"score\":1,\"note\":\"weaker\"}]}\n\
+           ```"
+      in
       check (List.length v = 1) "fence not stripped");
   rejects "prose instead of JSON" 1 "Sure, here are my judgements:";
   rejects "no judgements array" 1 {|{"results":[]}|};
-  rejects "a score outside 0..2" 1 {|{"judgements":[{"n":1,"score":5,"note":""}]}|};
-  rejects "an index past the end" 1 {|{"judgements":[{"n":7,"score":2,"note":""}]}|};
-  rejects "a non-numeric score" 1 {|{"judgements":[{"n":1,"score":"good","note":""}]}|}
+  rejects "a score outside 0..2" 1
+    {|{"judgements":[{"n":1,"score":5,"note":""}]}|};
+  rejects "an index past the end" 1
+    {|{"judgements":[{"n":7,"score":2,"note":""}]}|};
+  rejects "a non-numeric score" 1
+    {|{"judgements":[{"n":1,"score":"good","note":""}]}|}
 
 (* ── Failing closed ────────────────────────────────────────────────────── *)
 
@@ -84,7 +96,11 @@ let () =
   (* A partial reading is the case a human should look at; folding it into
      "agrees" would hide precisely the near-misses this check exists for. *)
   test "partial is not silently treated as agreement" (fun () ->
-      let j = Backcheck.{ nl = "a"; rendering = "b"; score = 1; note = "weaker" } in
-      check (Backcheck.outcome_of j <> Backcheck.Agrees) "partial must not read as agreement")
+      let j =
+        Backcheck.{ nl = "a"; rendering = "b"; score = 1; note = "weaker" }
+      in
+      check
+        (Backcheck.outcome_of j <> Backcheck.Agrees)
+        "partial must not read as agreement")
 
 let () = finish "back-check"

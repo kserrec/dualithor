@@ -50,7 +50,9 @@ let items =
       else
         let j = Yojson.Safe.from_string l in
         (* the leading _comment line documents the format, not an item *)
-        match Yojson.Safe.Util.member "kind" j with `Null -> None | _ -> Some j)
+        match Yojson.Safe.Util.member "kind" j with
+        | `Null -> None
+        | _ -> Some j)
     (lines ())
 
 let mem name j = Yojson.Safe.Util.member name j
@@ -77,7 +79,8 @@ let must_parse where tfl =
   | Error (f : Tfl.Safe.failure) ->
       failwith
         (Printf.sprintf "%s: gold formula %S does not parse — %s [%s]" where tfl
-           f.message (Tfl.Safe.kind_name f.kind))
+           f.message
+           (Tfl.Safe.kind_name f.kind))
 
 let () =
   test "every sentence's gold formula parses" (fun () ->
@@ -93,7 +96,8 @@ let () =
         arguments);
   (* An alternate that reads back identically to the gold is noise in the
      scorer, not a real alternative — it would silently widen nothing. *)
-  test "every also_ok parses and is genuinely different from the gold" (fun () ->
+  test "every also_ok parses and is genuinely different from the gold"
+    (fun () ->
       List.iter
         (fun j ->
           let gold = must_parse (id j) (str "tfl" j) in
@@ -102,8 +106,9 @@ let () =
               let p = must_parse (id j ^ " also_ok") alt in
               check
                 (not (Tfl.Ast.prop_eq gold p))
-                (Printf.sprintf "%s: also_ok %S is the same proposition as the gold"
-                   (id j) alt))
+                (Printf.sprintf
+                   "%s: also_ok %S is the same proposition as the gold" (id j)
+                   alt))
             (strings "also_ok" j))
         sentences)
 
@@ -122,7 +127,9 @@ let () =
       List.iter
         (fun j ->
           let premises =
-            List.map (fun p -> str "tfl" p) (Yojson.Safe.Util.to_list (mem "premises" j))
+            List.map
+              (fun p -> str "tfl" p)
+              (Yojson.Safe.Util.to_list (mem "premises" j))
           in
           let conclusion = str "tfl" (mem "conclusion" j) in
           let got = verdict_name (Tfl_verify.check ~premises ~conclusion) in
@@ -137,9 +144,12 @@ let () =
   test "declines have a reason and no gold formula" (fun () ->
       List.iter
         (fun j ->
-          check (mem "tfl" j = `Null)
+          check
+            (mem "tfl" j = `Null)
             (id j ^ ": a decline must not carry a gold formula");
-          check (String.length (str "reason" j) > 0) (id j ^ ": decline needs a reason"))
+          check
+            (String.length (str "reason" j) > 0)
+            (id j ^ ": decline needs a reason"))
         declines)
 
 (* ── Hygiene: unique ids, no contamination from the prompt ─────────────── *)
@@ -154,24 +164,31 @@ let nls_of j =
   match str "kind" j with
   | "argument" ->
       str "nl" (mem "conclusion" j)
-      :: List.map (fun p -> str "nl" p) (Yojson.Safe.Util.to_list (mem "premises" j))
+      :: List.map
+           (fun p -> str "nl" p)
+           (Yojson.Safe.Util.to_list (mem "premises" j))
   | _ -> [ str "nl" j ]
 
 let tfls_of j =
   match str "kind" j with
   | "argument" ->
       str "tfl" (mem "conclusion" j)
-      :: List.map (fun p -> str "tfl" p) (Yojson.Safe.Util.to_list (mem "premises" j))
+      :: List.map
+           (fun p -> str "tfl" p)
+           (Yojson.Safe.Util.to_list (mem "premises" j))
   | "sentence" -> [ str "tfl" j ]
   | _ -> []
 
 let taught_nl =
   List.map (fun (nl, _) -> normalise nl) Translate.Prompts.few_shots
-  @ List.map (fun (nl, _) -> normalise nl) Translate.Prompts.untranslatable_examples
+  @ List.map
+      (fun (nl, _) -> normalise nl)
+      Translate.Prompts.untranslatable_examples
 
 let taught_tfl =
   List.filter_map
-    (fun (_, tfl) -> match Tfl.Safe.parse tfl with Ok p -> Some p | Error _ -> None)
+    (fun (_, tfl) ->
+      match Tfl.Safe.parse tfl with Ok p -> Some p | Error _ -> None)
     Translate.Prompts.few_shots
 
 let () =
@@ -194,7 +211,8 @@ let () =
             (fun nl ->
               check
                 (not (List.mem (normalise nl) taught_nl))
-                (Printf.sprintf "contamination: eval item %s's sentence %S is a few-shot"
+                (Printf.sprintf
+                   "contamination: eval item %s's sentence %S is a few-shot"
                    (id j) nl))
             (nls_of j))
         (of_split "eval"));
@@ -206,7 +224,8 @@ let () =
               let p = must_parse (id j) tfl in
               check
                 (not (List.exists (fun t -> Tfl.Ast.prop_eq t p) taught_tfl))
-                (Printf.sprintf "contamination: eval item %s's gold formula %S is a few-shot"
+                (Printf.sprintf
+                   "contamination: eval item %s's gold formula %S is a few-shot"
                    (id j) tfl))
             (tfls_of j))
         (of_split "eval"))
@@ -229,8 +248,10 @@ let () =
       List.iter
         (fun j ->
           let s = split j in
-          check (s = "dev" || s = "eval")
-            (Printf.sprintf "%s: split is %S, must be \"dev\" or \"eval\"" (id j) s))
+          check
+            (s = "dev" || s = "eval")
+            (Printf.sprintf "%s: split is %S, must be \"dev\" or \"eval\""
+               (id j) s))
         items);
   test "the eval half is exactly the pinned id list" (fun () ->
       let got = List.sort compare (List.map id (of_split "eval")) in
@@ -238,11 +259,14 @@ let () =
       let show l = String.concat " " l in
       check (got = want)
         (Printf.sprintf
-           "the eval half has drifted from the pinned list.\n  in data: %s\n  pinned : %s"
+           "the eval half has drifted from the pinned list.\n\
+           \  in data: %s\n\
+           \  pinned : %s"
            (show got) (show want)));
   (* An eval half missing a construction measures nothing about it, and the
      absence would be invisible in an aggregate score. *)
-  test "every group and every categorical form is present in both halves" (fun () ->
+  test "every group and every categorical form is present in both halves"
+    (fun () ->
       let has s p = List.exists p (of_split s) in
       List.iter
         (fun g ->
@@ -278,7 +302,8 @@ let () =
         List.iter
           (fun k ->
             Hashtbl.replace owners k
-              ((id j, split j) :: Option.value ~default:[] (Hashtbl.find_opt owners k)))
+              ((id j, split j)
+              :: Option.value ~default:[] (Hashtbl.find_opt owners k)))
           (key_of j))
       items;
     Hashtbl.iter
@@ -305,17 +330,19 @@ let () =
     (fun j ->
       List.iter
         (fun t ->
-          Hashtbl.replace tags t (1 + Option.value ~default:0 (Hashtbl.find_opt tags t)))
+          Hashtbl.replace tags t
+            (1 + Option.value ~default:0 (Hashtbl.find_opt tags t)))
         (strings "tags" j))
     items;
   let argument_sentences =
     List.fold_left
-      (fun n j -> n + 1 + List.length (Yojson.Safe.Util.to_list (mem "premises" j)))
+      (fun n j ->
+        n + 1 + List.length (Yojson.Safe.Util.to_list (mem "premises" j)))
       0 arguments
   in
   Printf.printf
-    "fidelity set: %d items — %d sentences, %d arguments (%d sentences), %d declines; \
-     %d distinct tags; %d translatable sentences total\n"
+    "fidelity set: %d items — %d sentences, %d arguments (%d sentences), %d \
+     declines; %d distinct tags; %d translatable sentences total\n"
     (List.length items) (List.length sentences) (List.length arguments)
     argument_sentences (List.length declines) (Hashtbl.length tags)
     (List.length sentences + argument_sentences);
@@ -327,9 +354,24 @@ let () =
     (fun t ->
       test ("covers " ^ t) (fun () ->
           check (Hashtbl.mem tags t) ("no item tagged " ^ t)))
-    [ "A-form"; "E-form"; "I-form"; "O-form"; "singular"; "negative-term";
-      "compound-term"; "quoted-term"; "hyphen-trap"; "relational";
-      "universal-object"; "relational-subject"; "nested-object"; "numerical";
-      "relation-reuse"; "term-reuse"; "out-of-fragment" ]
+    [
+      "A-form";
+      "E-form";
+      "I-form";
+      "O-form";
+      "singular";
+      "negative-term";
+      "compound-term";
+      "quoted-term";
+      "hyphen-trap";
+      "relational";
+      "universal-object";
+      "relational-subject";
+      "nested-object";
+      "numerical";
+      "relation-reuse";
+      "term-reuse";
+      "out-of-fragment";
+    ]
 
 let () = finish "fidelity gold set"

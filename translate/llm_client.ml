@@ -176,7 +176,9 @@ let parse_response raw =
   in
   (* A non-object body would make every `member` below raise Type_error outside
      any handler, which escapes as an uncaught exception rather than an error. *)
-  (match json with `Assoc _ -> () | _ -> bad "response body is not a JSON object");
+  (match json with
+  | `Assoc _ -> ()
+  | _ -> bad "response body is not a JSON object");
   (* OpenRouter can answer 200 with an {"error": …} payload. *)
   (match member "error" json with
   | `Null -> ()
@@ -204,7 +206,7 @@ let parse_response raw =
         cost;
       },
       id )
-  (* Both, and the distinction is not academic: `member` on a wrong-typed field
+    (* Both, and the distinction is not academic: `member` on a wrong-typed field
      raises Type_error, but `index 0` on an *empty* array raises Undefined —
      which used to escape this function uncaught and kill the process rather
      than produce an error. Found by the test below, not in the wild. *)
