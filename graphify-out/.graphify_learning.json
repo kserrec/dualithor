@@ -1,0 +1,150 @@
+{
+  "generated_at": "2026-08-15T14:11:51.073144+00:00",
+  "nodes": {
+    "bin_tfl_command_emit_repl_failure": {
+      "code_fingerprint": "be239a36642a89c4ebad19a8512e3ef7a17e99929990af3c01a8bef089f81184",
+      "label": "emit_repl_failure",
+      "last": "2026-08-15T03:54:16.215275+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-15T03:54:16.215275+00:00",
+          "outcome": "useful",
+          "q": "What is the strongest legitimate bridge after filtering low-confidence name collisions?"
+        }
+      ],
+      "score": 0.990139802,
+      "source_file": "bin/tfl_command.ml",
+      "status": "tentative",
+      "uses": 1
+    },
+    "bin_tfl_command_emit_repl_result": {
+      "code_fingerprint": "be239a36642a89c4ebad19a8512e3ef7a17e99929990af3c01a8bef089f81184",
+      "label": "emit_repl_result",
+      "last": "2026-08-15T03:54:16.215275+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-15T03:54:16.215275+00:00",
+          "outcome": "useful",
+          "q": "What is the strongest legitimate bridge after filtering low-confidence name collisions?"
+        }
+      ],
+      "score": 0.990139802,
+      "source_file": "bin/tfl_command.ml",
+      "status": "tentative",
+      "uses": 1
+    },
+    "bin_tfl_command_main": {
+      "code_fingerprint": "be239a36642a89c4ebad19a8512e3ef7a17e99929990af3c01a8bef089f81184",
+      "label": "main",
+      "last": "2026-08-15T03:54:16.215275+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-15T03:54:16.215275+00:00",
+          "outcome": "useful",
+          "q": "What is the strongest legitimate bridge after filtering low-confidence name collisions?"
+        }
+      ],
+      "score": 0.990139802,
+      "source_file": "bin/tfl_command.ml",
+      "status": "tentative",
+      "uses": 1
+    },
+    "bin_tfl_command_parse_repl_command": {
+      "code_fingerprint": "be239a36642a89c4ebad19a8512e3ef7a17e99929990af3c01a8bef089f81184",
+      "label": "parse_repl_command",
+      "last": "2026-08-15T03:54:16.215275+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-15T03:54:16.215275+00:00",
+          "outcome": "useful",
+          "q": "What is the strongest legitimate bridge after filtering low-confidence name collisions?"
+        }
+      ],
+      "score": 0.990139802,
+      "source_file": "bin/tfl_command.ml",
+      "status": "tentative",
+      "uses": 1
+    },
+    "bin_tfl_command_run_repl": {
+      "code_fingerprint": "be239a36642a89c4ebad19a8512e3ef7a17e99929990af3c01a8bef089f81184",
+      "label": "run_repl",
+      "last": "2026-08-15T03:54:16.215275+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-15T03:54:16.215275+00:00",
+          "outcome": "useful",
+          "q": "What is the strongest legitimate bridge after filtering low-confidence name collisions?"
+        }
+      ],
+      "score": 0.990139802,
+      "source_file": "bin/tfl_command.ml",
+      "status": "tentative",
+      "uses": 1
+    },
+    "bin_tfl_command_run_repl_consistency": {
+      "code_fingerprint": "be239a36642a89c4ebad19a8512e3ef7a17e99929990af3c01a8bef089f81184",
+      "label": "run_repl_consistency",
+      "last": "2026-08-15T03:54:16.215275+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-15T03:54:16.215275+00:00",
+          "outcome": "useful",
+          "q": "What is the strongest legitimate bridge after filtering low-confidence name collisions?"
+        }
+      ],
+      "score": 0.990139802,
+      "source_file": "bin/tfl_command.ml",
+      "status": "tentative",
+      "uses": 1
+    },
+    "bin_tfl_command_run_repl_describe": {
+      "code_fingerprint": "be239a36642a89c4ebad19a8512e3ef7a17e99929990af3c01a8bef089f81184",
+      "label": "run_repl_describe",
+      "last": "2026-08-15T03:54:16.215275+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-15T03:54:16.215275+00:00",
+          "outcome": "useful",
+          "q": "What is the strongest legitimate bridge after filtering low-confidence name collisions?"
+        }
+      ],
+      "score": 0.990139802,
+      "source_file": "bin/tfl_command.ml",
+      "status": "tentative",
+      "uses": 1
+    },
+    "bin_tfl_command_run_repl_equivalence": {
+      "code_fingerprint": "be239a36642a89c4ebad19a8512e3ef7a17e99929990af3c01a8bef089f81184",
+      "label": "run_repl_equivalence",
+      "last": "2026-08-15T03:54:16.215275+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-15T03:54:16.215275+00:00",
+          "outcome": "useful",
+          "q": "What is the strongest legitimate bridge after filtering low-confidence name collisions?"
+        }
+      ],
+      "score": 0.990139802,
+      "source_file": "bin/tfl_command.ml",
+      "status": "tentative",
+      "uses": 1
+    },
+    "bin_tfl_command_run_repl_query": {
+      "code_fingerprint": "be239a36642a89c4ebad19a8512e3ef7a17e99929990af3c01a8bef089f81184",
+      "label": "run_repl_query",
+      "last": "2026-08-15T03:54:16.215275+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-15T03:54:16.215275+00:00",
+          "outcome": "useful",
+          "q": "What is the strongest legitimate bridge after filtering low-confidence name collisions?"
+        }
+      ],
+      "score": 0.990139802,
+      "source_file": "bin/tfl_command.ml",
+      "status": "tentative",
+      "uses": 1
+    }
+  },
+  "version": 1
+}
