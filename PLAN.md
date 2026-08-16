@@ -16,6 +16,11 @@ JSON-lines engine executable is **`dualithor`**.
 
 Phases 1 through 5 are complete. Phase 6 is the next implementation phase.
 
+### Maintenance phase — 2026-08-16 deterministic robustness timing checks ✅ COMPLETE → archived in PLAN-ARCHIVE.md
+
+Replaced load-sensitive wall-clock assertions in `test_safe` with the exact production
+cancellation node budget and process-CPU work limits. Production behavior is unchanged.
+
 ### Maintenance phase — 2026-08-15 Dualithor identity cutover ✅ COMPLETE → archived in PLAN-ARCHIVE.md
 
 Renamed the public product, engine, package, process, repository, and protocol identity
@@ -218,17 +223,6 @@ both, but it cannot change a verdict.
 - Existing research and translation assets are legacy inputs. Do not delete or modernize
   them unless a named phase needs them.
 
-
-## Deferred findings
-
-- **Phase 1 test maintenance — load-sensitive wall-clock assertion.** The Phase 1
-  cancellation-cap wall-clock assertion in `test_safe` is flaky under concurrent suite load:
-  across three unchanged forced full-suite runs it passed twice and failed once at 1.200 s
-  while other tests ran concurrently, while five isolated unchanged `test_safe` runs all
-  passed. Surfaced by the 2026-08-11 Phase 4 test audit and deferred to Phase 1 test
-  maintenance; it must be repaired at the timing assertion, not weakened. Full context in
-  PLAN-ARCHIVE.md (Phase 4).
-
 ---
 
 ## Milestone I — Turn the kernel into a language people can run
@@ -249,8 +243,8 @@ The `.tfl` loader, the installable `tfl` command, `tfl-cli-0.1`, and outcome exi
 ### Phase 4 — Interactive shell ✅ COMPLETE — 2026-08-11 → archived in PLAN-ARCHIVE.md
 
 The `tfl repl` session, the dependency-free in-memory line editor, and the `tfl-repl-0.1`
-event stream. (One deferred test-maintenance finding from this phase is recorded under
-Deferred findings above.)
+event stream. The test-maintenance finding exposed during this phase was paid in the
+2026-08-16 maintenance phase archived in PLAN-ARCHIVE.md.
 
 ### Phase 5 — Source spans and compiler diagnostics ✅ COMPLETE — 2026-08-11 → archived in PLAN-ARCHIVE.md
 

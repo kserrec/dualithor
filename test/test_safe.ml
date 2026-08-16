@@ -6,7 +6,7 @@
    `Tfl.Safe` has to hold on all of it:
 
      1. no escaping exception — every call returns a result;
-     2. no unbounded run — nothing takes more than a second;
+     2. no unbounded run — no call consumes more than one process-CPU second;
      3. no `Internal` failure — that class means the engine broke rather than
         the input being bad, so a single one is a bug, not a data point;
      4. positions stay inside the source, and refusals are classified by where
@@ -17,23 +17,27 @@
 
 module G = QCheck2.Gen
 
+let process_cpu_seconds () =
+  let times = Unix.times () in
+  times.tms_utime +. times.tms_stime
+
 let cases = ref 0
-let slowest = ref 0.0
+let slowest_cpu_seconds = ref 0.0
 let slowest_input = ref ""
 
 (* Every check runs through here: it is the one place that knows what "safe"
    means, so a generator can only make inputs, never weaken assertions. *)
 let safe_on (src : string) : string option =
-  let t0 = Unix.gettimeofday () in
+  let cpu_start = process_cpu_seconds () in
   let outcome = Tfl.Safe.parse src in
-  let elapsed = Unix.gettimeofday () -. t0 in
+  let cpu_seconds = process_cpu_seconds () -. cpu_start in
   incr cases;
-  if elapsed > !slowest then (
-    slowest := elapsed;
+  if cpu_seconds > !slowest_cpu_seconds then (
+    slowest_cpu_seconds := cpu_seconds;
     slowest_input := src);
-  if elapsed > 1.0 then
+  if cpu_seconds > 1.0 then
     Some
-      (Printf.sprintf "took %.3fs on a %d-byte input" elapsed
+      (Printf.sprintf "consumed %.3fs CPU on a %d-byte input" cpu_seconds
          (String.length src))
   else
     match outcome with
@@ -135,11 +139,12 @@ let fuzz_check =
      let* conclusion = src in
      return (premises, conclusion))
     (fun (premises, conclusion) ->
-      let t0 = Unix.gettimeofday () in
+      let cpu_start = process_cpu_seconds () in
       let outcome = Tfl.Safe.check ~premises ~conclusion in
-      let elapsed = Unix.gettimeofday () -. t0 in
+      let cpu_seconds = process_cpu_seconds () -. cpu_start in
       incr cases;
-      if elapsed > 1.0 then Some (Printf.sprintf "took %.3fs" elapsed)
+      if cpu_seconds > 1.0 then
+        Some (Printf.sprintf "consumed %.3fs CPU" cpu_seconds)
       else
         match outcome with
         | Ok _ -> None
@@ -226,19 +231,19 @@ let unit_checks () =
       | Error
           { kind = Tfl.Safe.Resource_limit; where = Some "argument"; _ } -> ()
       | _ -> failwith "an oversized premise list was not refused");
-  test "valid compound inference is work-bounded (<1s)" (fun () ->
+  test "valid compound inference is work-bounded (<1s CPU)" (fun () ->
       let premise =
         "+("
         ^ String.concat "" (List.init 32 (fun _ -> "+A"))
         ^ ")+P"
       in
-      let started = Unix.gettimeofday () in
+      let cpu_start = process_cpu_seconds () in
       let outcome =
         Tfl.Safe.check ~premises:[ premise ] ~conclusion:"−X+Y"
       in
-      let elapsed = Unix.gettimeofday () -. started in
-      check (elapsed < 1.0)
-        (Printf.sprintf "the inference work refusal took %.3fs" elapsed);
+      let cpu_seconds = process_cpu_seconds () -. cpu_start in
+      check (cpu_seconds < 1.0)
+        (Printf.sprintf "the inference work refusal consumed %.3fs CPU" cpu_seconds);
       match outcome with
       | Error
           {
@@ -310,19 +315,20 @@ let unit_checks () =
    cancel, plus u disjoint junk universals the re-use search must explore.
    Uncapped this is 4^u nodes — measured 1.9s at u=11 and ×4 per premise after
    that, so ~days at u=20. The verdict is decided before the search runs, so
-   the cap can only cost the certificate its decoration. *)
+   the cap can only cost the certificate its decoration. Assert the exact node
+   budget rather than elapsed wall time: scheduler contention changes elapsed
+   time without changing whether the deterministic budget stopped the search. *)
 let cancellation_probe () =
   let open Harness in
   let props u =
     List.map Tfl.Notation.parse_proposition
       ([ "+A+B"; "−B−B" ] @ List.init u (fun i -> Printf.sprintf "−J%d+K%d" i i))
   in
-  test "the cancellation search is capped (20 junk universals, <1s)" (fun () ->
-      let t0 = Unix.gettimeofday () in
+  test "the cancellation search stops at its deterministic node budget" (fun () ->
+      check
+        (Tfl.Decide.cancellation_node_budget = 500_000)
+        "the production cancellation budget changed from the documented 500,000 nodes";
       let certificate = Tfl.Decide.check_inconsistent (props 20) in
-      let elapsed = Unix.gettimeofday () -. t0 in
-      check (elapsed < 1.0)
-        (Printf.sprintf "the capped search took %.3fs" elapsed);
       match certificate with
       | None -> failwith "the set is inconsistent; the closure should say so"
       | Some c ->
@@ -357,7 +363,7 @@ let () =
         fuzz_check;
       ]
   in
-  Printf.printf "adversarial inputs: %d, slowest %.3fs on %d bytes\n" !cases
-    !slowest
+  Printf.printf "adversarial inputs: %d, slowest %.3fs CPU on %d bytes\n" !cases
+    !slowest_cpu_seconds
     (String.length !slowest_input);
   exit (if Harness.exit_code () <> 0 || failures <> 0 then 1 else 0)

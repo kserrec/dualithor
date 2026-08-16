@@ -8,6 +8,37 @@ pointer to each entry.
 
 ---
 
+### Maintenance phase — 2026-08-16 deterministic robustness timing checks ✅ COMPLETE
+
+This maintenance phase pays the Phase 1 test debt exposed during the Phase 4 test audit.
+The production cancellation search already had a deterministic 500,000-node budget, but
+`test/test_safe.ml` tried to prove that bound indirectly with a one-second wall-clock limit.
+The unchanged exact probe took 0.670–0.761 seconds across 20 isolated runs and
+3.289–3.295 seconds across three runs under eight competing CPU workers, while returning
+the same budget-limited certificate in every run. That establishes scheduler contention,
+not an unbounded production search, as the cause of the flake. The first forced full-suite
+run after repairing that one assertion exposed the same load-sensitive mechanism in the
+generated argument check's per-call wall-clock guard.
+
+1. Assert the documented production cancellation budget directly and retain both the
+   budget-exhaustion certificate check and the small positive cancellation control.
+2. Measure the safety suite's one-second work limits with process CPU time, which counts the
+   work consumed by the single-threaded test process without counting time it was descheduled.
+3. Run the focused safety suite and a forced full repository suite without moving to Phase 6.
+
+**Acceptance:** `test_safe` proves the deterministic cancellation cap and still rejects any
+individual parse, argument check, or compound inference that consumes more than one process
+CPU second; all 14 focused contract checks and 102,000 generated adversarial inputs pass;
+the forced full repository suite passes.
+
+**Delivered:** only the test harness and planning record changed; inference, runtime, command,
+and other production behavior are unchanged. The focused safety executable passed all 14
+contract checks and 102,000 generated inputs. The forced full Dune suite passed, including
+the six 1,000-iteration oracle suites and all 18 differential comparisons. Phase 6 remains
+the next implementation phase and has not started.
+
+---
+
 ### Maintenance phase — 2026-08-15 Dualithor identity cutover ✅ COMPLETE
 
 This approved maintenance phase replaces the former public product, engine, package,
